@@ -1,0 +1,41 @@
+### Laravel Core ###
+/bootstrap/cache/*
+/vendor/
+.env
+.env.backup
+.env.production
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+auth.json
+npm-debug.log
+yarn-error.log
+
+### Laravel Storage ###
+/storage/*.key
+/storage/framework/cache/data/*
+/storage/framework/sessions/*
+/storage/framework/testing/*
+/storage/framework/views/*
+/storage/logs/*
+/storage/pail/*
+
+### Frontend Build Artifacts ###
+/node_modules/
+/public/build/
+/public/hot/
+/public/storage
+
+### IDEs and Editors ###
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+phpactor.json
+
+### Operating System Files ###
+.DS_Store
+Thumbs.db
