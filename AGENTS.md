@@ -6,7 +6,7 @@ Este archivo entrega contexto de negocio y técnico para cualquier agente de IA 
 
 **Este repositorio contiene únicamente la API REST backend (Laravel) del sistema SGIA.**
 
-- No contiene el frontend web administrativo ni la app móvil Flutter: esos son repositorios/proyectos separados que consumen esta API.
+- No contiene el frontend web ni la app móvil: ambos viven en un monorepo aparte (`sgia-frontend`, React + React Native) que consume esta API.
 - Toda funcionalidad se expone como endpoints REST (JSON), no hay vistas Blade orientadas al usuario final ni lógica de presentación.
 - Responsabilidades de este repo: autenticación/autorización, reglas de negocio, persistencia (base de datos), generación de PDFs, envío de correos (cotizaciones, notificaciones), generación de códigos de barras, endpoints para dashboards/reportes.
 - Fuera de alcance de este repo: renderizado de UI, escaneo físico de códigos de barras (eso ocurre en el cliente móvil/web, que envía el código leído a la API), diseño de pantallas.
@@ -16,7 +16,7 @@ Este archivo entrega contexto de negocio y técnico para cualquier agente de IA 
 
 **Nombre:** SGIA – Sistema de Gestión de Inventario y Activos (API Backend)
 **Cliente:** Área de Informática y Ciberseguridad, INACAP Sede Temuco
-**Tipo de proyecto:** Proyecto de Título (TIHI84). Este repo es el componente backend de una solución compuesta por: API Laravel (este repo), app web administrativa (consumidor externo) y app móvil Flutter (consumidor externo).
+**Tipo de proyecto:** Proyecto de Título (TIHI84). Este repo es el componente backend de una solución compuesta por: API Laravel (este repo) y el monorepo `sgia-frontend` (consumidor externo), que contiene el panel web en React (Vite) y la app móvil en React Native (Expo).
 
 ### Problema que resuelve
 El área gestiona hoy su pañol (bodega) e inventario de equipos/insumos de forma manual: planillas Excel, hojas de vida en Word y papel para facturas/guías de despacho. Esto genera:
@@ -29,6 +29,8 @@ El área gestiona hoy su pañol (bodega) e inventario de equipos/insumos de form
 Reemplazar Excel/Word/papel por una plataforma centralizada que digitalice el ciclo de vida completo de equipos e insumos: alta por escaneo de facturas, ubicación física, préstamos (presenciales y remotos vía app), cotizaciones automatizadas por correo, fichas técnicas/mantenimiento, y dashboards de uso.
 
 ## 2. Roles de usuario (importante para permisos y RBAC)
+
+El sistema de control de acceso se realizar mediante un Sistema de Control de Acceso Basado en Roles, el usuario debe tener un campo donde tenga uno de los siguientes roles descritos.
 
 | Código | Rol | Qué hace |
 |--------|-----|----------|
@@ -70,15 +72,52 @@ Restricciones importantes:
 - Acotado exclusivamente al Área de Informática y Ciberseguridad de la Sede Temuco.
 - Los clientes (web/móvil) dependen de hardware físico (pistola lectora, impresora de códigos), pero esa integración de hardware no vive en este repositorio: la API solo recibe el valor del código escaneado.
 
+## 5.1 Autenticación y CORS (SPA web + mobile)
+
+Este backend debe servir de forma consistente a **dos clientes distintos**: el panel web (React/Vite, corre en el navegador, sujeto a CORS) y la app móvil (React Native/Expo, no es un navegador, no aplica CORS). La estrategia elegida evita tener dos mecanismos de auth distintos para no duplicar lógica ni casos borde.
+
+**Paquete: Laravel Sanctum.**
+
+Se descarta Passport (OAuth2 completo) porque no hay necesidad de emitir tokens a terceros ni flujos `authorization_code`/`client_credentials`; Sanctum cubre exactamente lo que se necesita (tokens simples tipo API) con mucho menos overhead de configuración y mantenimiento.
+
+**Modo de uso: tokens Bearer para ambos clientes, no autenticación por cookies de Sanctum ("SPA authentication").**
+
+Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dominio (`stateful` domains), aquí se usa el modo de **personal access tokens** (Bearer) para ambos clientes por estas razones:
+- El panel web y la API probablemente se despliegan en subdominios/dominios distintos dentro de AWS (o incluso separados por ahora), lo que complica el flujo de cookies + CSRF.
+- Mobile no puede usar cookies de sesión de forma práctica; necesita Bearer tokens de todas formas.
+- Usar el mismo mecanismo (Bearer) en ambos clientes evita mantener dos flujos de auth en paralelo y simplifica el `api-client` compartido del monorepo frontend.
+
+Tareas concretas:
+- [x] Antes de inicar las tareas el usuario debe tener como campos adicionales:
+    - Ultimo inicio de sesión
+    - los siguientes campos deben estar en una tabla normaizada: 
+    - Navegador / movil
+    - Fecha de inicio de sesión
+    - IP
+- [x] Crear campos necesarios para el usuario como area y rol 
+- [ ] Instalar y configurar Sanctum solo para **API tokens** (no usar el middleware `EnsureFrontendRequestsAreStateful`, ya que no habrá flujo de cookies/CSRF).
+- [ ] En `POST /api/login`, validar credenciales y emitir el token con `$user->createToken($deviceName)->plainTextToken`, donde `$deviceName` identifica el cliente (`web`, `mobile`) para poder listar/revocar sesiones por dispositivo si se requiere.
+- [ ] Definir expiración de tokens en `config/sanctum.php` (`expiration`); considerar tokens más largos para mobile (el docente no debería re-loguearse constantemente) y más cortos para web.
+- [ ] `POST /api/logout` → `$request->user()->currentAccessToken()->delete()`.
+- [ ] (Opcional) Endpoint para que un usuario liste y revoque sus tokens activos por dispositivo (útil si un docente pierde el celular).
+
+**Configuración de CORS (`config/cors.php`):**
+- [ ] `paths` → `['api/*']`.
+- [ ] `allowed_origins` → dominio(s) exacto(s) donde se sirva el panel web (ej. `https://sgia-web.inacap-temuco.cl`). No usar `*` en producción.
+- [ ] `allowed_methods` → `['GET','POST','PATCH','PUT','DELETE','OPTIONS']`.
+- [ ] `allowed_headers` → incluir `Authorization`, `Content-Type`, `Accept`.
+- [ ] `supports_credentials` → `false` (no se usan cookies para auth, así que no hace falta habilitar credenciales cross-origin, lo que simplifica la configuración).
+- [ ] Mobile (React Native/Expo) no pasa por el navegador en producción, por lo que **no está sujeto a CORS**; solo puede aplicar en desarrollo si se prueba la app en modo web de Expo — en ese caso agregar también ese origen de desarrollo a `allowed_origins` (idealmente solo en el entorno local, no en producción).
+
 ## 6. Tareas de backend desglosadas por requisito
 
 Cada requisito (`REQ-XX`) del documento de formulación se traduce aquí en tareas concretas de API. Un agente puede tomar un `REQ` como unidad de trabajo/PR.
 
 ### REQ-01 — Autenticación por rol (FU-01)
-- [ ] Endpoint `POST /api/login` (correo + contraseña) que devuelva token (Sanctum/Passport, definir en Tecnologías).
-- [ ] Middleware que valide token en cada request y rechace usuarios desactivados.
-- [ ] Endpoint `POST /api/logout` para invalidar el token.
-- [ ] Devolver en la respuesta de login el rol del usuario para que el cliente adapte su UI.
+- [ ] Endpoint `POST /api/login` (correo + contraseña) que devuelva token Bearer vía Sanctum (ver sección 5.1).
+- [ ] Middleware `auth:sanctum` en todas las rutas protegidas; rechazar usuarios desactivados (chequeo adicional en el `User` model o en un middleware propio, Sanctum no lo hace por defecto).
+- [ ] Endpoint `POST /api/logout` que revoque el token actual.
+- [ ] Devolver en la respuesta de login el rol del usuario para que el cliente adapte su UI/navegación.
 
 ### REQ-02 — Administración de usuarios (FU-01, solo AD-01)
 - [ ] CRUD `api/users` (nombre completo, correo, rol, contraseña, área).
@@ -172,16 +211,18 @@ Cada requisito (`REQ-XX`) del documento de formulación se traduce aquí en tare
 
 ## 8. Tecnologías
 
-> Esta sección la completa el equipo/usuario según la stack final definida para la implementación.
-
-- Backend: 
-- Frontend web: 
-- App móvil: 
-- Base de datos: 
-- Infraestructura / despliegue: 
-- Librerías / paquetes adicionales: 
-- Autenticación: 
-- Testing: 
+- **Backend:** Laravel (PHP), API REST.
+- **Autenticación:** Laravel Sanctum — tokens Bearer (personal access tokens) para ambos clientes (web y mobile), sin flujo de cookies/CSRF de SPA (ver sección 5.1).
+- **Base de datos:** PostgreSQL.
+- **Infraestructura / despliegue:** AWS EC2 (instancias para API/Laravel y para PostgreSQL, cada una con réplica de respaldo).
+- **Consumidores de esta API (repos externos):**
+  - Frontend web: React + Vite (monorepo `sgia-frontend`).
+  - App móvil: React Native + Expo (mismo monorepo `sgia-frontend`).
+- **Generación de PDFs** (fichas técnicas, informes): *(definir librería, ej. dompdf o barryvdh/laravel-dompdf, o snappy/wkhtmltopdf si se requiere mejor fidelidad de diseño)*.
+- **Generación de códigos de barras:** *(definir librería, ej. picqer/php-barcode-generator o milon/barcode)*.
+- **Envío de correos** (cotizaciones automáticas): mailer nativo de Laravel (Mailables + Queues) sobre el proveedor SMTP/SES que se configure.
+- **Colas/jobs:** Laravel Queues (database o SQS) para envío de correos, generación de PDFs y notificaciones sin bloquear la respuesta HTTP.
+- **Testing:** PHPUnit / Pest para tests de feature (endpoints) y unitarios de reglas de negocio.
 
 ## 9. Referencias del documento fuente
 

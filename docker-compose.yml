@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: sgia_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sgia
+      POSTGRES_USER: sgia
+      POSTGRES_PASSWORD: sgia_secret
+    ports:
+      - "5432:5432"
+    volumes:
+      - sgia_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sgia -d sgia"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  sgia_pgdata:
