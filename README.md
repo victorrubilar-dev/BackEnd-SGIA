@@ -1,58 +1,88 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SGIA Backend API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+API REST en **Laravel** del *Sistema de Gestión de Inventario y Activos* (SGIA) para el Área de Informática y Ciberseguridad, INACAP Sede Temuco.
 
-## About Laravel
+Este repositorio contiene **solo el backend** (capa de lógica de negocio). El panel web (React/Vite) y la app móvil (React Native/Expo) viven en un monorepo aparte (`sgia-frontend`) y consumen esta API vía HTTPS/JSON.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Requisitos
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- PHP 8.4+ con extensiones `pgsql`, `dom`, `openssl`
+- Composer
+- Docker (para el contenedor de PostgreSQL en desarrollo)
+- PostgreSQL 16
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+## Puesta en marcha
 
 ```bash
-composer require laravel/boost --dev
+# 1. Levantar la base de datos (PostgreSQL en Docker)
+docker compose up -d db
 
-php artisan boost:install
+# 2. Instalar dependencias
+composer install
+
+# 3. Configurar variables de entorno
+cp .env.example .env     # ajustar credenciales si cambiaste docker-compose.yml
+php artisan key:generate
+
+# 4. Ejecutar migraciones (crea users, login_records, tokens, etc.)
+php artisan migrate --seed
+
+# 5. Iniciar el servidor
+php artisan serve        # http://localhost:8000
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+El contenedor expone PostgreSQL en `127.0.0.1:5432`, base `sgia`, usuario/contraseña `sgia`/`sgia_secret` (ver `docker-compose.yml`).
 
-## Contributing
+## Autenticación
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Se usa **Laravel Sanctum** con tokens Bearer (personal access tokens) para ambos clientes (web y mobile). No se usa el flujo de cookies/CSRF de SPA.
 
-## Code of Conduct
+Flujo básico:
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+# Login (device_name: web | mobile)
+curl -X POST http://localhost:8000/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@sgia.cl","password":"Secret-1234","device_name":"web"}'
 
-## Security Vulnerabilities
+# Uso del token
+curl http://localhost:8000/api/user \
+  -H "Authorization: Bearer <token>"
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Logout (revoca el token actual)
+curl -X POST http://localhost:8000/api/logout \
+  -H "Authorization: Bearer <token>"
 
-## License
+# Listar/revocar tokens activos por dispositivo
+curl http://localhost:8000/api/tokens -H "Authorization: Bearer <token>"
+curl -X DELETE http://localhost:8000/api/tokens/{tokenId} -H "Authorization: Bearer <token>"
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Duración de tokens por dispositivo: **mobile** 60 días, **web** 8 horas (configurable en `SANCTUM_EXPIRATION` / `config/sanctum.php`).
+
+## Rutas principales
+
+| Método | URI | Acceso | Descripción |
+|--------|-----|--------|-------------|
+| POST | `/api/login` | público | Autenticación, emite token Bearer |
+| POST | `/api/logout` | `auth:sanctum` | Revoca el token actual |
+| GET | `/api/user` | `auth:sanctum` | Datos del usuario autenticado |
+| GET | `/api/tokens` | `auth:sanctum` | Tokens activos del usuario |
+| DELETE | `/api/tokens/{id}` | `auth:sanctum` | Revoca un token propio |
+
+## Estructura del modelo de datos (núcleo)
+
+- `users` — incluye `role` (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`), `area` y `last_login_at`.
+- `login_records` — tabla normalizada de inicios de sesión: dispositivo (`web`/`mobile`), `user_agent`, `ip_address`, `logged_in_at`.
+- `personal_access_tokens` — tokens Sanctum de sesión por dispositivo.
+
+## Tecnologías
+
+- **Backend:** Laravel (PHP)
+- **Base de datos:** PostgreSQL 16 (Docker en desarrollo, AWS EC2 en producción)
+- **Autenticación:** Laravel Sanctum (tokens Bearer)
+- **Infraestructura:** AWS EC2
+
+## Referencia del proyecto
+
+Ver `AGENTS.md` para el contexto de negocio, roles, módulos funcionales (FU-01 a FU-06) y desglose de tareas por requisito (REQ-01 a REQ-14).
