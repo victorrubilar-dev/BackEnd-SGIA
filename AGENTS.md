@@ -87,6 +87,7 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - Mobile no puede usar cookies de sesión de forma práctica; necesita Bearer tokens de todas formas.
 - Usar el mismo mecanismo (Bearer) en ambos clientes evita mantener dos flujos de auth en paralelo y simplifica el `api-client` compartido del monorepo frontend.
 
+**CADA TAREA AL FINALIZARLA SE DEBE MARCAR COMO LISTA**
 Tareas concretas:
 - [x] Antes de inicar las tareas el usuario debe tener como campos adicionales:
     - Ultimo inicio de sesión
@@ -95,11 +96,11 @@ Tareas concretas:
     - Fecha de inicio de sesión
     - IP
 - [x] Crear campos necesarios para el usuario como area y rol 
-- [ ] Instalar y configurar Sanctum solo para **API tokens** (no usar el middleware `EnsureFrontendRequestsAreStateful`, ya que no habrá flujo de cookies/CSRF).
-- [ ] En `POST /api/login`, validar credenciales y emitir el token con `$user->createToken($deviceName)->plainTextToken`, donde `$deviceName` identifica el cliente (`web`, `mobile`) para poder listar/revocar sesiones por dispositivo si se requiere.
-- [ ] Definir expiración de tokens en `config/sanctum.php` (`expiration`); considerar tokens más largos para mobile (el docente no debería re-loguearse constantemente) y más cortos para web.
-- [ ] `POST /api/logout` → `$request->user()->currentAccessToken()->delete()`.
-- [ ] (Opcional) Endpoint para que un usuario liste y revoque sus tokens activos por dispositivo (útil si un docente pierde el celular).
+- [x] Instalar y configurar Sanctum solo para **API tokens** (no usar el middleware `EnsureFrontendRequestsAreStateful`, ya que no habrá flujo de cookies/CSRF).
+- [x] En `POST /api/login`, validar credenciales y emitir el token con `$user->createToken($deviceName)->plainTextToken`, donde `$deviceName` identifica el cliente (`web`, `mobile`) para poder listar/revocar sesiones por dispositivo si se requiere.
+- [x] Definir expiración de tokens en `config/sanctum.php` (`expiration`); considerar tokens más largos para mobile (el docente no debería re-loguearse constantemente) y más cortos para web.
+- [x] `POST /api/logout` → `$request->user()->currentAccessToken()->delete()`.
+- [x] (Opcional) Endpoint para que un usuario liste y revoque sus tokens activos por dispositivo (útil si un docente pierde el celular).
 
 **Configuración de CORS (`config/cors.php`):**
 - [ ] `paths` → `['api/*']`.

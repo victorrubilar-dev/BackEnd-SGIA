@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'last_login_at', 'role', 'area'])]
 #[Hidden(['password', 'remember_token'])]
@@ -17,7 +18,7 @@ class User extends Authenticatable
 {
     public const ROLES = ['AD-01', 'DIR-01', 'PAN-01', 'PRO-01'];
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
+    use HasApiTokens, HasFactory, Notifiable;
 
     /**
      * Get the attributes that should be cast.
