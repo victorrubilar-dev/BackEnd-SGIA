@@ -54,14 +54,14 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - [x] Registrar middleware en `bootstrap/app.php` y aplicarlo a las rutas protegidas bajo `auth:sanctum`.
 
 #### 3. Control de Acceso Basado en Roles (RBAC) (REQ-01 / REQ-NF-01)
-- [ ] Implementar middleware `CheckRole` (o `EnsureHasRole:AD-01,DIR-01,...`) para restringir rutas protegidas según uno o varios roles autorizados.
-- [ ] Agregar métodos de conveniencia en [User.php](file:///home/alerrsi/Documents/proyects/SGIA/BackEnd-SGIA/app/Models/User.php):
-    - [ ] `hasRole(string|array $roles): bool`
-    - [ ] `isAdmin(): bool` (AD-01)
-    - [ ] `isDirector(): bool` (DIR-01)
-    - [ ] `isWarehouse(): bool` (PAN-01)
-    - [ ] `isTeacher(): bool` (PRO-01)
-- [ ] Registrar el alias del middleware en `bootstrap/app.php` (ej. `'role' => \App\Http\Middleware\CheckRole::class`).
+- [x] Implementar middleware `CheckRole` (o `EnsureHasRole:AD-01,DIR-01,...`) para restringir rutas protegidas según uno o varios roles autorizados.
+- [x] Agregar métodos de conveniencia en [User.php](file:///home/alerrsi/Documents/proyects/SGIA/BackEnd-SGIA/app/Models/User.php):
+    - [x] `hasRole(string|array $roles): bool`
+    - [x] `isAdmin(): bool` (AD-01)
+    - [x] `isDirector(): bool` (DIR-01)
+    - [x] `isWarehouse(): bool` (PAN-01)
+    - [x] `isTeacher(): bool` (PRO-01)
+- [x] Registrar el alias del middleware en `bootstrap/app.php` (ej. `'role' => \App\Http\Middleware\CheckRole::class`).
 
 #### 4. Seguridad OWASP y Mitigación de Fuerza Bruta (REQ-NF-01 / REQ-NF-02)
 - [ ] Implementar Rate Limiting / Throttling en `POST /api/login` (máximo 5 intentos por minuto por IP + email) para evitar ataques de fuerza bruta.
@@ -96,4 +96,4 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
     - [ ] Test `POST /api/logout` elimina el token actual.
     - [ ] Test listado y revocación de tokens por dispositivo (`GET /api/tokens`, `DELETE /api/tokens/{id}`).
     - [ ] Test endpoint `GET /api/me` devuelve los datos correctos del usuario autenticado.
-    - [ ] Test middleware de roles `CheckRole` permite acceso a rol correcto y rechaza con 403 a roles no autorizados.
+    - [x] Test middleware de roles `CheckRole` permite acceso a rol correcto y rechaza con 403 a roles no autorizados.

@@ -16,10 +16,19 @@ use Laravel\Sanctum\HasApiTokens;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    public const ROLES = ['AD-01', 'DIR-01', 'PAN-01', 'PRO-01'];
-
-    /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
+
+    public const ROLE_ADMIN = 'AD-01';
+    public const ROLE_DIRECTOR = 'DIR-01';
+    public const ROLE_WAREHOUSE = 'PAN-01';
+    public const ROLE_TEACHER = 'PRO-01';
+
+    public const ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_DIRECTOR,
+        self::ROLE_WAREHOUSE,
+        self::ROLE_TEACHER,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -39,5 +48,39 @@ class User extends Authenticatable
     public function loginRecords(): HasMany
     {
         return $this->hasMany(LoginRecord::class);
+    }
+
+    /**
+     * Determine if the user has any of the given roles.
+     *
+     * @param  string|array<int, string>  $roles
+     */
+    public function hasRole(string|array $roles): bool
+    {
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
+        return in_array($this->role, $roles, true);
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->hasRole(self::ROLE_ADMIN);
+    }
+
+    public function isDirector(): bool
+    {
+        return $this->hasRole(self::ROLE_DIRECTOR);
+    }
+
+    public function isWarehouse(): bool
+    {
+        return $this->hasRole(self::ROLE_WAREHOUSE);
+    }
+
+    public function isTeacher(): bool
+    {
+        return $this->hasRole(self::ROLE_TEACHER);
     }
 }

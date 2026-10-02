@@ -76,6 +76,9 @@ $requiredExtensions = ['dom', 'filter', 'json', 'libxml', 'mbstring', 'tokenizer
 $unavailableExtensions = array_filter(
     $requiredExtensions,
     static function ($extension) {
+        if ($extension === 'mbstring' && function_exists('mb_strlen')) {
+            return false;
+        }
         return !extension_loaded($extension);
     }
 );
