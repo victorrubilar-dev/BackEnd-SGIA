@@ -24,6 +24,12 @@ class AuthController extends Controller
             ], 401);
         }
 
+        if (! $user->is_active) {
+            return response()->json([
+                'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
+            ], 403);
+        }
+
         $expiresAt = match ($validated['device_name']) {
             'mobile' => now()->addDays(60),
             default => now()->addHours(8),
@@ -46,7 +52,7 @@ class AuthController extends Controller
             'message' => 'Login exitoso.',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->only(['id', 'name', 'email', 'role', 'area']),
+            'user' => $user->only(['id', 'name', 'email', 'role', 'area', 'is_active']),
         ]);
     }
 
