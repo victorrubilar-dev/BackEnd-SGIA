@@ -64,9 +64,9 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - [x] Registrar el alias del middleware en `bootstrap/app.php` (ej. `'role' => \App\Http\Middleware\CheckRole::class`).
 
 #### 4. Seguridad OWASP y Mitigación de Fuerza Bruta (REQ-NF-01 / REQ-NF-02)
-- [ ] Implementar Rate Limiting / Throttling en `POST /api/login` (máximo 5 intentos por minuto por IP + email) para evitar ataques de fuerza bruta.
-- [ ] Retornar cabecera `Retry-After` y respuesta JSON clara con código 429 Too Many Requests cuando se supere el límite.
-- [ ] Garantizar que no exista fuga de información en el login: mensaje unificado de credenciales incorrectas tanto si el correo no existe como si la contraseña es errónea (prevención de user enumeration).
+- [x] Implementar Rate Limiting / Throttling en `POST /api/login` (máximo 5 intentos por minuto por IP + email) para evitar ataques de fuerza bruta.
+- [x] Retornar cabecera `Retry-After` y respuesta JSON clara con código 429 Too Many Requests cuando se supere el límite.
+- [x] Garantizar que no exista fuga de información en el login: mensaje unificado de credenciales incorrectas tanto si el correo no existe como si la contraseña es errónea (prevención de user enumeration).
 
 #### 5. Gestión del Perfil de Usuario Autenticado (`/api/me`)
 - [ ] Crear `UserResource` (`app/Http/Resources/UserResource.php`) para serializar limpiamente el usuario (ocultar campos internos y asegurar estructura consistente de roles y fechas).
@@ -89,8 +89,8 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - [ ] Crear suite de pruebas de integración para autenticación (`tests/Feature/AuthTest.php`):
     - [ ] Test login exitoso para cliente `web` (token expira en 8 horas, crea `LoginRecord`, actualiza `last_login_at`).
     - [ ] Test login exitoso para cliente `mobile` (token expira en 60 días).
-    - [ ] Test login con credenciales inválidas (retorna 401).
-    - [ ] Test bloqueo por Rate Limiting tras múltiples intentos fallidos (retorna 429).
+    - [x] Test login con credenciales inválidas (retorna 401).
+    - [x] Test bloqueo por Rate Limiting tras múltiples intentos fallidos (retorna 429).
     - [x] Test rechazo de login para usuario con `is_active === false` (retorna 403).
     - [x] Test middleware `EnsureUserIsActive` bloquea peticiones de usuario desactivado aún con Bearer token válido (retorna 403).
     - [ ] Test `POST /api/logout` elimina el token actual.

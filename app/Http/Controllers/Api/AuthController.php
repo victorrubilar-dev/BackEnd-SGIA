@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -29,6 +31,11 @@ class AuthController extends Controller
                 'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
             ], 403);
         }
+
+        $email = Str::transliterate(Str::lower($validated['email']));
+        $throttleKey = $email . '|' . $request->ip();
+        RateLimiter::clear('login:' . $throttleKey);
+        RateLimiter::clear(md5('login' . $throttleKey));
 
         $expiresAt = match ($validated['device_name']) {
             'mobile' => now()->addDays(60),
