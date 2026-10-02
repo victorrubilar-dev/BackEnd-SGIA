@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
+use App\Http\Resources\UserResource;
 use App\Models\LoginRecord;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -61,6 +62,11 @@ class AuthController extends Controller
             'token_type' => 'Bearer',
             'user' => $user->only(['id', 'name', 'email', 'role', 'area', 'is_active']),
         ]);
+    }
+
+    public function me(Request $request): UserResource
+    {
+        return new UserResource($request->user());
     }
 
     public function logout(Request $request): JsonResponse

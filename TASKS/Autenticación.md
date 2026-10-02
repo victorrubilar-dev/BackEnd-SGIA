@@ -69,8 +69,8 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - [x] Garantizar que no exista fuga de información en el login: mensaje unificado de credenciales incorrectas tanto si el correo no existe como si la contraseña es errónea (prevención de user enumeration).
 
 #### 5. Gestión del Perfil de Usuario Autenticado (`/api/me`)
-- [ ] Crear `UserResource` (`app/Http/Resources/UserResource.php`) para serializar limpiamente el usuario (ocultar campos internos y asegurar estructura consistente de roles y fechas).
-- [ ] Reemplazar la función anónima `Route::get('/user')` por un endpoint formal `GET /api/me` (o `GET /api/user`) que devuelva el recurso del usuario autenticado con su rol, área, último login y estado.
+- [x] Crear `UserResource` (`app/Http/Resources/UserResource.php`) para serializar limpiamente el usuario (ocultar campos internos y asegurar estructura consistente de roles y fechas).
+- [x] Reemplazar la función anónima `Route::get('/user')` por un endpoint formal `GET /api/me` (o `GET /api/user`) que devuelva el recurso del usuario autenticado con su rol, área, último login y estado.
 
 #### 6. Ciclo de Vida y Revocación de Tokens
 - [ ] Ajustar la configuración de expiración de Sanctum (`config/sanctum.php`): asegurar que `'expiration' => null` si se utiliza el campo `expires_at` por token individual (para que los 60 días de mobile y las 8 horas de web no se sobrescriban con el valor global).
@@ -95,5 +95,5 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
     - [x] Test middleware `EnsureUserIsActive` bloquea peticiones de usuario desactivado aún con Bearer token válido (retorna 403).
     - [ ] Test `POST /api/logout` elimina el token actual.
     - [ ] Test listado y revocación de tokens por dispositivo (`GET /api/tokens`, `DELETE /api/tokens/{id}`).
-    - [ ] Test endpoint `GET /api/me` devuelve los datos correctos del usuario autenticado.
+    - [x] Test endpoint `GET /api/me` devuelve los datos correctos del usuario autenticado.
     - [x] Test middleware de roles `CheckRole` permite acceso a rol correcto y rechaza con 403 a roles no autorizados.

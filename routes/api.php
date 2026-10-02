@@ -1,16 +1,14 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
+    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/user', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/tokens', [AuthController::class, 'tokens']);
     Route::delete('/tokens/{tokenId}', [AuthController::class, 'revokeToken']);
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
 });
