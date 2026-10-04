@@ -1,76 +1,76 @@
 # AGENTS.md — SGIA Backend API
 
-Este archivo entrega contexto de negocio y técnico para cualquier agente de IA (Claude Code u otro) que trabaje sobre este repositorio. Léelo antes de generar o modificar código.
+> Guía técnica y de arquitectura para agentes de IA que trabajan en el backend de SGIA.
+> Fuente: Documento de formulación de proyecto SGIA (INACAP Sede Temuco, 2026).
+
+---
 
 ## 0. Alcance de este repositorio
 
-**Este repositorio contiene únicamente la API REST backend (Laravel) del sistema SGIA.**
+Este repositorio contiene **exclusivamente la API REST del backend** de SGIA.
+- **Frontend web (React + Vite + Tailwind):** repositorio separado.
+- **App móvil (React Native + Expo):** repositorio separado.
+- Cualquier mención en este documento a interfaces, pantallas, navegación o formularios de usuario describe el comportamiento esperado del cliente que consumirá esta API, no vistas que deban implementarse aquí (salvo vistas Blade de correos transaccionales si aplica).
 
-- No contiene el frontend web ni la app móvil: ambos viven en un monorepo aparte (`sgia-frontend`, React + React Native) que consume esta API.
-- Toda funcionalidad se expone como endpoints REST (JSON), no hay vistas Blade orientadas al usuario final ni lógica de presentación.
-- Responsabilidades de este repo: autenticación/autorización, reglas de negocio, persistencia (base de datos), generación de PDFs, envío de correos (cotizaciones, notificaciones), generación de códigos de barras, endpoints para dashboards/reportes.
-- Fuera de alcance de este repo: renderizado de UI, escaneo físico de códigos de barras (eso ocurre en el cliente móvil/web, que envía el código leído a la API), diseño de pantallas.
-- Cualquier tarea de agente debe asumir que "el usuario" es un cliente HTTP (web o móvil) consumiendo esta API, no una persona interactuando con una pantalla de este repositorio.
+---
 
 ## 1. Contexto del proyecto
 
-**Nombre:** SGIA – Sistema de Gestión de Inventario y Activos (API Backend)
-**Cliente:** Área de Informática y Ciberseguridad, INACAP Sede Temuco
-**Tipo de proyecto:** Proyecto de Título (TIHI84). Este repo es el componente backend de una solución compuesta por: API Laravel (este repo) y el monorepo `sgia-frontend` (consumidor externo), que contiene el panel web en React (Vite) y la app móvil en React Native (Expo).
+**SGIA** (Sistema de Gestión de Inventario y Almacenamiento) es una plataforma desarrollada para la Dirección de Área de Electricidad, Electrónica y Telecomunicaciones de INACAP Sede Temuco. Actualmente, el control de inventario de equipos y herramientas se realiza con registros en papel y libros de actas manuales.
 
 ### Problema que resuelve
-El área gestiona hoy su pañol (bodega) e inventario de equipos/insumos de forma manual: planillas Excel, hojas de vida en Word y papel para facturas/guías de despacho. Esto genera:
-- Falta de trazabilidad de equipos e insumos (no se sabe ubicación exacta ni stock real).
-- Préstamos presenciales lentos (~20–25 min) y sin registro digital, solo se deja un carnet como garantía.
-- Cotizaciones a proveedores redactadas manualmente por correo, sin historial ni seguimiento de estado.
-- Pérdida de tiempo y sobrecarga administrativa para Directora de Carrera, Coordinadores y Pañolero.
+- Registro manual propenso a pérdidas, errores y duplicidad de información.
+- Desconocimiento en tiempo real del stock disponible y del estado de los préstamos.
+- Tiempos de espera elevados en el pañol durante cambios de módulo de clases.
+- Procesos de compra reactivos y sin trazabilidad formal.
+- Historial de reparaciones y bajas disperso o inexistente.
 
 ### Objetivo del sistema
-Reemplazar Excel/Word/papel por una plataforma centralizada que digitalice el ciclo de vida completo de equipos e insumos: alta por escaneo de facturas, ubicación física, préstamos (presenciales y remotos vía app), cotizaciones automatizadas por correo, fichas técnicas/mantenimiento, y dashboards de uso.
+Centralizar y digitalizar la gestión integral del inventario de pañol: administración de stock, control de préstamos presenciales y remotos mediante códigos QR/barras, alertas de stock crítico, cotizaciones automáticas a proveedores y generación de reportes y dashboards para la toma de decisiones.
+
+---
 
 ## 2. Roles de usuario (importante para permisos y RBAC)
 
-El sistema de control de acceso se realizar mediante un Sistema de Control de Acceso Basado en Roles, el usuario debe tener un campo donde tenga uno de los siguientes roles descritos.
+El sistema define 4 perfiles con permisos diferenciados que la API debe hacer cumplir:
 
-| Código | Rol | Qué hace |
-|--------|-----|----------|
-| AD-01 | Administrador de usuarios | Crea, activa/desactiva y edita usuarios y roles. |
-| DIR-01 | Director de área / Coordinador | Sube facturas/fotos para alta de productos, gestiona cotizaciones, ve fichas técnicas y dashboards. |
-| PAN-01 | Pañol (encargado de bodega) | Gestión física del inventario, procesa préstamos presenciales, ve ubicación y stock. |
-| PRO-01 | Profesor / Docente | Solicita préstamos remotos desde app móvil, llena formularios de justificación/reposición de equipos. |
+| Código | Rol | Responsabilidades clave |
+|---|---|---|
+| **AD-01** | Administrador | Gestión completa de usuarios (crear, suspender, asignar rol). Auditoría y configuración global del sistema. |
+| **DIR-01** | Director de Carrera / Asesor | Subir facturas de compra, autorizar adquisiciones, emitir cotizaciones automáticas, dar de baja equipos, ver dashboards analíticos y reportes de inventario/préstamos. |
+| **PAN-01** | Encargado de Pañol / Pañolero | Operación diaria: registrar altas de productos, generar códigos de barras/QR, entregar/recibir préstamos presenciales, gestionar préstamos remotos solicitados por docentes, actualizar estados de ítems. |
+| **PRO-01** | Docente / Profesor | Solicitar préstamos de equipos de forma remota (pre-reserva para clases), consultar catálogo y disponibilidad, emitir informes de novedades/fallas. |
 
-Nota: los estudiantes son beneficiarios finales pero no tienen usuario propio en el sistema (se gestionan de forma presencial vía el Pañolero).
+---
 
 ## 3. Módulos funcionales (alto nivel)
 
-| Código | Módulo | Resumen |
-|--------|--------|---------|
-| FU-01 | Autenticación y administración de usuarios | Login por rol, CRUD de usuarios (nombre, correo, rol, contraseña, área), activar/desactivar sin borrar. |
-| FU-02 | Inventario, stock y ubicación | Alta/edición de productos (nombre, cantidad, proveedor, área, foto opcional, código de barras generado por el sistema), ubicación física (sala/cajón), alertas de stock crítico (aviso a 5 unidades del mínimo y al llegar al mínimo). |
-| FU-03 | Automatización de cotizaciones | Selección de productos a cotizar → envío automático de correo solicitando cotización a proveedores (mínimo 3 cotizaciones antes de comprar), estados de compra (pendiente/en camino/completa). |
-| FU-04 | Préstamos (remotos y presenciales) | App móvil: profesor solicita insumo/cantidad/asignatura/sala/fecha. Web: Pañolero procesa vía escaneo, acepta/rechaza (con motivo), notifica al solicitante, historial de préstamos. |
-| FU-05 | Mantención y reposición de equipos | Ficha técnica descargable en PDF por equipo, formulario de informe de novedades/fallas, justificación de reemplazo. |
-| FU-06 | Dashboards | Gráficos de productos/insumos más solicitados, distribución por carrera, productos menos demandados, profesores con más préstamos. |
+1. **FU-01 — Gestión de Usuarios y Accesos:** Login, perfiles, RBAC, auditoría de sesiones.
+2. **FU-02 — Control de Stock e Inventario:** CRUD de productos, categorías, marcas, modelos, números de serie, ubicación física (sala/cajón), alta vía OCR de facturas, generación de códigos de barra/QR, alertas de stock crítico.
+3. **FU-03 — Compras y Adquisiciones:** Carga de facturas, solicitud y envío automático de cotizaciones por email a proveedores registrados, trazabilidad del estado de compras.
+4. **FU-04 — Gestión de Préstamos:** Préstamo presencial (escaneo código de barras/QR de equipo + credencial docente), solicitud remota (pre-reserva con fecha/hora/asignatura), devoluciones, cálculo de atrasos, historial.
+5. **FU-05 — Mantenimiento y Fichas Técnicas:** Registro de fallas (informe de novedades), historial de reparaciones, especificaciones técnicas por equipo, estado operativo (disponible, en préstamo, en reparación, dado de baja).
+6. **FU-06 — Reportes y Dashboards:** Métricas de rotación de inventario, equipos más solicitados, docentes con préstamos activos, productos bajo stock mínimo, exportación PDF/Excel.
+
+---
 
 ## 4. Requisitos no funcionales clave
 
-- **Seguridad:** controles según OWASP Top 10 (web) y OWASP API Security Top 10.
-- **Rendimiento:** tiempos de carga/respuesta menores a 2 segundos con conexión estable.
-- **Accesibilidad:** contraste de texto/color adecuado para todos los usuarios.
-- **Disponibilidad (SLA):** L–V 08:00–22:00, sábado 08:00–15:00. Recuperación ante fallo de instancia principal ≤ 15 min. Respaldo diario de base de datos (pérdida máxima 24h).
+- **REQ-NF-01 / REQ-NF-02 — Seguridad:** OWASP Top 10 para API. Autenticación robusta, validación estricta de payloads, hashing seguro de contraseñas, prevención de inyección SQL (uso de Eloquent ORM), rate limiting.
+- **REQ-NF-03 — Accesibilidad:** Endpoints consistentes con códigos de estado HTTP estándar (200, 201, 204, 400, 401, 403, 404, 422, 500) y respuestas de error normalizadas en formato JSON: `{"message": "...", "errors": {...}}`.
+- **REQ-NF-04 — Rendimiento:** Tiempos de respuesta menores a 2 segundos en el 90% de las consultas bajo carga concurrente normal. Paginación obligatoria en todos los listados (`per_page` por defecto: 15, configurable hasta 100). Eager loading para evitar problemas de N+1 queries.
+
+---
 
 ## 5. Arquitectura
 
-Arquitectura cliente-servidor de 3 capas, desplegada en la nube (AWS). Este repositorio implementa la **capa de lógica de negocio (API REST)**:
+- **Framework:** Laravel 11.x (PHP 8.2+).
+- **Base de datos:** PostgreSQL 16 (desplegado en AWS RDS en producción).
+- **Almacenamiento de archivos (facturas, imágenes de productos, PDFs):** AWS S3 (o compatible: MinIO en local).
+- **Cola de trabajos / tareas asíncronas:** Redis + Laravel Horizon (envío de emails de cotización, procesamiento de imágenes OCR, alertas).
+- **Estándar de API:** RESTful JSON. Cada recurso con su FormRequest para validación y su API Resource para serialización.
 
-1. **Presentación** *(fuera de este repo)*: aplicación web administrativa + app móvil para docentes (incluye escaneo de código de barras con la cámara del dispositivo). Ambas consumen esta API vía HTTPS/JSON.
-2. **Lógica de negocio** *(este repo)*: API REST en Laravel. Valida reglas de negocio, controla acceso por rol (RBAC), procesa cotizaciones, préstamos, alertas de stock, genera PDFs y expone datos para dashboards.
-3. **Datos** *(este repo gestiona el acceso, la infraestructura de BD puede ser un servicio externo/gestionado)*: base de datos relacional (ver sección de tecnologías).
-
-Restricciones importantes:
-- Sistema independiente: **no se integra** con ERPs centrales de INACAP (Banner, Intranet, sistemas financieros).
-- Acotado exclusivamente al Área de Informática y Ciberseguridad de la Sede Temuco.
-- Los clientes (web/móvil) dependen de hardware físico (pistola lectora, impresora de códigos), pero esa integración de hardware no vive en este repositorio: la API solo recibe el valor del código escaneado.
+---
 
 ## 5.1 Autenticación y CORS (SPA web + mobile)
 
@@ -87,28 +87,21 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - Mobile no puede usar cookies de sesión de forma práctica; necesita Bearer tokens de todas formas.
 - Usar el mismo mecanismo (Bearer) en ambos clientes evita mantener dos flujos de auth en paralelo y simplifica el `api-client` compartido del monorepo frontend.
 
-**CADA TAREA AL FINALIZARLA SE DEBE MARCAR COMO LISTA**
-Tareas concretas:
-- [x] Antes de inicar las tareas el usuario debe tener como campos adicionales:
-    - Ultimo inicio de sesión
-    - los siguientes campos deben estar en una tabla normaizada: 
-    - Navegador / movil
-    - Fecha de inicio de sesión
-    - IP
-- [x] Crear campos necesarios para el usuario como area y rol 
+### Reglas para la implementación:
 - [x] Instalar y configurar Sanctum solo para **API tokens** (no usar el middleware `EnsureFrontendRequestsAreStateful`, ya que no habrá flujo de cookies/CSRF).
 - [x] En `POST /api/login`, validar credenciales y emitir el token con `$user->createToken($deviceName)->plainTextToken`, donde `$deviceName` identifica el cliente (`web`, `mobile`) para poder listar/revocar sesiones por dispositivo si se requiere.
 - [x] Definir expiración de tokens en `config/sanctum.php` (`expiration`); considerar tokens más largos para mobile (el docente no debería re-loguearse constantemente) y más cortos para web.
 - [x] `POST /api/logout` → `$request->user()->currentAccessToken()->delete()`.
-- [x] (Opcional) Endpoint para que un usuario liste y revoque sus tokens activos por dispositivo (útil si un docente pierde el celular).
-
-**Configuración de CORS (`config/cors.php`):**
-- [x] `paths` → `['api/*']`.
-- [x] `allowed_origins` → dominio(s) exacto(s) donde se sirva el panel web (ej. `https://sgia-web.inacap-temuco.cl`). No usar `*` en producción.
-- [x] `allowed_methods` → `['GET','POST','PATCH','PUT','DELETE','OPTIONS']`.
-- [x] `allowed_headers` → incluir `Authorization`, `Content-Type`, `Accept`.
-- [x] `supports_credentials` → `false` (no se usan cookies para auth, así que no hace falta habilitar credenciales cross-origin, lo que simplifica la configuración).
+- [x] (Opcional) Endpoint para que un usuario liste y revoque sus tokens activos por dispositivo (`GET /api/tokens`, `DELETE /api/tokens/{tokenId}`).
+- [x] Configurar `config/cors.php`:
+  - [x] `paths` → `['api/*']`.
+  - [x] `allowed_origins` → el origen del panel web (ej. `http://localhost:5173` en local, dominio real en prod vía variable de entorno `CORS_ALLOWED_ORIGINS`). Nunca `*` en producción.
+  - [x] `allowed_methods` → `['*']` o explícitos `['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']`.
+  - [x] `allowed_headers` → incluir `['Authorization', 'Content-Type', 'Accept', 'X-Requested-With']`.
+  - [x] `supports_credentials` → `false` (no se usan cookies para auth, así que no hace falta habilitar credenciales cross-origin, lo que simplifica la configuración).
 - [x] Mobile (React Native/Expo) no pasa por el navegador en producción, por lo que **no está sujeto a CORS**; solo puede aplicar en desarrollo si se prueba la app en modo web de Expo — en ese caso agregar también ese origen de desarrollo a `allowed_origins` (idealmente solo en el entorno local, no en producción).
+
+---
 
 ## 6. Tareas de backend desglosadas por requisito
 
@@ -121,10 +114,10 @@ Cada requisito (`REQ-XX`) del documento de formulación se traduce aquí en tare
 - [x] Devolver en la respuesta de login el rol del usuario para que el cliente adapte su UI/navegación.
 
 ### REQ-02 — Administración de usuarios (FU-01, solo AD-01)
-- [ ] CRUD `api/users` (nombre completo, correo, rol, contraseña, área).
-- [ ] Endpoint `PATCH /api/users/{id}/status` para activar/desactivar sin eliminar de la BD.
-- [ ] Policy que restrinja este CRUD únicamente al rol AD-01.
-- [ ] Validación: correo único, contraseña con reglas mínimas de seguridad (hash con bcrypt/argon).
+- [x] CRUD `api/users` (nombre completo, correo, rol, contraseña, área).
+- [x] Endpoint `PATCH /api/users/{id}/status` para activar/desactivar sin eliminar de la BD.
+- [x] Policy que restrinja este CRUD únicamente al rol AD-01.
+- [x] Validación: correo único, contraseña con reglas mínimas de seguridad (hash con bcrypt/argon).
 
 ### REQ-03 — Alta/edición de productos vía escaneo de facturas (FU-02, DIR-01)
 - [ ] Endpoint que reciba imagen/documento de factura y devuelva un borrador de producto(s) extraído(s) (nombre, cantidad, proveedor) para confirmación posterior. (El OCR/extracción puede ser un servicio externo invocado desde la API; definir en Tecnologías.)
@@ -138,93 +131,106 @@ Cada requisito (`REQ-XX`) del documento de formulación se traduce aquí en tare
 
 ### REQ-05 — Ubicación física de productos (FU-02)
 - [ ] Campos `sala` y `cajón` (o modelo `Location`) asociados a cada producto/ítem.
-- [ ] Endpoint `GET /api/products/{id}/location` y filtro de listado por ubicación.
+- [ ] Endpoint `GET /api/products/{id}/location` y `PATCH /api/products/{id}/location` para consultar y actualizar ubicación física.
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
-- [ ] Definir `stock_minimo` por producto.
-- [ ] Job/evento que dispare alerta cuando el stock llegue a `minimo + 5` y cuando llegue al `minimo`.
-- [ ] Notificación multicanal (in-app/web + push a móvil) a usuarios AD-01 y PAN-01. (Canal de push a definir en Tecnologías.)
+- [ ] Campo `stock_minimo` por producto.
+- [ ] Job programado / trigger en evento de rebaja de stock que detecte si `stock_actual <= stock_minimo`.
+- [ ] Notificación vía email (y registro en BD para panel web) al Director de Carrera (DIR-01) y Pañolero (PAN-01).
+- [ ] Endpoint `GET /api/alerts/critical-stock` para el panel web / mobile.
 
 ### REQ-07 — Envío de cotizaciones automáticas (FU-03, DIR-01)
-- [ ] Endpoint `POST /api/quotations` que reciba lista de productos + cantidades.
-- [ ] Servicio de envío de correo automático a **al menos 3 proveedores** por cotización.
-- [ ] Persistir cada cotización con su estado y proveedores contactados.
-- [ ] Validación: mínimo 1 producto, cantidad positiva, mínimo 3 proveedores.
+- [ ] CRUD de proveedores (`api/suppliers`): nombre empresa, contacto, email, teléfono, rubro/categoría de insumos.
+- [ ] Endpoint `POST /api/quotations` que reciba lista de productos requeridos + selección de proveedores destinatarios.
+- [ ] Job en cola (`SendQuotationEmailJob`) con plantilla Mailable en Laravel que envíe el correo formal con el detalle de los insumos solicitados.
+- [ ] Registro en BD del historial de cotizaciones enviadas con fecha, usuario emisor y proveedores contactados.
 
 ### REQ-08 — Estado de compra (FU-03, DIR-01)
-- [ ] Máquina de estados para `Quotation`/`Purchase`: `pendiente` → `en_camino` → `completa`.
-- [ ] Endpoint para actualizar estado a `completa` al escanear la guía de despacho/factura de llegada.
-- [ ] Endpoint `GET /api/purchases` con filtro por estado.
+- [ ] Modelo `PurchaseOrder` con estados: `pendiente`, `en_cotizacion`, `aprobada`, `rechazada`, `recibida`.
+- [ ] Endpoint `GET /api/purchases` y `PATCH /api/purchases/{id}/status` para cambiar estado (con registro de timestamp y usuario que autorizó).
+- [ ] Al pasar a `recibida`, gatillar alta automática o notificación al pañolero para ingreso físico.
 
 ### REQ-09 — Solicitud de préstamo remoto (FU-04, PRO-01)
-- [ ] Endpoint `POST /api/loans/requests` (insumo/producto, cantidad, asignatura, sala, fecha).
-- [ ] Endpoint `GET /api/loans/requests?estado=en_proceso` para listar solicitudes propias del docente.
-- [ ] Respuesta debe confirmar "solicitud enviada" y devolver el registro creado.
+- [ ] Endpoint `POST /api/loans/requests` para que el docente solicite ítems: fecha y bloque horario de la clase, asignatura, lista de ítems solicitados.
+- [ ] Validación: no permitir reservar ítems cuyo estado no sea `disponible` en ese bloque horario (evitar colisiones).
+- [ ] Notificación al pañolero del préstamo solicitado.
+- [ ] Endpoint `GET /api/loans/my-requests` para que el docente vea el estado de sus reservas (`pendiente`, `preparado`, `entregado`, `rechazado`).
 
 ### REQ-10 — Procesamiento de préstamos presenciales/remotos (FU-04, PAN-01)
-- [ ] Endpoint `GET /api/loans/pending` (incluye cantidad solicitada, disponible y ubicación).
-- [ ] Endpoint `POST /api/loans/{id}/approve` → descuenta stock y notifica al solicitante.
-- [ ] Endpoint `POST /api/loans/{id}/reject` (requiere motivo) → notifica al solicitante.
-- [ ] Endpoint para registrar préstamo presencial directo (profesor/estudiante, insumo, cantidad, asignatura, sala, fecha).
+- [ ] Endpoint `POST /api/loans/checkout` (entrega presencial): recibe ID de docente (escaneo de credencial o selección) + escaneo de código(s) de barra de ítem(s).
+- [ ] Cambia estado de los ítems a `en_prestamo` de forma atómica (transacción DB).
+- [ ] Endpoint `POST /api/loans/checkin` (devolución): escaneo de ítems devueltos. Cambia estado a `disponible` (o `en_reparacion` si se reporta daño).
+- [ ] Detección automática de préstamos atrasados mediante comando `loans:check-overdue` (ejecutado por Scheduler cada 1 hora).
 
 ### REQ-11 — Historial y listado de préstamos (FU-04, PAN-01)
-- [ ] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
-- [ ] Diferenciar en la respuesta préstamos `procesados` vs `en_proceso` (campo de estado explícito para que el cliente aplique el estilo visual).
+- [ ] Endpoint `GET /api/loans` con filtros por: fecha, docente, estado (`activo`, `devuelto`, `atrasado`), asignatura.
+- [ ] Exportación a PDF/Excel de préstamos de un período.
 
 ### REQ-12 — Fichas técnicas de equipos (FU-05, DIR-01)
-- [ ] Endpoint `GET /api/equipment/{id}/technical-sheet` que genere/devuelva PDF de la ficha técnica.
-- [ ] Endpoint `GET /api/equipment/{id}/reports` para listar informes de novedades asociados (también descargables en PDF).
+- [ ] Endpoint `GET /api/equipment/{id}/specs` y `PUT /api/equipment/{id}/specs`: especificaciones técnicas, manual de usuario (PDF almacenado en S3), fecha de adquisición, vida útil estimada, historial de mantenciones.
 
 ### REQ-13 — Solicitud de reposición mediante informe de novedades (FU-05, PRO-01)
-- [ ] Endpoint `POST /api/equipment/{id}/reports` que acepte formulario + adjunto opcional (documento/imagen).
-- [ ] Asociar el informe al equipo para trazabilidad en su hoja de vida.
+- [ ] Endpoint `POST /api/incident-reports`: el docente reporta un equipo dañado/faltante al devolverlo o durante clase (descripción, foto adjunta, gravedad: leve/media/crítica).
+- [ ] Notificación automática al pañolero y director de carrera.
+- [ ] Cambio de estado del ítem a `en_revision` o `en_reparacion`.
 
 ### REQ-14 — Dashboards (FU-06, DIR-01)
-- [ ] Endpoint `GET /api/dashboard/top-products` (más solicitados).
-- [ ] Endpoint `GET /api/dashboard/top-supplies` (insumos más solicitados).
-- [ ] Endpoint `GET /api/dashboard/careers-distribution`.
-- [ ] Endpoint `GET /api/dashboard/least-demanded`.
-- [ ] Endpoint `GET /api/dashboard/top-teachers`.
+- [ ] Endpoint `GET /api/dashboard/stats`:
+  - Total de productos y desglose por estado (disponible, prestado, en reparación, baja).
+  - Cantidad de préstamos activos y préstamos atrasados.
+  - Alertas de stock crítico activas.
+  - Tasa de rotación mensual de los 10 ítems más solicitados.
+- [ ] Endpoint `GET /api/dashboard/loans-by-teacher`: préstamos agrupados por docente/asignatura para análisis de uso de recursos.
 
 ### REQ-NF-01 / REQ-NF-02 — Seguridad OWASP (Web + API)
-- [ ] Validar inputs con Form Requests en todos los endpoints (evitar inyección SQL/NoSQL).
-- [ ] Rate limiting en endpoints sensibles (login, envío de cotizaciones).
-- [ ] Sanitizar/validar archivos subidos (fotos, PDFs, facturas).
-- [ ] Autorización explícita (Policies/Gates) en cada endpoint, nunca solo por rol implícito en el frontend.
-- [ ] Revisar cabeceras de seguridad, CORS restringido a los dominios/clientes autorizados, secretos fuera del código fuente.
+- [x] Middleware `auth:sanctum` en todas las rutas protegidas.
+- [x] Rate limiting en rutas sensibles (ej. `POST /api/login` máx. 5 intentos/minuto por IP/email).
+- [x] Validación de payloads mediante `FormRequest` dedicados (nunca validar directamente en controladores).
+- [x] Protección de asignación masiva mediante `$fillable` explícito en todos los modelos Eloquent.
+- [x] Las contraseñas se almacenan exclusivamente con `Hash::make()` (bcrypt / argon2id).
+- [ ] Logging de eventos críticos (creación/eliminación de usuarios, cambios de rol, bajas de inventario, aprobación de compras) en tabla de auditoría `audit_logs`.
 
 ### REQ-NF-03 — Accesibilidad
-- No aplica directamente a este repo (es responsabilidad del frontend/app móvil). Este repo debe asegurar que las respuestas incluyan datos suficientes (ej. estados, mensajes claros) para que el cliente pueda cumplir accesibilidad.
+- [x] Estructura de respuesta de error normalizada: `{ "message": "...", "errors": { ... } }`.
+- [x] Respuestas exitosas con el código HTTP semántico correspondiente (200 para lecturas/actualizaciones, 201 para creaciones, 204 para eliminaciones vacías).
 
 ### REQ-NF-04 — Rendimiento (<2s)
-- [ ] Índices de base de datos en columnas de búsqueda/filtrado frecuente (código de barras, estado, fecha).
-- [ ] Paginación obligatoria en todos los listados.
-- [ ] Cachear resultados de dashboards si son costosos de calcular.
-- [ ] Colas (queues) para tareas pesadas o lentas: envío de correos de cotización, generación de PDFs, notificaciones push.
+- [x] Paginación en todas las rutas de listado (`/api/users`, `/api/products`, `/api/loans`, etc.) vía `paginate($perPage)`.
+- [ ] Eager loading explícito (`with(['relation1', 'relation2'])`) en endpoints que retornen datos relacionados para evitar problema N+1 queries.
+- [ ] Índices en base de datos para columnas de búsqueda frecuente: `users.email`, `products.codigo_barra`, `products.estado`, `loans.estado`, `loans.fecha_prestamo`.
+
+---
 
 ## 7. Convenciones de código sugeridas para agentes
 
-- Seguir las convenciones estándar de Laravel (PSR-12, Eloquent para el ORM, Form Requests para validación, Policies/Gates para RBAC por rol).
-- Nombrar recursos/controladores en base a los módulos FU-01 a FU-06 para mantener trazabilidad con los requisitos (REQ-01 a REQ-14, REQ-NF-01 a REQ-NF-04) definidos en el documento de formulación del proyecto.
-- Cualquier campo de producto/insumo debe soportar: nombre, cantidad, proveedor, área, foto (opcional), código de barras (autogenerado) y estado (activo/inactivo, nunca eliminar en duro).
-- Las fichas técnicas e informes de novedades deben poder exportarse/descargarse como PDF.
-- Las notificaciones (stock crítico, préstamos) deben considerar tanto web como móvil.
+- **Controladores delgados, servicios desacoplados:** Los controladores solo orquestan: reciben el `FormRequest`, llaman al servicio/modelo correspondiente y retornan un `JsonResource`.
+- **FormRequests obligatorios:** Toda validación de entrada va en `app/Http/Requests/{NombreAccion}Request.php`.
+- **Resources obligatorios:** Toda serialización de respuesta va en `app/Http/Resources/{NombreModelo}Resource.php`. Nunca retornar modelos Eloquent directamente.
+- **Nombres de rutas en plural:** `/api/products`, `/api/loans`, `/api/suppliers`, `/api/quotations`.
+- **Políticas de autorización:** Usar Laravel Policies (`app/Policies/`) para verificar si el usuario tiene el rol necesario antes de ejecutar una acción, mapeando directamente a la matriz de roles de la sección 2.
+- **Migraciones irreversibles prohibidas:** Toda migración debe tener su método `down()` correctamente implementado.
+
+---
 
 ## 8. Tecnologías
 
-- **Backend:** Laravel (PHP), API REST.
-- **Autenticación:** Laravel Sanctum — tokens Bearer (personal access tokens) para ambos clientes (web y mobile), sin flujo de cookies/CSRF de SPA (ver sección 5.1).
-- **Base de datos:** PostgreSQL.
-- **Infraestructura / despliegue:** AWS EC2 (instancias para API/Laravel y para PostgreSQL, cada una con réplica de respaldo).
-- **Consumidores de esta API (repos externos):**
-  - Frontend web: React + Vite (monorepo `sgia-frontend`).
-  - App móvil: React Native + Expo (mismo monorepo `sgia-frontend`).
-- **Generación de PDFs** (fichas técnicas, informes): *(definir librería, ej. dompdf o barryvdh/laravel-dompdf, o snappy/wkhtmltopdf si se requiere mejor fidelidad de diseño)*.
-- **Generación de códigos de barras:** *(definir librería, ej. picqer/php-barcode-generator o milon/barcode)*.
-- **Envío de correos** (cotizaciones automáticas): mailer nativo de Laravel (Mailables + Queues) sobre el proveedor SMTP/SES que se configure.
-- **Colas/jobs:** Laravel Queues (database o SQS) para envío de correos, generación de PDFs y notificaciones sin bloquear la respuesta HTTP.
-- **Testing:** PHPUnit / Pest para tests de feature (endpoints) y unitarios de reglas de negocio.
+| Componente | Tecnología |
+|---|---|
+| Lenguaje | PHP 8.2+ |
+| Framework | Laravel 11.x |
+| ORM | Eloquent |
+| Autenticación | Laravel Sanctum (Tokens Bearer) |
+| Base de datos | PostgreSQL 16 |
+| Cache / Colas | Redis |
+| Storage | AWS S3 (o MinIO en desarrollo local) |
+| Pruebas | PHPUnit / Pest |
+| Generación de códigos de barra | `picqer/php-barcode-generator` o similar |
+| OCR de facturas | AWS Textract o Tesseract OCR (vía microservicio o worker) |
+| Servidor web / Container | Nginx + PHP-FPM / Docker |
+
+---
 
 ## 9. Referencias del documento fuente
-
-Este archivo se basa en "Formulación del Proyecto de Título - SGIA (Sistema Gestión de Inventario y Activos)", INACAP Sede Temuco, sección TIHI84, entregado 09-09-2026. Consultar ese documento para el detalle completo de requisitos funcionales (Tablas 6–19), no funcionales (Tablas 20–23), matriz RACI, cronograma y presupuesto.
+- Documento: *Informe de Diseño de Arquitectura de Software — SGIA* (INACAP Sede Temuco, 2026).
+- Requisitos funcionales: FU-01 a FU-06.
+- Requisitos no funcionales: REQ-NF-01 a REQ-NF-04.
