@@ -1,8 +1,6 @@
 <?php
 
-use Illuminate\Cookie\Middleware\EncryptCookies;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
+use Laravel\Sanctum\Sanctum;
 
 return [
 
@@ -17,7 +15,11 @@ return [
     |
     */
 
-    'stateful' => [],
+    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
+        '%s%s',
+        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
+        Sanctum::currentApplicationUrlWithPort(),
+    ))),
 
     /*
     |--------------------------------------------------------------------------
@@ -41,10 +43,11 @@ return [
     | This value controls the number of minutes until an issued token will be
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
+    | Set to null to respect each token's individual "expires_at" timestamp.
     |
     */
 
-    'expiration' => env('SANCTUM_EXPIRATION', 86400),
+    'expiration' => null,
 
     /*
     |--------------------------------------------------------------------------
@@ -73,9 +76,9 @@ return [
     */
 
     'middleware' => [
-        'authenticate_session' => AuthenticateSession::class,
-        'encrypt_cookies' => EncryptCookies::class,
-        'validate_csrf_token' => ValidateCsrfToken::class,
+        'authenticate_session' => Laravel\Sanctum\Http\Middleware\AuthenticateSession::class,
+        'encrypt_cookies' => Illuminate\Cookie\Middleware\EncryptCookies::class,
+        'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ],
 
 ];

@@ -8,7 +8,12 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
+    Route::put('/password', [AuthController::class, 'changePassword']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     Route::get('/tokens', [AuthController::class, 'tokens']);
     Route::delete('/tokens/{tokenId}', [AuthController::class, 'revokeToken']);
+    Route::post('/tokens/revoke-others', [AuthController::class, 'revokeOtherTokens']);
+    Route::post('/tokens/revoke-all', [AuthController::class, 'logoutAll']);
 });

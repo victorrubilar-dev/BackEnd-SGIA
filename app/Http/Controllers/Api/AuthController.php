@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\LoginRecord;
@@ -69,12 +70,42 @@ class AuthController extends Controller
         return new UserResource($request->user());
     }
 
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $user->forceFill([
+            'password' => Hash::make($request->validated('password')),
+        ])->save();
+
+        // Revocar las sesiones anteriores por motivos de seguridad
+        $currentTokenId = $user->currentAccessToken()?->id;
+        $revokedCount = $user->tokens()
+            ->when($currentTokenId, fn ($query) => $query->where('id', '!=', $currentTokenId))
+            ->delete();
+
+        return response()->json([
+            'message' => 'Contraseña actualizada exitosamente.',
+            'revoked_tokens' => $revokedCount,
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()->delete();
 
         return response()->json([
             'message' => 'Sesión cerrada.',
+        ]);
+    }
+
+    public function logoutAll(Request $request): JsonResponse
+    {
+        $revokedCount = $request->user()->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Todas las sesiones han sido cerradas exitosamente.',
+            'revoked_count' => $revokedCount,
         ]);
     }
 
@@ -109,6 +140,21 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => "Sesión del dispositivo {$deviceName} revocada.",
+        ]);
+    }
+
+    public function revokeOtherTokens(Request $request): JsonResponse
+    {
+        $currentToken = $request->user()->currentAccessToken();
+        $currentTokenId = $currentToken ? $currentToken->id : null;
+
+        $revokedCount = $request->user()->tokens()
+            ->when($currentTokenId, fn ($query) => $query->where('id', '!=', $currentTokenId))
+            ->delete();
+
+        return response()->json([
+            'message' => 'Todas las demás sesiones han sido revocadas exitosamente.',
+            'revoked_count' => $revokedCount,
         ]);
     }
 }
