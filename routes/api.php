@@ -84,6 +84,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/loans/my-requests', [LoanController::class, 'myRequests']);
     });
 
+    // REQ-10: Procesamiento de préstamos presenciales/remotos (FU-04, pañol)
+    Route::middleware('role:PAN-01,AD-01')->group(function () {
+        Route::get('/loans/pending', [LoanController::class, 'pending']);
+        Route::post('/loans/checkout', [LoanController::class, 'storeCheckout']);
+        Route::post('/loans/{loan}/approve', [LoanController::class, 'approve']);
+        Route::post('/loans/{loan}/reject', [LoanController::class, 'reject']);
+        Route::post('/loans/{loan}/deliver', [LoanController::class, 'deliver']);
+    });
+
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);

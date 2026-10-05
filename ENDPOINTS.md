@@ -141,19 +141,20 @@
 
 ---
 
-## 🟡 Endpoints Pendientes (Por Implementar)
-
 ### 10. Operación de Préstamos en Pañol (`FU-04` / `REQ-10`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/loans/pending` | `PAN-01`, `AD-01` | Listado de solicitudes remotas pendientes por despachar con stock disponible y ubicación física de los ítems. |
-| `POST` | `/api/loans/{id}/approve` | `PAN-01` | Aprueba solicitud remota, aparta el stock y notifica al docente. |
-| `POST` | `/api/loans/{id}/reject` | `PAN-01` | Rechaza solicitud indicando motivo obligatorio (`rejection_reason`) y notifica al docente. |
-| `POST` | `/api/loans/checkout` | `PAN-01` | Préstamo presencial directo mediante escaneo de credencial del docente + escaneo de código de barras de cada ítem entregado. Descuenta stock atómicamente. |
-| `POST` | `/api/loans/checkin` | `PAN-01` | Devolución de préstamo mediante escaneo de ítems. Reintegra stock o marca ítem en reparación si se reporta daño. |
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/loans/pending` | `PAN-01`, `AD-01` | Solicitudes remotas en estado `pendiente` por despachar; cada ítem devuelve la **cantidad solicitada**, el **stock disponible** (`available_stock`) y la **ubicación física** (`location`: `sala`, `cajon`, `descripcion`).<br>**Query Params:** `per_page` (1-100). | ✅ Implementado |
+| `POST` | `/api/loans/{id}/approve` | `PAN-01`, `AD-01` | Aprueba la solicitud: **descuenta el stock** de cada producto (transacción con bloqueo de filas, 422 si no alcanza) y **notifica al solicitante**. Pasa a `en_proceso` y registra `approved_by` / `approved_at`. Evalúa además las alertas de stock (REQ-06). | ✅ Implementado |
+| `POST` | `/api/loans/{id}/reject` | `PAN-01`, `AD-01` | Rechaza la solicitud con **motivo obligatorio** y **notifica al solicitante**. No descuenta stock.<br>**Body:** `rejection_reason` (alias `motivo`, mínimo 5 caracteres). | ✅ Implementado |
+| `POST` | `/api/loans/checkout` | `PAN-01`, `AD-01` | Registra un **préstamo presencial directo**: crea el préstamo `procesado` con código (`PRE-<año>-XXXXXX`), descuenta stock atómicamente y guarda profesor/estudiante, ítems, asignatura, sala y fecha.<br>**Body:** `borrower_name` (alias `solicitante`), `borrower_document` (alias `credencial`, opcional), `items` (`product_id` + `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block`, `notes` opcionales. | ✅ Implementado |
+| `POST` | `/api/loans/{id}/deliver` | `PAN-01`, `AD-01` | Confirma la entrega material al docente (`en_proceso` → `procesado`), registra `processed_by` / `processed_at` y notifica al solicitante. **Nuevo respecto del catálogo original**, necesario para cerrar el ciclo del préstamo remoto. | ✅ Implementado |
+| `POST` | `/api/loans/checkin` | `PAN-01` | Devolución de préstamo mediante escaneo de ítems. Reintegra stock o marca ítem en reparación si se reporta daño. | ⏳ Pendiente |
 
 ---
+
+## 🟡 Endpoints Pendientes (Por Implementar)
 
 ### 11. Historial y Auditoría de Préstamos (`FU-04` / `REQ-11`)
 
@@ -204,10 +205,10 @@
 
 ```mermaid
 pie title Estado de Implementación de Endpoints SGIA
-    "Implementados (Activos)" : 42
-    "Por Implementar (Planificados)" : 13
+    "Implementados (Activos)" : 47
+    "Por Implementar (Planificados)" : 9
 ```
 
-- **Total endpoints implementados:** **42** endpoints principales (49 con alias).
-- **Total endpoints planificados:** **13** endpoints.
-- **Total proyectado de la API:** **55** endpoints REST.
+- **Total endpoints implementados:** **47** endpoints principales (54 con alias).
+- **Total endpoints planificados:** **9** endpoints.
+- **Total proyectado de la API:** **56** endpoints REST.

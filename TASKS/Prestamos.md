@@ -5,10 +5,10 @@
 
 
 ### REQ-10 — Procesamiento de préstamos presenciales/remotos (FU-04, PAN-01)
-- [ ] Endpoint `GET /api/loans/pending` (incluye cantidad solicitada, disponible y ubicación).
-- [ ] Endpoint `POST /api/loans/{id}/approve` → descuenta stock y notifica al solicitante.
-- [ ] Endpoint `POST /api/loans/{id}/reject` (requiere motivo) → notifica al solicitante.
-- [ ] Endpoint para registrar préstamo presencial directo (profesor/estudiante, insumo, cantidad, asignatura, sala, fecha).
+- [x] Endpoint `GET /api/loans/pending` (incluye cantidad solicitada, disponible y ubicación).
+- [x] Endpoint `POST /api/loans/{id}/approve` → descuenta stock y notifica al solicitante.
+- [x] Endpoint `POST /api/loans/{id}/reject` (requiere motivo) → notifica al solicitante.
+- [x] Endpoint para registrar préstamo presencial directo (profesor/estudiante, insumo, cantidad, asignatura, sala, fecha).
 
 ### REQ-11 — Historial y listado de préstamos (FU-04, PAN-01)
 - [ ] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
