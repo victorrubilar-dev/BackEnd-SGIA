@@ -1,7 +1,7 @@
 ### REQ-09 — Solicitud de préstamo remoto (FU-04, PRO-01)
-- [ ] Endpoint `POST /api/loans/requests` (insumo/producto, cantidad, asignatura, sala, fecha).
-- [ ] Endpoint `GET /api/loans/requests?estado=en_proceso` para listar solicitudes propias del docente.
-- [ ] Respuesta debe confirmar "solicitud enviada" y devolver el registro creado.
+- [x] Endpoint `POST /api/loans/requests` (insumo/producto, cantidad, asignatura, sala, fecha).
+- [x] Endpoint `GET /api/loans/requests?estado=en_proceso` para listar solicitudes propias del docente.
+- [x] Respuesta debe confirmar "solicitud enviada" y devolver el registro creado.
 
 
 ### REQ-10 — Procesamiento de préstamos presenciales/remotos (FU-04, PAN-01)

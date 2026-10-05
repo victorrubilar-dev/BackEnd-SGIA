@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InvoiceScanController;
+use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\QuotationController;
@@ -73,6 +74,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
         Route::patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
         Route::patch('/quotations/{quotation}/responses', [QuotationController::class, 'storeResponse']);
+    });
+
+    // REQ-09: Solicitud de préstamo remoto (FU-04, docente)
+    // Las rutas estáticas van antes de cualquier GET /loans/{loan} (REQ-11).
+    Route::middleware('role:PRO-01')->group(function () {
+        Route::post('/loans/requests', [LoanController::class, 'store']);
+        Route::get('/loans/requests', [LoanController::class, 'myRequests']);
+        Route::get('/loans/my-requests', [LoanController::class, 'myRequests']);
     });
 
     // REQ-03, REQ-04, REQ-05: Productos

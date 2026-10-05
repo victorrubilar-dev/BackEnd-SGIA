@@ -128,17 +128,20 @@
 
 ---
 
-## 🟡 Endpoints Pendientes (Por Implementar)
-
 ### 9. Préstamos Remotos (Pre-reservas Docente) (`FU-04` / `REQ-09`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `POST` | `/api/loans/requests` | `PRO-01` | El docente solicita pre-reserva de insumos/equipos para clases.<br>**Body:** `items` (array con `product_id` y `quantity`), `subject` (asignatura), `room` (sala/taller), `loan_date` (fecha), `time_block` (bloque horario). Valida disponibilidad en ese bloque. |
-| `GET` | `/api/loans/my-requests` | `PRO-01` | Consulta de solicitudes realizadas por el docente autenticado (`pendiente`, `preparado`, `entregado`, `rechazado`). |
-| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancelación de solicitud mientras permanezca en estado `pendiente`. |
+> Máquina de estados de los préstamos (`App\Services\LoanStateMachine`): **`pendiente` → `en_proceso` → `procesado`**, con salida a `rechazado` (operaciones del pañol en la sección 10). El docente solo crea y consulta sus propias solicitudes.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `POST` | `/api/loans/requests` | `PRO-01` | Solicita préstamo remoto de insumos/equipos para clases. Genera código único (`REM-<año>-XXXXXX`) y responde **"Solicitud enviada correctamente."** junto al registro creado (claves `data` y `loan`) en estado `pendiente`. Valida que cada producto exista, esté activo y tenga stock suficiente.<br>**Body:** `items` (array con `product_id` y `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block` (opcional), `notes` (opcional). | ✅ Implementado |
+| `GET` | `/api/loans/requests` | `PRO-01` | Listado paginado de las solicitudes **propias** del docente autenticado.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `per_page` (1-100). | ✅ Implementado |
+| `GET` | `/api/loans/my-requests` | `PRO-01` | Alias idéntico de `GET /api/loans/requests` (referencia del catálogo original). | ✅ Implementado |
+| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancelación de solicitud mientras permanezca en estado `pendiente`. | ⏳ Pendiente |
 
 ---
+
+## 🟡 Endpoints Pendientes (Por Implementar)
 
 ### 10. Operación de Préstamos en Pañol (`FU-04` / `REQ-10`)
 
@@ -201,10 +204,10 @@
 
 ```mermaid
 pie title Estado de Implementación de Endpoints SGIA
-    "Implementados (Activos)" : 40
-    "Por Implementar (Planificados)" : 15
+    "Implementados (Activos)" : 42
+    "Por Implementar (Planificados)" : 13
 ```
 
-- **Total endpoints implementados:** **40** endpoints principales (46 con alias).
-- **Total endpoints planificados:** **15** endpoints.
+- **Total endpoints implementados:** **42** endpoints principales (49 con alias).
+- **Total endpoints planificados:** **13** endpoints.
 - **Total proyectado de la API:** **55** endpoints REST.
