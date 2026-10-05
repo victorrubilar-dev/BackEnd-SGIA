@@ -87,41 +87,48 @@
 
 ---
 
+### 6. Compras y Adquisiciones (`FU-03` / `REQ-08`)
+
+> Máquina de estados de las órdenes (`App\Services\PurchaseStateMachine`): **`pendiente` → `en_camino` → `completa`**. Las órdenes pueden generarse a partir de una cotización aceptada de REQ-07 (ver sección 8), en cuyo caso la cotización queda `convertida`.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/purchases` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de órdenes de compra con proveedor e ítems.<br>**Query Params:** `status` (alias `estado`: `pendiente`, `en_camino`, `completa`), `supplier_id`, `quotation_id`, `search` (código, guía o factura), `per_page` (1-100). | ✅ Implementado |
+| `POST` | `/api/purchases` | `AD-01`, `DIR-01` | Registra una nueva orden de compra en estado `pendiente`. Genera código único (`OC-<año>-XXXXXX`), persiste los ítems y calcula el total. Si se envía `quotation_id` de una cotización **aceptada**, copia proveedor e ítems de la cotización (a menos que se envíen explícitamente) y la marca como `convertida`.<br>**Body:** `quotation_id` **o** `supplier_id` + `items` (array con `name`, `quantity`, `unit_price` opcional, `product_id` opcional; mínimo 1), `quotation_reference`, `expected_at`, `notes`. | ✅ Implementado |
+| `GET` | `/api/purchases/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle de la orden de compra, sus ítems adquiridos, la cotización de origen y las transiciones permitidas (`allowed_transitions`). | ✅ Implementado |
+| `PATCH` | `/api/purchases/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Transición de estados según la máquina (`pendiente` → `en_camino` → `completa`); una transición inválida responde `422` con los estados permitidos. Al pasar a `completa` registra `received_at` y notifica al pañolero para el ingreso físico a stock.<br>**Body:** `status` (alias `estado`). | ✅ Implementado |
+| `POST` | `/api/purchases/{id}/arrival-scan` | `AD-01`, `DIR-01`, `PAN-01` | Marca la orden como `completa` al escanear la guía de despacho / factura de llegada: extrae el número de factura vía OCR, guarda el documento escaneado y notifica al pañolero (PAN-01).<br>**Body (multipart o JSON):** `document` (PDF, PNG, JPG, WEBP o JSON hasta 10MB), `guide_number`, `invoice_number` (al menos uno de los tres). | ✅ Implementado |
+
+---
+
+### 7. Proveedores (`FU-03` / `REQ-07`)
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/suppliers` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de empresas proveedoras.<br>**Query Params:** `category`, `is_active`, `search` (nombre, contacto o correo), `per_page` (1-100). Incluye `products_count`. | ✅ Implementado |
+| `POST` | `/api/suppliers` | `AD-01`, `DIR-01` | Crear proveedor.<br>**Body:** `name`, `contact_name`, `email`, `phone`, `category`, `is_active`. | ✅ Implementado |
+| `GET` | `/api/suppliers/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle del proveedor y su historial de productos suministrados. | ✅ Implementado |
+| `PUT / PATCH` | `/api/suppliers/{id}` | `AD-01`, `DIR-01` | Actualizar información del proveedor. | ✅ Implementado |
+| `DELETE` | `/api/suppliers/{id}` | `AD-01` | Eliminar proveedor; si tiene productos asociados solo se desactiva, preservando el historial de inventario. | ✅ Implementado |
+| `PATCH` | `/api/suppliers/{id}/status` | `AD-01`, `DIR-01` | Activar o suspender proveedor.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
+
+---
+
+### 8. Cotizaciones Automáticas (`FU-03` / `REQ-07`)
+
+> Máquina de estados de las cotizaciones (`App\Services\QuotationStateMachine`): **`pendiente` → `aceptada` / `rechazada` → `convertida`** (al generarse la orden de compra, ver sección 6). Además, cada proveedor contactado registra su propia respuesta (`pendiente`, `aceptada`, `rechazada`).
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los 3+ proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `supplier_ids` (mínimo 3 proveedores distintos), `notes`, `expires_at`. | ✅ Implementado |
+| `GET` | `/api/quotations` | `AD-01`, `DIR-01` | Historial de cotizaciones emitidas con ítems y proveedores contactados.<br>**Query Params:** `status` (alias `estado`: `pendiente`, `aceptada`, `rechazada`, `convertida`), `search` (código), `per_page`. | ✅ Implementado |
+| `GET` | `/api/quotations/{id}` | `AD-01`, `DIR-01` | Detalle de la cotización: ítems, proveedores contactados con su respuesta (`status`, `offer_total`, `responded_at`), orden de compra generada y transiciones permitidas. | ✅ Implementado |
+| `PATCH` | `/api/quotations/{id}/status` | `AD-01`, `DIR-01` | Transición según la máquina de estados; `422` con los estados permitidos si es inválida.<br>**Body:** `status` (alias `estado`). | ✅ Implementado |
+| `PATCH` | `/api/quotations/{id}/responses` | `AD-01`, `DIR-01` | Registra la respuesta de un proveedor contactado. Al registrar una aceptación la cotización pasa a `aceptada`; si todos rechazan, a `rechazada`.<br>**Body:** `supplier_id`, `status` (`aceptada` \| `rechazada`), `offer_total`, `notes`. | ✅ Implementado |
+
+---
+
 ## 🟡 Endpoints Pendientes (Por Implementar)
-
-### 6. Proveedores (`FU-03` / `REQ-07`)
-
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/suppliers` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de empresas proveedoras con filtros por categoría y estado. |
-| `POST` | `/api/suppliers` | `AD-01`, `DIR-01` | Crear proveedor (`name`, `contact_name`, `email`, `phone`, `category`). |
-| `GET` | `/api/suppliers/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle del proveedor y su historial de productos suministrados. |
-| `PUT / PATCH` | `/api/suppliers/{id}` | `AD-01`, `DIR-01` | Actualizar información del proveedor. |
-| `DELETE` | `/api/suppliers/{id}` | `AD-01` | Eliminar proveedor (o desactivar si tiene productos asociados). |
-| `PATCH` | `/api/suppliers/{id}/status` | `AD-01`, `DIR-01` | Activar o suspender proveedor. |
-
----
-
-### 7. Cotizaciones Automáticas (`FU-03` / `REQ-07`)
-
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `POST` | `/api/quotations` | `DIR-01`, `AD-01` | Genera y envía por email una solicitud formal de cotización a **al menos 3 proveedores** seleccionados.<br>**Body:** `products` (array con `id` y `quantity`), `supplier_ids` (mínimo 3 proveedores), `notes`. |
-| `GET` | `/api/quotations` | `DIR-01`, `AD-01` | Historial de cotizaciones emitidas, fechas y proveedores contactados. |
-| `GET` | `/api/quotations/{id}` | `DIR-01`, `AD-01` | Detalle de cotización y estado de respuestas recibidas. |
-
----
-
-### 8. Compras y Adquisiciones (`FU-03` / `REQ-08`)
-
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/purchases` | `DIR-01`, `AD-01`, `PAN-01` | Listado de órdenes de compra con filtros por estado: `pendiente`, `en_camino`, `completa`, `rechazada`. |
-| `POST` | `/api/purchases` | `DIR-01`, `AD-01` | Registrar nueva orden de compra a partir de una cotización aprobada. |
-| `GET` | `/api/purchases/{id}` | `DIR-01`, `AD-01`, `PAN-01` | Detalle de orden de compra e ítems adquiridos. |
-| `PATCH` | `/api/purchases/{id}/status` | `DIR-01`, `PAN-01` | Transición de estados (`en_camino` → `completa`). Al pasar a `completa` vía escaneo de factura de llegada, gatilla notificación al pañolero para ingreso físico a stock. |
-
----
 
 ### 9. Préstamos Remotos (Pre-reservas Docente) (`FU-04` / `REQ-09`)
 
@@ -194,10 +201,10 @@
 
 ```mermaid
 pie title Estado de Implementación de Endpoints SGIA
-    "Implementados (Activos)" : 24
-    "Por Implementar (Planificados)" : 28
+    "Implementados (Activos)" : 40
+    "Por Implementar (Planificados)" : 15
 ```
 
-- **Total endpoints implementados:** **24** endpoints principales (30 con alias).
-- **Total endpoints planificados:** **28** endpoints.
-- **Total proyectado de la API:** **52** endpoints REST.
+- **Total endpoints implementados:** **40** endpoints principales (46 con alias).
+- **Total endpoints planificados:** **15** endpoints.
+- **Total proyectado de la API:** **55** endpoints REST.

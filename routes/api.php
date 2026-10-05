@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\StockAlertController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserController;
@@ -38,6 +40,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/alerts/critical-stock', [StockAlertController::class, 'index']);
     Route::patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
 
+    // REQ-08: Compras y órdenes de compra (FU-03)
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/purchases', [PurchaseController::class, 'index']);
+        Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
+        Route::patch('/purchases/{purchase}/status', [PurchaseController::class, 'updateStatus']);
+        Route::post('/purchases/{purchase}/arrival-scan', [PurchaseController::class, 'arrivalScan']);
+    });
+    Route::middleware('role:AD-01,DIR-01')->group(function () {
+        Route::post('/purchases', [PurchaseController::class, 'store']);
+    });
+
     // REQ-07: Proveedores (FU-03)
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
@@ -51,6 +64,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
     Route::middleware('role:AD-01')->group(function () {
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy']);
+    });
+
+    // REQ-07: Cotizaciones automáticas (FU-03)
+    Route::middleware('role:AD-01,DIR-01')->group(function () {
+        Route::get('/quotations', [QuotationController::class, 'index']);
+        Route::post('/quotations', [QuotationController::class, 'store']);
+        Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
+        Route::patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
+        Route::patch('/quotations/{quotation}/responses', [QuotationController::class, 'storeResponse']);
     });
 
     // REQ-03, REQ-04, REQ-05: Productos
