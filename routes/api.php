@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\StockAlertController;
+use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -36,6 +37,21 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-06: Alertas de stock crítico
     Route::get('/alerts/critical-stock', [StockAlertController::class, 'index']);
     Route::patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
+
+    // REQ-07: Proveedores (FU-03)
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/suppliers', [SupplierController::class, 'index']);
+        Route::get('/suppliers/{supplier}', [SupplierController::class, 'show']);
+    });
+    Route::middleware('role:AD-01,DIR-01')->group(function () {
+        Route::post('/suppliers', [SupplierController::class, 'store']);
+        Route::put('/suppliers/{supplier}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{supplier}', [SupplierController::class, 'update']);
+        Route::patch('/suppliers/{supplier}/status', [SupplierController::class, 'updateStatus']);
+    });
+    Route::middleware('role:AD-01')->group(function () {
+        Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy']);
+    });
 
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);

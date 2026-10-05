@@ -22,6 +22,10 @@ class SupplierResource extends JsonResource
             'phone' => $this->phone,
             'category' => $this->category,
             'is_active' => (bool) $this->is_active,
+            'products_count' => $this->whenCounted('products'),
+            'products' => ProductResource::collection($this->whenLoaded('products')),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

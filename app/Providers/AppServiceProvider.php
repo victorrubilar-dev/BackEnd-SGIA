@@ -3,8 +3,10 @@
 namespace App\Providers;
 
 use App\Models\Product;
+use App\Models\Supplier;
 use App\Models\User;
 use App\Policies\ProductPolicy;
+use App\Policies\SupplierPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
+        Gate::policy(Supplier::class, SupplierPolicy::class);
 
         RateLimiter::for('login', function (Request $request) {
             $email = Str::transliterate(Str::lower((string) $request->input('email')));
