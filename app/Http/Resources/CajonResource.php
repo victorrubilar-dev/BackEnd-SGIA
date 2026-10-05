@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class LocationResource extends JsonResource
+class CajonResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -16,13 +16,11 @@ class LocationResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'nombre' => $this->nombre ?? $this->sala,
-            'tipo' => $this->tipo ?? 'sala',
-            'sala' => $this->sala ?? $this->nombre,
-            'cajon' => $this->cajon,
+            'codigo' => $this->codigo,
             'descripcion' => $this->descripcion,
-            'cajones_count' => $this->whenCounted('cajones'),
-            'cajones' => CajonResource::collection($this->whenLoaded('cajones')),
+            'location_id' => $this->location_id,
+            'location' => new LocationResource($this->whenLoaded('location')),
+            'products_count' => $this->whenCounted('products'),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at?->toIso8601String(),

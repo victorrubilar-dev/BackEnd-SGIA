@@ -18,10 +18,13 @@ class Product extends Model
         'quantity',
         'stock_minimo',
         'supplier_id',
+        'cajon_id',
         'location_id',
         'area',
         'photo_url',
         'is_active',
+        'created_by',
+        'updated_by',
     ];
 
     protected function casts(): array
@@ -38,9 +41,24 @@ class Product extends Model
         return $this->belongsTo(Supplier::class);
     }
 
+    public function cajon(): BelongsTo
+    {
+        return $this->belongsTo(Cajon::class);
+    }
+
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     public function stockAlerts(): HasMany

@@ -7,31 +7,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Location extends Model
+class Cajon extends Model
 {
     use HasFactory;
 
-    public const TIPO_SALA = 'sala';
-    public const TIPO_PANOL = 'panol';
-    public const TIPO_TALLER = 'taller';
-    public const TIPO_BODEGA = 'bodega';
-
-    public const TIPOS = [
-        self::TIPO_SALA,
-        self::TIPO_PANOL,
-        self::TIPO_TALLER,
-        self::TIPO_BODEGA,
-    ];
+    protected $table = 'cajones';
 
     protected $fillable = [
-        'nombre',
-        'tipo',
-        'sala',
-        'cajon',
+        'codigo',
         'descripcion',
+        'location_id',
         'created_by',
         'updated_by',
     ];
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
 
     public function creator(): BelongsTo
     {
@@ -41,11 +34,6 @@ class Location extends Model
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    public function cajones(): HasMany
-    {
-        return $this->hasMany(Cajon::class);
     }
 
     public function products(): HasMany

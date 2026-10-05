@@ -1,8 +1,10 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
+use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\QuotationController;
@@ -99,6 +101,25 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:PAN-01,DIR-01,AD-01')->group(function () {
         Route::get('/loans', [LoanController::class, 'index']);
         Route::get('/loans/{loan}', [LoanController::class, 'show']);
+    });
+
+    // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
+    Route::get('/locations', [LocationController::class, 'index']);
+    Route::get('/locations/{location}', [LocationController::class, 'show']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::post('/locations', [LocationController::class, 'store']);
+        Route::put('/locations/{location}', [LocationController::class, 'update']);
+        Route::patch('/locations/{location}', [LocationController::class, 'update']);
+        Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
+    });
+
+    Route::get('/cajones', [CajonController::class, 'index']);
+    Route::get('/cajones/{cajon}', [CajonController::class, 'show']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::post('/cajones', [CajonController::class, 'store']);
+        Route::put('/cajones/{cajon}', [CajonController::class, 'update']);
+        Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
+        Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
     });
 
     // REQ-03, REQ-04, REQ-05: Productos

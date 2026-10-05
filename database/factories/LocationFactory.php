@@ -14,8 +14,12 @@ class LocationFactory extends Factory
 
     public function definition(): array
     {
+        $nombre = 'Sala-' . fake()->unique()->numberBetween(100, 999);
+
         return [
-            'sala' => 'Sala-' . fake()->unique()->numberBetween(100, 999),
+            'nombre' => $nombre,
+            'tipo' => fake()->randomElement(['sala', 'panol', 'taller']),
+            'sala' => $nombre,
             'cajon' => 'Cajon-' . fake()->numberBetween(1, 50),
             'descripcion' => fake()->sentence(),
         ];

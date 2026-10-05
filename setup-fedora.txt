@@ -1,0 +1,70 @@
+====================================================================
+GUIA DE INSTALACION Y PUESTA EN MARCHA SGIA BACKEND (FEDORA LINUX)
+====================================================================
+
+1. INSTALACION DE DEPENDENCIAS CON DNF
+--------------------------------------------------------------------
+Ejecutar en la terminal de Fedora:
+
+sudo dnf install -y php-cli php-pgsql php-pdo php-mbstring php-xml php-curl php-zip php-gd composer moby-engine docker-compose-plugin
+
+
+2. INICIAR Y HABILITAR DOCKER
+--------------------------------------------------------------------
+sudo systemctl enable --now docker
+
+# Para usar docker sin 'sudo' (cerrar sesion o correr newgrp para aplicar):
+sudo usermod -aG docker $USER
+newgrp docker
+
+
+3. CONFIGURAR VARIABLES DE ENTORNO (.env)
+--------------------------------------------------------------------
+Si no existe el archivo .env, crearlo desde .env.example:
+cp .env.example .env
+php artisan key:generate
+
+Asegurarse de que en .env esten estos valores de base de datos:
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=sgia
+DB_USERNAME=sgia
+DB_PASSWORD=sgia_secret
+
+
+4. LEVANTAR EL CONTENEDOR DE LA BASE DE DATOS (POSTGRESQL 16)
+--------------------------------------------------------------------
+Desde la raiz del proyecto:
+
+docker compose up -d
+
+
+5. CREAR BASE DE DATOS DE TESTING (OPCIONAL, PARA PHPUNIT)
+--------------------------------------------------------------------
+docker exec -i sgia_postgres psql -U sgia -d postgres -c "CREATE DATABASE sgia_testing;"
+
+
+6. INSTALAR DEPENDENCIAS DE COMPOSER, MIGRAR Y SEMBRAR DATOS
+--------------------------------------------------------------------
+composer install
+php artisan migrate:fresh --seed
+
+DATOS DEL ADMINISTRADOR CREADO POR DEFECTO:
+- Correo: admin@sgia.cl
+- Clave:  Admin1234!
+- Rol:    AD-01 (Administrador)
+
+
+7. INICIAR EL SERVIDOR DE DESARROLLO
+--------------------------------------------------------------------
+php artisan serve
+
+La API estara disponible en:
+http://localhost:8000/api
+
+
+--------------------------------------------------------------------
+COMANDO RAPIDO EN UNA SOLA LINEA (UNA VEZ INSTALADO DNF Y DOCKER):
+docker compose up -d && composer install && php artisan migrate:fresh --seed && php artisan serve
+====================================================================

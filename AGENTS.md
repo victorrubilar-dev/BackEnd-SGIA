@@ -9,8 +9,12 @@
 - [x] Validación: nombre sin caracteres especiales, cantidad positiva, proveedor existente.
 
 ### REQ-05 — Ubicación física de productos (FU-02)
-- [x] Campos `sala` y `cajón` (o modelo `Location`) asociados a cada producto/ítem.
-- [x] Endpoint `GET /api/products/{id}/location` y `PATCH /api/products/{id}/location` para consultar y actualizar ubicación física.
+- [x] Entidad `Location` (salas, pañoles, talleres) y entidad `Cajon` (pertenece a Location).
+- [x] Producto asociado a un `Cajon` (`cajon_id`), con auditoría completa (`created_at`, `updated_at`, `created_by`, `updated_by`).
+- [x] Endpoints CRUD para `/api/locations` y `/api/cajones` (AD-01, DIR-01, PAN-01).
+- [x] Endpoint `GET /api/products/{id}/location` y `PATCH /api/products/{id}/location` para consultar y actualizar el cajón/ubicación física.
+- [x] Filtros en `/api/products` por `cajon_id`, `location_id`, `sala` y `cajon`.
+- [x] Seeder con ubicaciones y cajones precargados para pruebas.
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.

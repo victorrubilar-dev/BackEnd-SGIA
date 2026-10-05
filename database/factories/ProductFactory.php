@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Cajon;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Supplier;
@@ -16,6 +17,9 @@ class ProductFactory extends Factory
 
     public function definition(): array
     {
+        $location = Location::factory()->create();
+        $cajon = Cajon::factory()->create(['location_id' => $location->id]);
+
         return [
             'name' => 'Producto ' . fake()->unique()->words(2, true),
             'description' => fake()->paragraph(),
@@ -23,7 +27,8 @@ class ProductFactory extends Factory
             'quantity' => fake()->numberBetween(10, 100),
             'stock_minimo' => 5,
             'supplier_id' => Supplier::factory(),
-            'location_id' => Location::factory(),
+            'cajon_id' => $cajon->id,
+            'location_id' => $location->id,
             'area' => 'Electricidad',
             'photo_url' => null,
             'is_active' => true,

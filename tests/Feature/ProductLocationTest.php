@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Cajon;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
@@ -42,9 +43,12 @@ class ProductLocationTest extends TestCase
         $response->assertJson([
             'data' => [
                 'name' => 'Pinza Amperimetrica Digital',
+                'cajon' => [
+                    'codigo' => 'Gaveta-07',
+                    'descripcion' => 'Sector de medición electrónica',
+                ],
                 'location' => [
                     'sala' => 'Lab-E3',
-                    'cajon' => 'Gaveta-07',
                     'descripcion' => 'Sector de medición electrónica',
                 ],
             ],
@@ -52,7 +56,10 @@ class ProductLocationTest extends TestCase
 
         $this->assertDatabaseHas('locations', [
             'sala' => 'Lab-E3',
-            'cajon' => 'Gaveta-07',
+        ]);
+
+        $this->assertDatabaseHas('cajones', [
+            'codigo' => 'Gaveta-07',
         ]);
     }
 
@@ -61,13 +68,20 @@ class ProductLocationTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $location = Location::factory()->create([
+            'nombre' => 'Taller-1',
             'sala' => 'Taller-1',
-            'cajon' => 'Cajon-B2',
             'descripcion' => 'Herramientas de mano',
+        ]);
+
+        $cajon = Cajon::factory()->create([
+            'location_id' => $location->id,
+            'codigo' => 'Cajon-B2',
+            'descripcion' => 'Gaveta frontal',
         ]);
 
         $product = Product::factory()->create([
             'location_id' => $location->id,
+            'cajon_id' => $cajon->id,
         ]);
 
         $response = $this->getJson('/api/products/' . $product->id . '/location');
@@ -75,9 +89,13 @@ class ProductLocationTest extends TestCase
         $response->assertStatus(200);
         $response->assertJson([
             'product_id' => $product->id,
+            'cajon' => [
+                'id' => $cajon->id,
+                'codigo' => 'Cajon-B2',
+            ],
             'location' => [
+                'id' => $location->id,
                 'sala' => 'Taller-1',
-                'cajon' => 'Cajon-B2',
                 'descripcion' => 'Herramientas de mano',
             ],
         ]);
@@ -99,28 +117,33 @@ class ProductLocationTest extends TestCase
         $response->assertJson([
             'message' => 'Ubicación física actualizada exitosamente.',
             'product' => [
+                'cajon' => [
+                    'codigo' => 'Cajon-12',
+                ],
                 'location' => [
                     'sala' => 'Sala-Nueva-4',
-                    'cajon' => 'Cajon-12',
                 ],
             ],
         ]);
 
         $product->refresh();
-        $this->assertNotNull($product->location);
-        $this->assertEquals('Sala-Nueva-4', $product->location->sala);
-        $this->assertEquals('Cajon-12', $product->location->cajon);
+        $this->assertNotNull($product->cajon);
+        $this->assertEquals('Cajon-12', $product->cajon->codigo);
+        $this->assertEquals('Sala-Nueva-4', $product->cajon->location->sala);
     }
 
     public function test_can_filter_products_by_location(): void
     {
         Sanctum::actingAs($this->warehouse);
 
-        $locationA = Location::factory()->create(['sala' => 'Sala-E100', 'cajon' => 'Cajon-1']);
-        $locationB = Location::factory()->create(['sala' => 'Sala-E200', 'cajon' => 'Cajon-2']);
+        $locationA = Location::factory()->create(['nombre' => 'Sala-E100', 'sala' => 'Sala-E100']);
+        $cajonA = Cajon::factory()->create(['location_id' => $locationA->id, 'codigo' => 'Cajon-1']);
 
-        $productA = Product::factory()->create(['location_id' => $locationA->id]);
-        $productB = Product::factory()->create(['location_id' => $locationB->id]);
+        $locationB = Location::factory()->create(['nombre' => 'Sala-E200', 'sala' => 'Sala-E200']);
+        $cajonB = Cajon::factory()->create(['location_id' => $locationB->id, 'codigo' => 'Cajon-2']);
+
+        $productA = Product::factory()->create(['location_id' => $locationA->id, 'cajon_id' => $cajonA->id]);
+        $productB = Product::factory()->create(['location_id' => $locationB->id, 'cajon_id' => $cajonB->id]);
 
         $response = $this->getJson('/api/products?sala=Sala-E100');
 
