@@ -29,6 +29,33 @@ class LoanPolicy
     }
 
     /**
+     * Determine whether the user can list the loan history (REQ-11).
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->is_active && $user->hasRole([
+            User::ROLE_WAREHOUSE,
+            User::ROLE_DIRECTOR,
+            User::ROLE_ADMIN,
+        ]);
+    }
+
+    /**
+     * Determine whether the user can view the loan: el pañol, el director y
+     * el administrador ven el historial completo; el docente solo lo suyo.
+     */
+    public function view(User $user, Loan $loan): bool
+    {
+        if ($this->viewAny($user)) {
+            return true;
+        }
+
+        return $user->is_active
+            && $user->hasRole(User::ROLE_TEACHER)
+            && $loan->requested_by === $user->id;
+    }
+
+    /**
      * Operaciones del pañol sobre los préstamos (REQ-10): ver pendientes,
      * aprobar, rechazar, confirmar entrega y registrar préstamos presenciales.
      */

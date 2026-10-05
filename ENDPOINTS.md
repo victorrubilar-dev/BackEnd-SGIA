@@ -154,17 +154,19 @@
 
 ---
 
-## 🟡 Endpoints Pendientes (Por Implementar)
-
 ### 11. Historial y Auditoría de Préstamos (`FU-04` / `REQ-11`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/loans` | `PAN-01`, `DIR-01`, `AD-01` | Listado general de préstamos con filtros por docente, asignatura, sala, estado (`activo`, `devuelto`, `atrasado`, `en_proceso`, `procesado`). |
-| `GET` | `/api/loans/{id}` | `PAN-01`, `DIR-01`, `AD-01` | Detalle completo de un préstamo, historial de eventos y observaciones de devolución. |
-| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exportación de préstamos en formato PDF o Excel por rango de fechas. |
+> El listado y el detalle devuelven el **campo explícito `status`** junto a los booleanos `is_pending`, `is_in_progress`, `is_processed` y `is_rejected` y el `status_label` correspondiente, para que el cliente aplique su estilo visual y diferencie de un vistazo los préstamos **`procesados`** de los que siguen **`en_proceso`**.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/loans` | `PAN-01`, `DIR-01`, `AD-01` | Historial de préstamos con ítems (stock disponible y ubicación) y solicitante.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `insumo` (alias `product` o `product_id`: nombre/código del producto en los ítems), `profesor` (alias `teacher` / `borrower`: nombre del docente o de quien retira), `sala` (alias `room`), `tipo` (alias `type`: `remoto` \| `presencial`), `search` (código o asignatura), `per_page` (1-100). `estado` o `tipo` inválidos responden `422`. | ✅ Implementado |
+| `GET` | `/api/loans/{id}` | `PAN-01`, `DIR-01`, `AD-01` | Detalle de un préstamo: ítems con producto y ubicación física, solicitante, quién aprobó y quién entregó, motivo de rechazo y `allowed_transitions`. | ✅ Implementado |
+| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exportación de préstamos en formato PDF o Excel por rango de fechas. | ⏳ Pendiente |
 
 ---
+
+## 🟡 Endpoints Pendientes (Por Implementar)
 
 ### 12. Fichas Técnicas de Equipos (`FU-05` / `REQ-12`)
 
@@ -205,10 +207,10 @@
 
 ```mermaid
 pie title Estado de Implementación de Endpoints SGIA
-    "Implementados (Activos)" : 47
-    "Por Implementar (Planificados)" : 9
+    "Implementados (Activos)" : 49
+    "Por Implementar (Planificados)" : 7
 ```
 
-- **Total endpoints implementados:** **47** endpoints principales (54 con alias).
-- **Total endpoints planificados:** **9** endpoints.
+- **Total endpoints implementados:** **49** endpoints principales (56 con alias).
+- **Total endpoints planificados:** **7** endpoints.
 - **Total proyectado de la API:** **56** endpoints REST.

@@ -67,6 +67,107 @@ class LoanController extends Controller
     }
 
     /**
+     * Historial de préstamos con filtros (REQ-11).
+     *
+     * Query params: estado (alias status), insumo (alias product / product_id),
+     * profesor (alias teacher / borrower), sala (alias room), tipo (alias type),
+     * search (código o asignatura), per_page.
+     *
+     * Cada préstamo incluye el campo explícito `status` más los booleanos
+     * `is_processed` / `is_in_progress` para que el cliente diferencie
+     * visualmente los préstamos procesados de los que siguen en proceso.
+     */
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        Gate::authorize('viewAny', Loan::class);
+
+        $query = Loan::with(['items.product.location', 'requester'])
+            ->orderByDesc('created_at');
+
+        $status = $request->input('estado', $request->input('status'));
+
+        if ($status !== null && ! LoanStateMachine::isValidStatus((string) $status)) {
+            throw ValidationException::withMessages([
+                'estado' => 'El estado debe ser: pendiente, en_proceso, procesado o rechazado.',
+            ]);
+        }
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        $type = $request->input('tipo', $request->input('type'));
+
+        if ($type !== null && ! in_array($type, [Loan::TYPE_REMOTE, Loan::TYPE_DIRECT], true)) {
+            throw ValidationException::withMessages([
+                'tipo' => 'El tipo debe ser: remoto o presencial.',
+            ]);
+        }
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
+
+        $room = $request->input('sala') ?? $request->input('room');
+
+        if ($room !== null && $room !== '') {
+            $query->where('room', 'ilike', '%' . $room . '%');
+        }
+
+        $teacher = $request->input('profesor')
+            ?? $request->input('teacher')
+            ?? $request->input('borrower');
+
+        if ($teacher !== null && $teacher !== '') {
+            $like = '%' . $teacher . '%';
+            $query->where(function ($q) use ($like) {
+                $q->where('borrower_name', 'ilike', $like)
+                    ->orWhereHas('requester', fn ($qq) => $qq->where('name', 'ilike', $like));
+            });
+        }
+
+        if ($request->filled('product_id')) {
+            $query->whereHas(
+                'items',
+                fn ($q) => $q->where('product_id', $request->integer('product_id'))
+            );
+        } else {
+            $product = $request->input('insumo') ?? $request->input('product');
+
+            if ($product !== null && $product !== '') {
+                $like = '%' . $product . '%';
+                $query->whereHas('items', function ($q) use ($like) {
+                    $q->where('name', 'ilike', $like)
+                        ->orWhereHas('product', fn ($qq) => $qq->where('name', 'ilike', $like));
+                });
+            }
+        }
+
+        if ($request->filled('search')) {
+            $like = '%' . $request->string('search') . '%';
+            $query->where(fn ($q) => $q->where('code', 'ilike', $like)
+                ->orWhere('subject', 'ilike', $like));
+        }
+
+        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+
+        return LoanResource::collection($query->paginate($perPage));
+    }
+
+    /**
+     * Detalle de un préstamo: ítems con stock y ubicación, personas
+     * involucradas y transiciones permitidas (REQ-11).
+     */
+    public function show(Loan $loan): LoanResource
+    {
+        Gate::authorize('view', $loan);
+
+        return new LoanResource(
+            $loan->load(['items.product.location', 'requester', 'approver', 'processor'])
+        );
+    }
+
+    /**
      * Solicitudes remotas pendientes de despachar en el pañol (REQ-10).
      *
      * Cada ítem incluye la cantidad solicitada, el stock disponible y la

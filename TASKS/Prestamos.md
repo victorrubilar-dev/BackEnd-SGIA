@@ -11,5 +11,5 @@
 - [x] Endpoint para registrar préstamo presencial directo (profesor/estudiante, insumo, cantidad, asignatura, sala, fecha).
 
 ### REQ-11 — Historial y listado de préstamos (FU-04, PAN-01)
-- [ ] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
-- [ ] Diferenciar en la respuesta préstamos `procesados` vs `en_proceso` (campo de estado explícito para que el cliente aplique el estilo visual).
+- [x] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
+- [x] Diferenciar en la respuesta préstamos `procesados` vs `en_proceso` (campo de estado explícito para que el cliente aplique el estilo visual).

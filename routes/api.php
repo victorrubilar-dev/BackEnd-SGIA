@@ -93,6 +93,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/loans/{loan}/deliver', [LoanController::class, 'deliver']);
     });
 
+    // REQ-11: Historial y listado de préstamos (FU-04)
+    // Va después de las rutas estáticas (/loans/requests, /loans/pending,
+    // /loans/checkout) para que no las capture {loan}.
+    Route::middleware('role:PAN-01,DIR-01,AD-01')->group(function () {
+        Route::get('/loans', [LoanController::class, 'index']);
+        Route::get('/loans/{loan}', [LoanController::class, 'show']);
+    });
+
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);
