@@ -132,6 +132,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
     Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
 
+    // REQ-13: Solicitud de reposición mediante informe de novedades
+    // (FU-05, PRO-01/PAN-01): formulario + adjunto opcional, asociado
+    // al equipo para su hoja de vida.
+    Route::middleware('role:PRO-01,PAN-01')->group(function () {
+        Route::post('/equipment/{product}/reports', [EquipmentReportController::class, 'store']);
+    });
+
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);

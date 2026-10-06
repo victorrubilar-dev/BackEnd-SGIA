@@ -27,4 +27,16 @@ class IncidentReportPolicy
     {
         return $this->viewAny($user);
     }
+
+    /**
+     * Determine whether the user can register an incident report for an
+     * equipment (PRO-01, PAN-01).
+     */
+    public function create(User $user): bool
+    {
+        return $user->is_active && $user->hasRole([
+            User::ROLE_TEACHER,
+            User::ROLE_WAREHOUSE,
+        ]);
+    }
 }
