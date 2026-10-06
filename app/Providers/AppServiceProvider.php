@@ -46,6 +46,14 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Loan::class, LoanPolicy::class);
         Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
 
+        // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
+        Gate::define('viewDashboard', function (User $user) {
+            return $user->is_active && $user->hasRole([
+                User::ROLE_DIRECTOR,
+                User::ROLE_ADMIN,
+            ]);
+        });
+
         RateLimiter::for('login', function (Request $request) {
             $email = Str::transliterate(Str::lower((string) $request->input('email')));
             $throttleKey = $email . '|' . $request->ip();

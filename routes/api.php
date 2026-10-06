@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CajonController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\InvoiceScanController;
@@ -122,6 +123,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
+    });
+
+    // REQ-14: Dashboards de demanda (FU-06, DIR-01/AD-01)
+    Route::middleware('role:DIR-01,AD-01')->group(function () {
+        Route::get('/dashboard/top-products', [DashboardController::class, 'topProducts']);
+        Route::get('/dashboard/top-supplies', [DashboardController::class, 'topSupplies']);
+        Route::get('/dashboard/careers-distribution', [DashboardController::class, 'careersDistribution']);
+        Route::get('/dashboard/least-demanded', [DashboardController::class, 'leastDemanded']);
+        Route::get('/dashboard/top-teachers', [DashboardController::class, 'topTeachers']);
     });
 
     // REQ-12: Fichas técnicas de equipos (FU-05)
