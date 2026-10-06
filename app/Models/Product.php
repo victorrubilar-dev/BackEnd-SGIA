@@ -66,6 +66,14 @@ class Product extends Model
         return $this->hasMany(StockAlert::class);
     }
 
+    /**
+     * Informes de novedades/fallas asociados al equipo (REQ-12, REQ-13).
+     */
+    public function incidentReports(): HasMany
+    {
+        return $this->hasMany(IncidentReport::class);
+    }
+
     public function isWarningStock(): bool
     {
         return $this->quantity <= ($this->stock_minimo + 5) && $this->quantity > $this->stock_minimo;

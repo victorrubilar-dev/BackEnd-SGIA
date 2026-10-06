@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CajonController;
+use App\Http\Controllers\Api\EquipmentController;
+use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LocationController;
@@ -121,6 +123,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
     });
+
+    // REQ-12: Fichas técnicas de equipos (FU-05)
+    // /equipment/{id}/technical-sheet: PDF con datos, proveedor,
+    // ubicación física e historial de novedades (todos los autenticados).
+    Route::get('/equipment/{product}/technical-sheet', [EquipmentController::class, 'technicalSheet']);
+    // /equipment/{id}/reports: informes de novedades asociados al equipo,
+    // en JSON (paginado) o descargables en PDF con ?format=pdf.
+    Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
 
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);

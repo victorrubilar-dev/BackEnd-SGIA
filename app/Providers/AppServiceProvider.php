@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Policies\IncidentReportPolicy;
 use App\Policies\LoanPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchasePolicy;
@@ -42,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Supplier::class, SupplierPolicy::class);
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(Loan::class, LoanPolicy::class);
+        Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
 
         RateLimiter::for('login', function (Request $request) {
             $email = Str::transliterate(Str::lower((string) $request->input('email')));
