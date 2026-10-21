@@ -28,11 +28,11 @@ class ProductPolicy
      */
     public function create(User $user): bool
     {
-        return $user->is_active && in_array($user->role, [
+        return $user->is_active && $user->hasRole([
             User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
-        ], true);
+        ]);
     }
 
     /**
@@ -40,11 +40,11 @@ class ProductPolicy
      */
     public function update(User $user, Product $product): bool
     {
-        return $user->is_active && in_array($user->role, [
+        return $user->is_active && $user->hasRole([
             User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
-        ], true);
+        ]);
     }
 
     /**
@@ -52,10 +52,10 @@ class ProductPolicy
      */
     public function delete(User $user, Product $product): bool
     {
-        return $user->is_active && in_array($user->role, [
+        return $user->is_active && $user->hasRole([
             User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
-        ], true);
+        ]);
     }
 
     /**
@@ -63,11 +63,11 @@ class ProductPolicy
      */
     public function updateStatus(User $user, Product $product): bool
     {
-        return $user->is_active && in_array($user->role, [
+        return $user->is_active && $user->hasRole([
             User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
-        ], true);
+        ]);
     }
 
     /**
@@ -75,9 +75,9 @@ class ProductPolicy
      */
     public function scanInvoice(User $user): bool
     {
-        return $user->is_active && in_array($user->role, [
+        return $user->is_active && $user->hasRole([
             User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
-        ], true);
+        ]);
     }
 }
