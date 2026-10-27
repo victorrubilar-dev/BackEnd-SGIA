@@ -14,39 +14,33 @@ class LoanItemResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $product = $this->relationLoaded('product') ? $this->product : null;
-        $cajon = $product?->relationLoaded('cajon') ? $product->cajon : null;
-        $location = $product?->relationLoaded('location') ? $product->location : null;
-
-        if ($location === null && $cajon !== null && $cajon->relationLoaded('location')) {
-            $location = $cajon->location;
-        }
+        $product = $this->equipo?->producto ?? ($this->relationLoaded('product') ? $this->product : null);
+        $estante = $this->equipo?->estante;
+        $sala = $estante?->sala;
 
         return [
             'id' => $this->id,
-            'loan_id' => $this->loan_id,
+            'loan_id' => $this->prestamo_id ?? $this->loan_id,
             'product_id' => $this->product_id,
-            'product' => new ProductResource($this->whenLoaded('product')),
+            'product' => $product ? new ProductResource($product) : null,
             'name' => $this->name,
             'quantity' => (int) $this->quantity,
-            // Disponible y ubicación física se incluyen cuando se precarga el
-            // producto (pañol: GET /api/loans/pending, REQ-10).
-            'available_stock' => $product !== null ? (int) $product->quantity : null,
-            'cajon' => $cajon !== null
+            'available_stock' => $product !== null ? (int) $product->stock_actual : null,
+            'cajon' => $estante !== null
                 ? [
-                    'id' => $cajon->id,
-                    'codigo' => $cajon->codigo,
-                    'descripcion' => $cajon->descripcion,
+                    'id' => $estante->id,
+                    'codigo' => $estante->codigo_barras,
+                    'descripcion' => $estante->nombre,
                 ]
                 : null,
-            'location' => $location !== null
+            'location' => $sala !== null
                 ? [
-                    'id' => $location->id,
-                    'nombre' => $location->nombre ?? $location->sala,
-                    'tipo' => $location->tipo ?? 'sala',
-                    'sala' => $location->sala ?? $location->nombre,
-                    'cajon' => $cajon?->codigo ?? $location->cajon,
-                    'descripcion' => $location->descripcion,
+                    'id' => $sala->id,
+                    'nombre' => $sala->nombre_codigo,
+                    'tipo' => 'sala',
+                    'sala' => $sala->nombre_codigo,
+                    'cajon' => $estante?->codigo_barras,
+                    'descripcion' => $sala->nombre_codigo,
                 ]
                 : null,
         ];

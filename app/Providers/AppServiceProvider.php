@@ -2,13 +2,16 @@
 
 namespace App\Providers;
 
-use App\Models\IncidentReport;
-use App\Models\Loan;
-use App\Models\Product;
-use App\Models\Purchase;
-use App\Models\Quotation;
-use App\Models\Supplier;
-use App\Models\User;
+use App\Models\Cotizacion;
+use App\Models\Equipo;
+use App\Models\Estante;
+use App\Models\InformeNovedad;
+use App\Models\Prestamo;
+use App\Models\ProcesoCotizacion;
+use App\Models\Producto;
+use App\Models\Proveedor;
+use App\Models\Sala;
+use App\Models\Usuario;
 use App\Policies\IncidentReportPolicy;
 use App\Policies\LoanPolicy;
 use App\Policies\ProductPolicy;
@@ -20,6 +23,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
@@ -38,19 +42,28 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::policy(User::class, UserPolicy::class);
-        Gate::policy(Product::class, ProductPolicy::class);
-        Gate::policy(Purchase::class, PurchasePolicy::class);
-        Gate::policy(Supplier::class, SupplierPolicy::class);
-        Gate::policy(Quotation::class, QuotationPolicy::class);
-        Gate::policy(Loan::class, LoanPolicy::class);
-        Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
+        Route::model('location', Sala::class);
+        Route::model('cajon', Estante::class);
+        Route::model('supplier', Proveedor::class);
+        Route::model('quotation', ProcesoCotizacion::class);
+        Route::model('purchase', ProcesoCotizacion::class);
+        Route::model('loan', Prestamo::class);
+        Route::model('product', Producto::class);
+
+        Gate::policy(Usuario::class, UserPolicy::class);
+        Gate::policy(Producto::class, ProductPolicy::class);
+        Gate::policy(Equipo::class, ProductPolicy::class);
+        Gate::policy(Proveedor::class, SupplierPolicy::class);
+        Gate::policy(ProcesoCotizacion::class, QuotationPolicy::class);
+        Gate::policy(Cotizacion::class, QuotationPolicy::class);
+        Gate::policy(Prestamo::class, LoanPolicy::class);
+        Gate::policy(InformeNovedad::class, IncidentReportPolicy::class);
 
         // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
-        Gate::define('viewDashboard', function (User $user) {
-            return $user->is_active && $user->hasRole([
-                User::ROLE_DIRECTOR,
-                User::ROLE_ADMIN,
+        Gate::define('viewDashboard', function (Usuario $user) {
+            return $user->activo && $user->hasRole([
+                Usuario::ROLE_DIRECTOR,
+                Usuario::ROLE_ADMIN,
             ]);
         });
 

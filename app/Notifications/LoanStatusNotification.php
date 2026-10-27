@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\Loan;
+use App\Models\Prestamo;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -15,7 +15,7 @@ class LoanStatusNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Loan $loan, public string $message)
+    public function __construct(public Prestamo $loan, public string $message)
     {
     }
 
@@ -26,7 +26,6 @@ class LoanStatusNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // En producción se añade 'fcm' / push móvil y mail. En desarrollo/testing broadcast.
         return ['broadcast'];
     }
 
@@ -44,7 +43,7 @@ class LoanStatusNotification extends Notification implements ShouldQueue
             'subject' => $this->loan->subject,
             'room' => $this->loan->room,
             'loan_date' => $this->loan->loan_date?->toDateString(),
-            'rejection_reason' => $this->loan->rejection_reason,
+            'rejection_reason' => $this->loan->observaciones,
             'message' => $this->message,
         ];
     }

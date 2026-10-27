@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Supplier;
+use App\Models\Proveedor;
 use Illuminate\Http\UploadedFile;
 
 class InvoiceOcrService
@@ -22,11 +22,10 @@ class InvoiceOcrService
         $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
         $extension = strtolower($file->getClientOriginalExtension());
 
-        // Si es un archivo de prueba con contenido JSON estructurado, podemos deserializarlo directamente
         $content = @file_get_contents($file->getRealPath());
         if ($content && ($decoded = json_decode($content, true)) && isset($decoded['items'])) {
             $supplierName = $decoded['supplier_name'] ?? 'Proveedor Factura';
-            $supplier = Supplier::where('name', 'ilike', $supplierName)->first();
+            $supplier = Proveedor::where('razon_social', 'ilike', $supplierName)->first();
 
             return [
                 'invoice_number' => $decoded['invoice_number'] ?? 'FAC-' . date('Ymd') . '-001',
@@ -41,9 +40,8 @@ class InvoiceOcrService
             ];
         }
 
-        // Extracción heurística predeterminada para imágenes o PDFs de facturas
         $supplierName = 'ElectroChile S.A.';
-        $supplier = Supplier::where('name', 'ilike', $supplierName)->first();
+        $supplier = Proveedor::where('razon_social', 'ilike', $supplierName)->first();
 
         $defaultItems = [
             [

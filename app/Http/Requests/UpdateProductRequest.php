@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Product;
+use App\Models\Producto;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,46 +18,30 @@ class UpdateProductRequest extends FormRequest
     public function rules(): array
     {
         $product = $this->route('product');
-        $productId = $product instanceof Product ? $product->id : $product;
+        $productId = $product instanceof Producto ? $product->id : $product;
 
         return [
-            'name' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                'regex:/^[a-zA-Z0-9\sáéíóúÁÉÍÓÚñÑüÜ\-\.\,\/]+$/u',
-            ],
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'nombre' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
-            'barcode' => [
+            'descripcion' => ['nullable', 'string'],
+            'barcode' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'sku' => [
                 'sometimes',
+                'nullable',
                 'string',
                 'max:50',
-                Rule::unique('products', 'barcode')->ignore($productId),
+                Rule::unique('productos', 'sku')->ignore($productId),
             ],
-            'quantity' => ['sometimes', 'required', 'integer', 'min:0'],
+            'quantity' => ['sometimes', 'integer', 'min:0'],
+            'stock_actual' => ['sometimes', 'integer', 'min:0'],
             'stock_minimo' => ['sometimes', 'integer', 'min:0'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
-            'cajon_id' => ['nullable', 'integer', 'exists:cajones,id'],
-            'location_id' => ['nullable', 'integer', 'exists:locations,id'],
-            'sala' => ['sometimes', 'nullable', 'string', 'max:50'],
-            'cajon' => ['sometimes', 'nullable', 'string', 'max:50'],
-            'descripcion' => ['sometimes', 'nullable', 'string', 'max:255'],
-            'area' => ['nullable', 'string', 'max:255'],
+            'categoria_id' => ['nullable', 'integer', 'exists:categorias,id'],
+            'carrera_id' => ['nullable', 'integer', 'exists:carreras,id'],
+            'tipo' => ['nullable', 'string'],
+            'precio_referencia' => ['nullable', 'numeric', 'min:0'],
+            'foto_url' => ['nullable', 'string', 'max:500'],
             'photo_url' => ['nullable', 'string', 'max:500'],
-            'is_active' => ['sometimes', 'boolean'],
-        ];
-    }
-
-    public function messages(): array
-    {
-        return [
-            'name.regex' => 'El nombre del producto no debe contener caracteres especiales.',
-            'quantity.min' => 'La cantidad de producto debe ser positiva o cero.',
-            'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
-            'cajon_id.exists' => 'El cajón seleccionado no existe.',
-            'barcode.unique' => 'El código de barras ya está registrado para otro producto.',
-            'stock_minimo.min' => 'El stock mínimo no puede ser negativo.',
         ];
     }
 }

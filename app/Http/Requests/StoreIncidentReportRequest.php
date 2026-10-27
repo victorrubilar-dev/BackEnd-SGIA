@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\IncidentReport;
+use App\Models\InformeNovedad;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,8 +23,6 @@ class StoreIncidentReportRequest extends FormRequest
 
         $this->merge(array_filter($aliases, fn ($value) => $value !== null && $value !== ''));
 
-        // El adjunto también llega como archivo: se normaliza en el FileBag
-        // (sin tocar $request->file() para no congelar la caché de archivos).
         $files = $this->files->all();
 
         if (empty($files['attachment'])) {
@@ -40,18 +38,15 @@ class StoreIncidentReportRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->can('create', IncidentReport::class) ?? false;
+        return $this->user()?->can('create', InformeNovedad::class) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            // El formulario exige describir la novedad; se acepta el título
-            // como mínimo identificador del informe.
             'description' => ['required_without:title', 'nullable', 'string', 'max:2000'],
             'title' => ['nullable', 'string', 'max:150'],
-            'severity' => ['sometimes', 'nullable', Rule::in(IncidentReport::SEVERITIES)],
-            // Adjunto opcional: documento o imagen (máx. 10 MB).
+            'severity' => ['sometimes', 'nullable', Rule::in(InformeNovedad::SEVERITIES)],
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
         ];
     }

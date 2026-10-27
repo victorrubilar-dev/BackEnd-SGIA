@@ -2,17 +2,16 @@
 
 namespace App\Notifications;
 
-use App\Models\StockAlert;
+use App\Models\Producto;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class StockThresholdNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public StockAlert $alert)
+    public function __construct(public Producto $product, public array $alert = [])
     {
     }
 
@@ -23,7 +22,6 @@ class StockThresholdNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // En producción se añade 'fcm' / push móvil y mail. En testing/desarrollo registramos el canal estándar.
         return ['broadcast'];
     }
 
@@ -35,13 +33,12 @@ class StockThresholdNotification extends Notification implements ShouldQueue
     public function toArray(object $notifiable): array
     {
         return [
-            'alert_id' => $this->alert->id,
-            'product_id' => $this->alert->product_id,
-            'product_name' => $this->alert->product?->name,
-            'alert_type' => $this->alert->alert_type,
-            'current_stock' => $this->alert->current_stock,
-            'stock_minimo' => $this->alert->stock_minimo,
-            'message' => $this->alert->message,
+            'product_id' => $this->product->id,
+            'product_name' => $this->product->nombre,
+            'alert_type' => $this->alert['alert_type'] ?? 'critical',
+            'current_stock' => $this->alert['current_stock'] ?? $this->product->stock_actual,
+            'stock_minimo' => $this->alert['stock_minimo'] ?? $this->product->stock_minimo,
+            'message' => $this->alert['message'] ?? "Alerta de stock para el producto {$this->product->nombre}.",
         ];
     }
 }

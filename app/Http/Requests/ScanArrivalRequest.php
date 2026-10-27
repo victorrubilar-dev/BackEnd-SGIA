@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Purchase;
+use App\Models\ProcesoCotizacion;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ScanArrivalRequest extends FormRequest
@@ -17,7 +17,6 @@ class ScanArrivalRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Guía de despacho o factura de llegada (al menos uno de los tres campos)
             'document' => [
                 'required_without_all:guide_number,invoice_number',
                 'file',

@@ -24,7 +24,17 @@ class CheckRole
             ], 401);
         }
 
-        if (! empty($roles) && ! $user->hasRole($roles)) {
+        $flatRoles = [];
+        foreach ($roles as $r) {
+            foreach (explode(',', $r) as $subRole) {
+                $trimmed = trim($subRole);
+                if ($trimmed !== '') {
+                    $flatRoles[] = $trimmed;
+                }
+            }
+        }
+
+        if (! empty($flatRoles) && ! $user->hasRole($flatRoles)) {
             return response()->json([
                 'message' => 'Acceso denegado. No tienes los permisos necesarios para realizar esta acción.',
             ], 403);

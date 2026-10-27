@@ -2,28 +2,26 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Purchase;
+use App\Models\ProcesoCotizacion;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePurchaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Purchase::class) ?? false;
+        return $this->user()?->can('create', ProcesoCotizacion::class) ?? false;
     }
 
     public function rules(): array
     {
         return [
-            // Se puede crear desde cero (proveedor + ítems) o partir de una
-            // cotización aceptada (REQ-07 -> REQ-08) que aporte ambos datos.
-            'quotation_id' => ['nullable', 'integer', 'exists:quotations,id'],
-            'supplier_id' => ['required_without:quotation_id', 'integer', 'exists:suppliers,id'],
+            'quotation_id' => ['nullable', 'integer', 'exists:procesos_cotizacion,id'],
+            'supplier_id' => ['required_without:quotation_id', 'integer', 'exists:proveedores,id'],
             'quotation_reference' => ['nullable', 'string', 'max:100'],
             'expected_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'items' => ['required_without:quotation_id', 'array', 'min:1'],
-            'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
+            'items.*.product_id' => ['nullable', 'integer', 'exists:productos,id'],
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],

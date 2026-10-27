@@ -6,8 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
-use App\Models\LoginRecord;
-use App\Models\User;
+use App\Models\Usuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -20,7 +19,9 @@ class AuthController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::where('email', $validated['email'])->first();
+        $user = Usuario::with(['rol', 'panol', 'carreras'])
+            ->where('email', $validated['email'])
+            ->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
@@ -28,7 +29,7 @@ class AuthController extends Controller
             ], 401);
         }
 
-        if (! $user->is_active) {
+        if (! $user->activo) {
             return response()->json([
                 'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
             ], 403);
@@ -46,28 +47,39 @@ class AuthController extends Controller
 
         $token = $user->createToken($validated['device_name'], ['*'], $expiresAt)->plainTextToken;
 
-        $now = now();
-        $user->forceFill(['last_login_at' => $now])->save();
-
-        LoginRecord::create([
-            'user_id' => $user->id,
-            'device_type' => $validated['device_name'],
-            'user_agent' => $request->userAgent(),
-            'ip_address' => $request->ip(),
-            'logged_in_at' => $now,
-        ]);
-
         return response()->json([
             'message' => 'Login exitoso.',
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $user->only(['id', 'name', 'email', 'role', 'area', 'is_active']),
+            'user' => [
+                'id' => $user->id,
+                'nombre' => $user->nombre,
+                'name' => $user->nombre,
+                'email' => $user->email,
+                'rol_id' => $user->rol_id,
+                'rol' => $user->rol?->nombre,
+                'role' => $user->role,
+                'panol_id' => $user->panol_id,
+                'panol' => $user->panol?->nombre,
+                'activo' => (bool) $user->activo,
+                'is_active' => (bool) $user->activo,
+                'carreras' => $user->carreras->map(fn ($c) => [
+                    'id' => $c->id,
+                    'codigo' => $c->codigo,
+                    'nombre' => $c->nombre,
+                ]),
+            ],
         ]);
     }
 
     public function me(Request $request): UserResource
     {
-        return new UserResource($request->user());
+        $user = $request->user();
+        if ($user instanceof Usuario) {
+            $user->loadMissing(['rol', 'panol', 'carreras']);
+        }
+
+        return new UserResource($user);
     }
 
     public function changePassword(ChangePasswordRequest $request): JsonResponse

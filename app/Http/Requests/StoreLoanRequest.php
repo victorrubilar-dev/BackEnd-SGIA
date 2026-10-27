@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Loan;
+use App\Models\Prestamo;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLoanRequest extends FormRequest
@@ -24,14 +24,14 @@ class StoreLoanRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Loan::class) ?? false;
+        return $this->user()?->can('create', Prestamo::class) ?? false;
     }
 
     public function rules(): array
     {
         return [
             'items' => ['required', 'array', 'min:1'],
-            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.product_id' => ['required', 'integer', 'exists:productos,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'subject' => ['required', 'string', 'max:100'],
             'room' => ['required', 'string', 'max:100'],

@@ -220,6 +220,422 @@
 
 ---
 
+## 💻 Especificación de Campos para Integración Frontend (Web & Móvil)
+
+> Esta sección contiene tablas técnicas detalladas campo por campo de cada endpoint, diseñadas específicamente para que los desarrolladores de Frontend (Web Vue/React y Móvil Flutter) puedan construir formularios, validar datos de entrada, configurar modelos tipados y manejar payloads de solicitud y respuesta sin ambigüedad.
+
+### Módulo 1: Autenticación y Perfil
+
+#### `POST /api/login` (Inicio de Sesión)
+- **Content-Type:** `application/json`
+- **Autenticación:** Pública (sin token previo).
+- **Control de Intentos:** Rate limit de 5 peticiones por minuto.
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `email` | Body | `string` | **Sí** | Email válido, min: 3, max: 255. | `"director@sgia.cl"` |
+| `password` | Body | `string` | **Sí** | Contraseña en texto plano. | `"Sgia2026!"` |
+| `device_name` | Body | `string` | No | Nombre del cliente: `"web"` (expira en 8h) o `"mobile"` (expira en 60 días). Default: `"web"`. | `"web"` |
+
+*Respuesta exitosa (`200 OK`):*
+```json
+{
+  "message": "Login exitoso.",
+  "token": "1|4y3Gl9ncNsD8MDHNPHBbexz3E6Z9jKF0Y37t9avaba128c16",
+  "token_type": "Bearer",
+  "user": {
+    "id": 2,
+    "nombre": "Director de Carrera",
+    "name": "Director de Carrera",
+    "email": "director@sgia.cl",
+    "rol_id": 2,
+    "rol": "Director de carrera",
+    "role": "DIR-01",
+    "panol_id": null,
+    "panol": null,
+    "activo": true,
+    "is_active": true,
+    "carreras": [
+      { "id": 1, "codigo": "ISD", "nombre": "Ingeniería en Ciberseguridad" }
+    ]
+  }
+}
+```
+
+---
+
+#### `PUT /api/password` o `POST /api/change-password` (Cambio de Contraseña)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `current_password` | Body | `string` | **Sí** | Debe coincidir con la contraseña actual del usuario autenticado. | `"Sgia2026!"` |
+| `password` | Body | `string` | **Sí** | Mínimo 8 caracteres, al menos 1 letra y 1 número. Confirmada. | `"NuevaClave2026*"` |
+| `password_confirmation` | Body | `string` | **Sí** | Debe ser exactamente igual al campo `password`. | `"NuevaClave2026*"` |
+
+---
+
+#### `DELETE /api/tokens/{tokenId}` (Revocar Sesión Específica)
+- **Autenticación:** `Bearer Token`.
+
+| Parámetro | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `tokenId` | Path Param | `integer` | **Sí** | ID numérico del token devuelto en `GET /api/tokens`. | `3` |
+
+---
+
+### Módulo 2: Administración de Usuarios (`AD-01`)
+
+#### `GET /api/users` (Listado y Filtros de Usuarios)
+- **Content-Type:** N/A (URL Query)
+- **Autenticación:** `Bearer Token` (`AD-01`).
+
+| Parámetro | Ubicación | Tipo | Obligatorio | Reglas / Valores Permitidos | Ejemplo |
+|---|---|---|:---:|---|---|
+| `search` | Query | `string` | No | Busca coincidencia parcial en nombre o email. | `"director"` |
+| `role` | Query | `string` | No | Código de rol: `AD-01`, `DIR-01`, `PAN-01`, `PRO-01`. | `"DIR-01"` |
+| `rol_id` | Query | `integer` | No | ID del rol: `1`=Admin, `2`=Director, `3`=Pañol, `4`=Ayudante, `5`=Docente. | `2` |
+| `panol_id` | Query | `integer` | No | Filtra por pañol asignado (ID existente en `panoles`). | `1` |
+| `is_active` | Query | `boolean` | No | `true`, `false`, `1`, `0`. | `true` |
+| `per_page` | Query | `integer` | No | Entero entre 1 y 100 (default: 15). | `20` |
+| `page` | Query | `integer` | No | Número de página paginada. | `1` |
+
+---
+
+#### `POST /api/users` (Crear Usuario)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `nombre` *(o `name`)* | Body | `string` | **Sí** | Nombre y apellido, max 150 caracteres. | `"Juan Pérez"` |
+| `email` | Body | `string` | **Sí** | Formato email, max 150 caracteres, único en `usuarios`. | `"jperez@sgia.cl"` |
+| `rol_id` | Body | `integer` | **Sí (o role)** | ID válido en tabla `roles` (`1` a `5`). | `3` |
+| `role` | Body | `string` | **Sí (o rol_id)** | Código de rol (`"AD-01"`, `"DIR-01"`, `"PAN-01"`, `"PRO-01"`). | `"PAN-01"` |
+| `panol_id` | Body | `integer` | No | ID de pañol asignado (aplica para Pañoleros / Ayudantes). | `1` |
+| `carreras` | Body | `array<int>` | No | Array de IDs de carreras asociadas: `[1, 2]`. | `[1, 2]` |
+| `password` | Body | `string` | **Sí** | Mínimo 8 caracteres, alfanumérico, confirmado. | `"Pass2026!"` |
+| `password_confirmation` | Body | `string` | **Sí** | Debe coincidir con `password`. | `"Pass2026!"` |
+| `activo` *(o `is_active`)*| Body | `boolean` | No | Por defecto `true`. | `true` |
+
+---
+
+#### `PUT / PATCH /api/users/{id}` (Editar Usuario)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID del usuario a modificar. | `4` |
+| `nombre` *(o `name`)* | Body | `string` | No | Max 150 caracteres. | `"Juan Pérez Silva"` |
+| `email` | Body | `string` | No | Email válido, único excluyendo el ID actual. | `"jperez_nuevo@sgia.cl"` |
+| `rol_id` / `role` | Body | `int/str` | No | ID o código de rol válido. | `4` |
+| `panol_id` | Body | `integer` | No | `null` o ID de pañol. | `2` |
+| `carreras` | Body | `array<int>` | No | IDs de carreras actualizadas. | `[1]` |
+| `password` | Body | `string` | No | Si se envía, debe tener min: 8 y `password_confirmation`. | `"NuevaClave2026!"` |
+| `password_confirmation` | Body | `string` | Cond. | Obligatorio si se envía `password`. | `"NuevaClave2026!"` |
+| `activo` *(o `is_active`)*| Body | `boolean` | No | Estado de activación. | `true` |
+
+---
+
+#### `PATCH /api/users/{id}/status` (Activar / Desactivar Usuario)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID del usuario (el admin no puede desactivarse a sí mismo). | `5` |
+| `is_active` *(o `activo`)* | Body | `boolean` | **Sí** | `true` para activar, `false` para desactivar y revocar sesiones. | `false` |
+
+---
+
+### Módulo 3: Ubicaciones, Salas y Cajones
+
+#### `POST /api/locations` (Crear Sala / Ubicación)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `nombre` | Body | `string` | **Sí** | Nombre de la sala/ubicación, max 100 caracteres. | `"Laboratorio Cisco 3"` |
+| `tipo` | Body | `string` | No | `in:sala,panol,taller,bodega` (default: `sala`). | `"sala"` |
+| `descripcion` | Body | `string` | No | Notas o referencia física, max 500 caracteres. | `"Edificio C, segundo piso"` |
+
+---
+
+#### `POST /api/cajones` (Crear Cajón / Compartimento)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `location_id` | Body | `integer` | **Sí** | ID existente de la sala/ubicación padre. | `2` |
+| `codigo` | Body | `string` | **Sí** | Código identificador (único dentro de la sala), max 50. | `"CAJON-A1"` |
+| `descripcion` | Body | `string` | No | Detalles del contenedor, max 500 caracteres. | `"Cajonera plástica para componentes SMD"` |
+
+---
+
+### Módulo 4: Catálogo de Inventario, Productos y Equipos
+
+#### `GET /api/products` (Buscar y Filtrar Catálogo)
+- **Content-Type:** N/A (URL Query)
+- **Autenticación:** `Bearer Token` (Todos los roles).
+
+| Parámetro | Ubicación | Tipo | Obligatorio | Reglas / Filtros disponibles | Ejemplo |
+|---|---|---|:---:|---|---|
+| `search` | Query | `string` | No | Busca coincidencia en nombre, código de barras o descripción. | `"Osciloscopio"` |
+| `carrera` | Query | `string` | No | Código de carrera (`ISD`, `II`, `IC`, `AP`). | `"ISD"` |
+| `categoria_id` | Query | `integer` | No | ID existente en `categorias`. | `3` |
+| `panol_id` | Query | `integer` | No | ID existente en `panoles`. | `1` |
+| `critical_only` | Query | `boolean` | No | `true`: filtra solo productos con stock <= stock mínimo. | `true` |
+| `is_active` | Query | `boolean` | No | `true` (activos) o `false` (inactivos). | `true` |
+| `per_page` | Query | `integer` | No | 1 a 100 (default: 15). | `25` |
+
+---
+
+#### `POST /api/products` (Creación y Alta de Producto / Insumo)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `name` *(o `nombre`)* | Body | `string` | **Sí** | Nombre del producto/equipo, max 255. | `"Tester Digital Truper Mut-39"` |
+| `description` | Body | `string` | No | Especificaciones o detalles técnicos. | `"Multímetro digital con auto-rango"` |
+| `quantity` *(o `cantidad`)* | Body | `integer` | **Sí** | Unidades iniciales en stock, min: 0. | `10` |
+| `stock_minimo` | Body | `integer` | No | Umbral para alerta de stock crítico (default: 5). | `3` |
+| `carrera_codigo` | Body | `string` | No | Código de carrera para el barcode (`ISD`, `II`, `IC`, `AP`). | `"ISD"` |
+| `barcode` | Body | `string` | No | Código de barras Code128. Si se omite, se autogenera tipo `PREFIJO-CARRERA-CODIGO`. | `"SGIA-ISD-000001"` |
+| `categoria_id` | Body | `integer` | No | ID existente en `categorias`. | `2` |
+| `panol_id` | Body | `integer` | No | ID existente en `panoles`. | `1` |
+| `supplier_id` | Body | `integer` | No | ID de proveedor registrado en `proveedores`. | `1` |
+| `estante_id` *(o `cajon_id`)* | Body | `integer` | No | ID del estante o cajón físico de almacenamiento. | `4` |
+| `sala` | Body | `string` | No | Nombre de sala referencial si no se envía ID directo. | `"Pañol Central"` |
+| `cajon` | Body | `string` | No | Código de cajón referencial. | `"E-02"` |
+| `photo_url` | Body | `string` | No | URL de la fotografía del equipo. | `"https://..."` |
+| `is_active` | Body | `boolean` | No | Default: `true`. | `true` |
+
+---
+
+#### `PATCH /api/products/{id}/location` (Mover / Reubicar Físicamente)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID del producto a mover. | `12` |
+| `cajon_id` / `estante_id` | Body | `integer` | Cond. | ID de cajón existente. Obligatorio si no se envían textos. | `5` |
+| `sala` | Body | `string` | Cond. | Nombre descriptivo de la sala si no se usa ID. | `"Laboratorio Redes"` |
+| `cajon` | Body | `string` | Cond. | Código del cajón si no se usa ID. | `"C-10"` |
+| `descripcion` | Body | `string` | No | Nota de reubicación, max 255 caracteres. | `"Movido por mantención de estantes"` |
+
+---
+
+### Módulo 5: Escaneo de Facturas vía OCR
+
+#### `POST /api/invoices/scan` (Procesar Factura / Guía de Despacho)
+- **Content-Type:** `multipart/form-data`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Formatos aceptados | Ejemplo |
+|---|---|---|:---:|---|---|
+| `invoice` *(o `document`)*| Form Data | `file` | **Sí** | Archivo `pdf, png, jpg, jpeg, webp` o archivo `.json` de prueba. Máximo 10 MB. | *(archivo binario)* |
+
+*Respuesta exitosa (`200 OK`):*
+```json
+{
+  "message": "Factura procesada exitosamente vía OCR.",
+  "invoice_number": "FAC-883491",
+  "supplier_detected": "PC Factory S.A.",
+  "products": [
+    {
+      "name": "Cable UTP Cat6 Bobina 305m",
+      "quantity": 2,
+      "unit_price": 89990,
+      "suggested_barcode": "SGIA-IC-000045"
+    }
+  ]
+}
+```
+
+---
+
+### Módulo 6: Compras, Órdenes de Compra y Recepción
+
+#### `POST /api/purchases` (Generar Orden de Compra)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `quotation_id` | Body | `integer` | No | ID de cotización previa aprobada. Si se envía, copia los ítems automáticamente. | `4` |
+| `supplier_id` | Body | `integer` | Cond. | Obligatorio si no se envía `quotation_id`. ID de proveedor válido. | `2` |
+| `expected_at` | Body | `string` | No | Fecha estimada de entrega: `YYYY-MM-DD`. | `"2026-11-15"` |
+| `notes` | Body | `string` | No | Observaciones de la orden, max 1000. | `"Despacho directo en Pañol Central"` |
+| `items` | Body | `array` | Cond. | Array de ítems (obligatorio si no hay `quotation_id`), min: 1. | `[...]` |
+| `items.*.name` | Body | `string` | **Sí** | Nombre del ítem a comprar. | `"Switch Administrable 24p"` |
+| `items.*.quantity` | Body | `integer` | **Sí** | Cantidad requerida, min: 1. | `2` |
+| `items.*.unit_price` | Body | `number` | No | Precio unitario neto, min: 0. | `145000` |
+| `items.*.product_id` | Body | `integer` | No | ID del producto si ya existe en catálogo. | `15` |
+
+---
+
+#### `PATCH /api/purchases/{id}/status` (Cambiar Estado de la Orden)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Valores válidos | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID de la orden de compra. | `7` |
+| `status` *(o `estado`)* | Body | `string` | **Sí** | Transición permitida: `"pendiente"`, `"en_camino"`, `"completa"`. | `"en_camino"` |
+
+---
+
+#### `POST /api/purchases/{id}/arrival-scan` (Recepción Física en Pañol / OCR Guía)
+- **Content-Type:** `multipart/form-data` o `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID de la orden a recibir. | `7` |
+| `document` | Form Data | `file` | Cond.\* | Guía o factura en PDF/imagen (max 10MB). (\*Obligatorio si no se envían números). | *(archivo)* |
+| `guide_number` | Body/Form | `string` | Cond.\* | Número de guía de despacho. | `"GD-44021"` |
+| `invoice_number` | Body/Form | `string` | Cond.\* | Número de factura asociada. | `"F-99201"` |
+
+---
+
+### Módulo 7: Proveedores
+
+#### `POST /api/suppliers` (Registrar Proveedor)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `name` | Body | `string` | **Sí** | Razón social del proveedor, max 255. | `"SP Digital Chile SpA"` |
+| `contact_name` | Body | `string` | No | Nombre del ejecutivo de ventas, max 255. | `"Carolina Miranda"` |
+| `email` | Body | `string` | No | Email de contacto para cotizaciones. | `"ventas@spdigital.cl"` |
+| `phone` | Body | `string` | No | Teléfono de contacto, max 50 caracteres. | `"+56912345678"` |
+| `category` | Body | `string` | No | Rubro o tipo de insumos, max 100 caracteres. | `"Hardware y Conectividad"` |
+| `is_active` | Body | `boolean` | No | Default: `true`. | `true` |
+
+---
+
+### Módulo 8: Cotizaciones Automáticas Licitadas
+
+#### `POST /api/quotations` (Crear Proceso de Cotización — Mínimo 3 Proveedores)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `supplier_ids` | Body | `array<int>` | **Sí** | Array de IDs de proveedores. **Mínimo 3 proveedores distintos** (exigencia reglamentaria). | `[1, 2, 4]` |
+| `products` | Body | `array` | **Sí** | Lista de productos solicitados, min: 1 ítem. | `[...]` |
+| `products.*.id` | Body | `integer` | **Sí** | ID del producto existente en inventario. | `8` |
+| `products.*.quantity` | Body | `integer` | **Sí** | Cantidad a cotizar, min: 1. | `5` |
+| `expires_at` | Body | `string` | No | Fecha límite de recepción de ofertas: `YYYY-MM-DD`. | `"2026-11-30"` |
+| `notes` | Body | `string` | No | Términos o condiciones especiales de la licitación. | `"Incluir costo de flete a Temuco"` |
+
+---
+
+#### `PATCH /api/quotations/{id}/responses` (Registrar Oferta de un Proveedor)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID de la cotización. | `3` |
+| `supplier_id` | Body | `integer` | **Sí** | ID del proveedor (debe pertenecer a los licitados). | `2` |
+| `status` | Body | `string` | **Sí** | `"aceptada"` o `"rechazada"`. | `"aceptada"` |
+| `offer_total` | Body | `number` | No | Monto total cotizado en pesos chilenos ($), min: 0. | `850000` |
+| `notes` | Body | `string` | No | Observaciones sobre tiempos de despacho o garantía. | `"Garantía 12 meses, despacho en 3 días"` |
+
+---
+
+### Módulo 9: Préstamos Remotos (Pre-reservas Móvil / Docente)
+
+#### `POST /api/loans/requests` (Solicitud Docente desde App Móvil)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`PRO-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `items` | Body | `array` | **Sí** | Array de equipos/insumos requeridos, min: 1. | `[...]` |
+| `items.*.product_id` | Body | `integer` | **Sí** | ID del producto registrado en `productos`. | `5` |
+| `items.*.quantity` | Body | `integer` | **Sí** | Cantidad requerida (valida que haya stock disponible). | `2` |
+| `subject` *(o `asignatura`)* | Body | `string` | **Sí** | Nombre del ramo o asignatura, max 100 caracteres. | `"Seguridad Ofensiva"` |
+| `room` *(o `sala`)* | Body | `string` | **Sí** | Laboratorio o taller donde se utilizarán los equipos. | `"Lab C4"` |
+| `loan_date` *(o `fecha`)* | Body | `string` | **Sí** | Fecha prevista para la clase: `YYYY-MM-DD`. | `"2026-10-30"` |
+| `time_block` | Body | `string` | No | Horario o bloque pedagógico. | `"08:30 - 10:00"` |
+| `notes` | Body | `string` | No | Comentarios o requerimientos específicos de configuración. | `"Equipos deben incluir cables de poder"` |
+
+---
+
+### Módulo 10: Préstamos Presenciales y Operación en Pañol
+
+#### `POST /api/loans/checkout` (Préstamo Presencial en Ventanilla de Pañol)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`PAN-01`, `AD-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `borrower_name` | Body | `string` | **Sí** | Nombre del docente o alumno que retira en pañol. | `"Pedro González Morales"` |
+| `borrower_document` | Body | `string` | No | RUT o N° de credencial dejado en custodia. | `"18.334.291-K"` |
+| `items` | Body | `array` | **Sí** | Array de equipos entregados, min: 1. | `[...]` |
+| `items.*.product_id` | Body | `integer` | **Sí** | ID del producto entregado. | `14` |
+| `items.*.quantity` | Body | `integer` | **Sí** | Cantidad física despachada. Descuenta stock al instante. | `1` |
+| `subject` | Body | `string` | **Sí** | Asignatura de destino. | `"Taller de Hardware"` |
+| `room` | Body | `string` | **Sí** | Taller o sala de uso. | `"Taller 1"` |
+| `loan_date` | Body | `string` | **Sí** | Fecha del préstamo: `YYYY-MM-DD`. | `"2026-10-26"` |
+| `time_block` | Body | `string` | No | Bloque horario. | `"14:30 - 16:00"` |
+| `notes` | Body | `string` | No | Observaciones del estado del equipo o accesorios. | `"Con adaptador HDMI incluido"` |
+
+---
+
+#### `POST /api/loans/{id}/reject` (Rechazar Solicitud Remota)
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`PAN-01`, `AD-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `id` | Path Param | `integer` | **Sí** | ID de la solicitud remota a rechazar. | `18` |
+| `rejection_reason` | Body | `string` | **Sí** | Motivo formal del rechazo, min: 5, max 1000 caracteres. | `"Sin disponibilidad por mantención programada."` |
+
+---
+
+### Módulo 11: Novedades, Incidentes y Fallas de Equipos
+
+#### `POST /api/equipment/{product}/reports` (Reportar Falla o Daño de un Equipo)
+- **Content-Type:** `multipart/form-data`
+- **Autenticación:** `Bearer Token` (`PRO-01`, `PAN-01`).
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `product` | Path Param | `integer` | **Sí** | ID del producto/equipo averiado. | `7` |
+| `description` | Form Data | `string` | **Sí** | Descripción detallada de la anomalía o rotura. | `"La pantalla presenta líneas verticales y no enciende."` |
+| `title` | Form Data | `string` | No | Título breve de la novedad, max 255 caracteres. | `"Falla en panel de visualización"` |
+| `severity` | Form Data | `string` | No | Nivel de gravedad: `"leve"`, `"media"`, `"critica"` (default: `"media"`). | `"critica"` |
+| `attachment` | Form Data | `file` | No | Fotografía o comprobante PDF de la avería (max 10MB). | *(archivo binario)* |
+
+---
+
+### Módulo 12: Métricas y Dashboards Analíticos
+
+#### Endpoints de Consulta (`GET /api/dashboard/*`)
+- **Content-Type:** N/A (URL Query)
+- **Autenticación:** `Bearer Token` (`DIR-01`, `AD-01`).
+
+| Endpoint | Parámetro | Tipo | Obligatorio | Descripción | Ejemplo |
+|---|---|---|:---:|---|---|
+| `GET /api/dashboard/top-products` | `limit` | `integer` | No | Cantidad de equipos en el ranking (1 a 50, default: 10). | `limit=5` |
+| `GET /api/dashboard/top-products` | `since` | `date` | No | Fecha de inicio del periodo (`YYYY-MM-DD`). | `since=2026-03-01` |
+| `GET /api/dashboard/top-supplies` | `limit`, `since` | `int, date` | No | Insumos fungibles con mayor consumo en talleres. | `limit=10` |
+| `GET /api/dashboard/careers-distribution`| `since` | `date` | No | Porcentaje y cantidad de uso agrupado por carrera. | `since=2026-01-01` |
+| `GET /api/dashboard/least-demanded` | `limit`, `since` | `int, date` | No | Equipos sin movimiento (inventario ocioso). | `limit=15` |
+| `GET /api/dashboard/top-teachers` | `limit`, `since` | `int, date` | No | Ranking de docentes por cantidad de préstamos. | `limit=10` |
+
+---
+
 ## 📊 Resumen Estadístico de Endpoints
 
 ```mermaid

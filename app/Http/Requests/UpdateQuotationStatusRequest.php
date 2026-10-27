@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Quotation;
+use App\Models\ProcesoCotizacion;
 use App\Services\QuotationStateMachine;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -11,7 +11,6 @@ class UpdateQuotationStatusRequest extends FormRequest
 {
     public function prepareForValidation(): void
     {
-        // Acepta también el alias en español "estado".
         if (! $this->has('status') && $this->has('estado')) {
             $this->merge(['status' => $this->input('estado')]);
         }

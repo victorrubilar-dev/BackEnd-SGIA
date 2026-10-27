@@ -39,3 +39,8 @@ phpactor.json
 ### Operating System Files ###
 .DS_Store
 Thumbs.db
+
+
+## DB
+
+models.txt

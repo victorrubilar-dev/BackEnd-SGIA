@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ScanInvoiceRequest;
-use App\Models\Product;
+use App\Models\Producto;
 use App\Services\InvoiceOcrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +16,7 @@ class InvoiceScanController extends Controller
      */
     public function scan(ScanInvoiceRequest $request, InvoiceOcrService $ocrService): JsonResponse
     {
-        Gate::authorize('scanInvoice', Product::class);
+        Gate::authorize('scanInvoice', Producto::class);
 
         $file = $request->file('invoice_file');
 

@@ -6,7 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreLocationRequest;
 use App\Http\Requests\UpdateLocationEntityRequest;
 use App\Http\Resources\LocationResource;
-use App\Models\Location;
+use App\Models\Panol;
+use App\Models\Sala;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,23 +19,18 @@ class LocationController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Location::with(['cajones', 'creator', 'updater'])->withCount('cajones');
-
-        if ($request->filled('tipo')) {
-            $query->where('tipo', $request->string('tipo'));
-        }
+        $query = Sala::with(['panol', 'estantes'])->withCount('estantes');
 
         if ($request->filled('search')) {
             $search = '%' . $request->string('search') . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('nombre', 'ilike', $search)
-                  ->orWhere('sala', 'ilike', $search)
-                  ->orWhere('descripcion', 'ilike', $search);
+                $q->where('nombre_codigo', 'ilike', $search)
+                  ->orWhere('edificio', 'ilike', $search);
             });
         }
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
-        $locations = $query->orderBy('nombre')->paginate($perPage);
+        $locations = $query->orderBy('nombre_codigo')->paginate($perPage);
 
         return LocationResource::collection($locations);
     }
@@ -45,13 +41,16 @@ class LocationController extends Controller
     public function store(StoreLocationRequest $request): JsonResponse
     {
         $validated = $request->validated();
-        $validated['sala'] = $validated['nombre'];
-        $validated['created_by'] = $request->user()?->id;
-        $validated['updated_by'] = $request->user()?->id;
+        $panolId = $validated['panol_id'] ?? $request->user()?->panol_id ?? Panol::first()?->id ?? 1;
 
-        $location = Location::create($validated);
+        $location = Sala::create([
+            'panol_id' => $panolId,
+            'nombre_codigo' => $validated['nombre_codigo'] ?? $validated['nombre'],
+            'edificio' => $validated['edificio'] ?? null,
+            'piso' => $validated['piso'] ?? null,
+        ]);
 
-        return (new LocationResource($location->load('cajones')))
+        return (new LocationResource($location->load(['panol', 'estantes'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -59,31 +58,46 @@ class LocationController extends Controller
     /**
      * Display the specified location.
      */
-    public function show(Location $location): LocationResource
+    public function show(Sala $location): LocationResource
     {
-        return new LocationResource($location->load(['cajones', 'creator', 'updater'])->loadCount('cajones'));
+        return new LocationResource($location->load(['panol', 'estantes'])->loadCount('estantes'));
     }
 
     /**
      * Update the specified location in storage.
      */
-    public function update(UpdateLocationEntityRequest $request, Location $location): LocationResource
+    public function update(UpdateLocationEntityRequest $request, Sala $location): LocationResource
     {
         $validated = $request->validated();
-        if (isset($validated['nombre'])) {
-            $validated['sala'] = $validated['nombre'];
+        $payload = [];
+
+        if (isset($validated['nombre_codigo'])) {
+            $payload['nombre_codigo'] = $validated['nombre_codigo'];
+        } elseif (isset($validated['nombre'])) {
+            $payload['nombre_codigo'] = $validated['nombre'];
         }
-        $validated['updated_by'] = $request->user()?->id;
 
-        $location->update($validated);
+        if (array_key_exists('edificio', $validated)) {
+            $payload['edificio'] = $validated['edificio'];
+        }
 
-        return new LocationResource($location->load(['cajones', 'creator', 'updater'])->loadCount('cajones'));
+        if (array_key_exists('piso', $validated)) {
+            $payload['piso'] = $validated['piso'];
+        }
+
+        if (isset($validated['panol_id'])) {
+            $payload['panol_id'] = $validated['panol_id'];
+        }
+
+        $location->update($payload);
+
+        return new LocationResource($location->fresh(['panol', 'estantes'])->loadCount('estantes'));
     }
 
     /**
      * Remove the specified location from storage.
      */
-    public function destroy(Request $request, Location $location): JsonResponse
+    public function destroy(Request $request, Sala $location): JsonResponse
     {
         if (! $request->user()?->hasRole(['AD-01', 'DIR-01'])) {
             return response()->json(['message' => 'No tienes permisos para eliminar ubicaciones.'], 403);

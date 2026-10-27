@@ -2,8 +2,8 @@
 
 namespace App\Mail;
 
-use App\Models\Quotation;
-use App\Models\Supplier;
+use App\Models\ProcesoCotizacion;
+use App\Models\Proveedor;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
@@ -18,8 +18,8 @@ class QuotationRequestMail extends Mailable
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Quotation $quotation,
-        public Supplier $supplier
+        public ProcesoCotizacion $quotation,
+        public Proveedor $supplier
     ) {
     }
 

@@ -2,7 +2,7 @@
 
 namespace App\Notifications;
 
-use App\Models\Purchase;
+use App\Models\ProcesoCotizacion;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
@@ -15,7 +15,7 @@ class PurchaseArrivalNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Purchase $purchase)
+    public function __construct(public ProcesoCotizacion $purchase)
     {
     }
 
@@ -26,7 +26,6 @@ class PurchaseArrivalNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // En producción se añade 'fcm' / push móvil y mail. En desarrollo/testing broadcast.
         return ['broadcast'];
     }
 
@@ -40,7 +39,7 @@ class PurchaseArrivalNotification extends Notification implements ShouldQueue
         return [
             'purchase_id' => $this->purchase->id,
             'code' => $this->purchase->code,
-            'supplier' => $this->purchase->supplier?->name,
+            'supplier' => $this->purchase->supplier?->name ?? 'Proveedor',
             'status' => $this->purchase->status,
             'total' => $this->purchase->total,
             'message' => "La orden de compra {$this->purchase->code} fue marcada como completa. "

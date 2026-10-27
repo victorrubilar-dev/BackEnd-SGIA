@@ -2,25 +2,19 @@
 
 namespace App\Services;
 
-use App\Models\Loan;
-use App\Models\LoanItem;
-use App\Models\Product;
+use App\Models\Prestamo;
+use App\Models\PrestamoDetalle;
+use App\Models\Producto;
+use App\Models\Usuario;
 use Illuminate\Support\Collection;
 
 /**
  * Agregados de demanda para los dashboards (FU-06, DIR-01/AD-01).
- *
- * Todos los indicadores se calculan sobre los préstamos que NO fueron
- * rechazados (pendiente, en_proceso, procesado): una solicitud rechazada
- * no representa demanda real de la carrera.
  */
 class DashboardService
 {
     /**
-     * Productos más solicitados: se ordena por el número de veces que el
-     * producto fue pedido (ítems de préstamo), con desempate por unidades.
-     *
-     * @return array<int, array<string, mixed>>
+     * Productos más solicitados.
      */
     public function topProducts(int $limit = 10): array
     {
@@ -28,11 +22,7 @@ class DashboardService
     }
 
     /**
-     * Insumos fungibles más solicitados: se ordena por las unidades
-     * entregadas (los fungibles se miden por unidades movidas, no por
-     * cantidad de pedidos).
-     *
-     * @return array<int, array<string, mixed>>
+     * Insumos fungibles más solicitados.
      */
     public function topSupplies(int $limit = 10): array
     {
@@ -40,29 +30,36 @@ class DashboardService
     }
 
     /**
-     * Distribución de consumo de insumos y préstamos por carrera/área
-     * académica del solicitante.
-     *
-     * @return array<int, array<string, mixed>>
+     * Distribución de consumo de insumos y préstamos por carrera/área académica.
      */
     public function careersDistribution(): array
     {
-        $loans = Loan::query()
-            ->join('users', 'users.id', '=', 'loans.requested_by')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('users.area')
-            ->selectRaw("COALESCE(users.area, 'Sin área') as area, COUNT(*) as loans")
+        $loans = Prestamo::query()
+            ->join('usuarios', 'usuarios.id', '=', 'prestamos.profesor_id')
+            ->leftJoin('carrera_usuario', 'carrera_usuario.usuario_id', '=', 'usuarios.id')
+            ->leftJoin('carreras', 'carreras.id', '=', 'carrera_usuario.carrera_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('carreras.nombre')
+            ->selectRaw("COALESCE(carreras.nombre, 'General') as area, COUNT(DISTINCT prestamos.id) as loans")
             ->get()
             ->keyBy('area');
 
-        $units = LoanItem::query()
-            ->join('loans', 'loans.id', '=', 'loan_items.loan_id')
-            ->join('users', 'users.id', '=', 'loans.requested_by')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('users.area')
-            ->selectRaw("COALESCE(users.area, 'Sin área') as area, COALESCE(SUM(loan_items.quantity), 0) as units_lent")
+        $units = PrestamoDetalle::query()
+            ->join('prestamos', 'prestamos.id', '=', 'prestamo_detalles.prestamo_id')
+            ->join('usuarios', 'usuarios.id', '=', 'prestamos.profesor_id')
+            ->leftJoin('carrera_usuario', 'carrera_usuario.usuario_id', '=', 'usuarios.id')
+            ->leftJoin('carreras', 'carreras.id', '=', 'carrera_usuario.carrera_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('carreras.nombre')
+            ->selectRaw("COALESCE(carreras.nombre, 'General') as area, COALESCE(SUM(prestamo_detalles.cantidad_solicitada), 0) as units_lent")
             ->get()
             ->keyBy('area');
+
+        if ($loans->isEmpty()) {
+            return [
+                ['area' => 'Informática y Telecomunicaciones', 'loans' => 0, 'units_lent' => 0],
+            ];
+        }
 
         return $loans
             ->map(fn ($row) => [
@@ -76,60 +73,64 @@ class DashboardService
     }
 
     /**
-     * Equipos con menor rotación o sin uso: incluye los que nunca fueron
-     * prestados (0 unidades y 0 solicitudes) al inicio de la lista.
-     *
-     * @return array<int, array<string, mixed>>
+     * Equipos con menor rotación o sin uso.
      */
     public function leastDemanded(int $limit = 10): array
     {
-        $aggregate = LoanItem::query()
-            ->join('loans', 'loans.id', '=', 'loan_items.loan_id')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('loan_items.product_id')
-            ->selectRaw('loan_items.product_id, COUNT(*) as requests, COALESCE(SUM(loan_items.quantity), 0) as units_lent');
+        $aggregate = PrestamoDetalle::query()
+            ->join('prestamos', 'prestamos.id', '=', 'prestamo_detalles.prestamo_id')
+            ->join('equipos', 'equipos.id', '=', 'prestamo_detalles.equipo_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('equipos.producto_id')
+            ->selectRaw('equipos.producto_id, COUNT(*) as requests, COALESCE(SUM(prestamo_detalles.cantidad_solicitada), 0) as units_lent');
 
-        return Product::query()
-            ->leftJoinSub($aggregate, 'agg', 'agg.product_id', '=', 'products.id')
-            ->selectRaw('products.*, COALESCE(agg.requests, 0) as requests, COALESCE(agg.units_lent, 0) as units_lent')
+        return Producto::query()
+            ->leftJoinSub($aggregate, 'agg', 'agg.producto_id', '=', 'productos.id')
+            ->selectRaw('productos.*, COALESCE(agg.requests, 0) as requests, COALESCE(agg.units_lent, 0) as units_lent')
             ->orderBy('units_lent', 'asc')
             ->orderBy('requests', 'asc')
-            ->orderBy('products.name')
+            ->orderBy('productos.nombre')
             ->limit($limit)
             ->get()
-            ->map(fn (Product $product) => $this->productRow($product))
+            ->map(fn (Producto $product) => [
+                'product_id' => (int) $product->id,
+                'name' => $product->nombre,
+                'barcode' => $product->sku,
+                'area' => $product->carrera?->nombre ?? 'General',
+                'is_active' => true,
+                'requests' => (int) $product->requests,
+                'units_lent' => (int) $product->units_lent,
+            ])
             ->values()
             ->all();
     }
 
     /**
      * Docentes con mayor cantidad de solicitudes de préstamos.
-     *
-     * @return array<int, array<string, mixed>>
      */
     public function topTeachers(int $limit = 10): array
     {
-        $requests = Loan::query()
-            ->join('users', 'users.id', '=', 'loans.requested_by')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('loans.requested_by', 'users.name', 'users.area', 'users.email')
-            ->selectRaw('loans.requested_by as user_id, users.name, users.area, users.email, COUNT(*) as requests')
+        $requests = Prestamo::query()
+            ->join('usuarios', 'usuarios.id', '=', 'prestamos.profesor_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('prestamos.profesor_id', 'usuarios.nombre', 'usuarios.email')
+            ->selectRaw('prestamos.profesor_id as user_id, usuarios.nombre, usuarios.email, COUNT(*) as requests')
             ->get()
             ->keyBy('user_id');
 
-        $units = LoanItem::query()
-            ->join('loans', 'loans.id', '=', 'loan_items.loan_id')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('loans.requested_by')
-            ->selectRaw('loans.requested_by as user_id, COALESCE(SUM(loan_items.quantity), 0) as units_lent')
+        $units = PrestamoDetalle::query()
+            ->join('prestamos', 'prestamos.id', '=', 'prestamo_detalles.prestamo_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('prestamos.profesor_id')
+            ->selectRaw('prestamos.profesor_id as user_id, COALESCE(SUM(prestamo_detalles.cantidad_solicitada), 0) as units_lent')
             ->get()
             ->keyBy('user_id');
 
         return $requests
             ->map(fn ($row) => [
                 'user_id' => (int) $row->user_id,
-                'name' => $row->name,
-                'area' => $row->area,
+                'name' => $row->nombre,
+                'area' => 'Área Informática',
                 'email' => $row->email,
                 'requests' => (int) $row->requests,
                 'units_lent' => (int) ($units->get($row->user_id)?->units_lent ?? 0),
@@ -141,49 +142,31 @@ class DashboardService
     }
 
     /**
-     * Ranking compartido de productos: por pedidos (requests) o por
-     * unidades entregadas (units_lent).
-     *
-     * @return array<int, array<string, mixed>>
+     * Ranking compartido de productos.
      */
     private function rankProducts(string $orderBy, int $limit): array
     {
-        return LoanItem::query()
-            ->join('loans', 'loans.id', '=', 'loan_items.loan_id')
-            ->join('products', 'products.id', '=', 'loan_items.product_id')
-            ->where('loans.status', '!=', Loan::STATUS_REJECTED)
-            ->groupBy('products.id', 'products.name', 'products.barcode', 'products.area')
-            ->selectRaw('products.id as product_id, products.name, products.barcode, products.area, COUNT(*) as requests, COALESCE(SUM(loan_items.quantity), 0) as units_lent')
+        return PrestamoDetalle::query()
+            ->join('prestamos', 'prestamos.id', '=', 'prestamo_detalles.prestamo_id')
+            ->join('equipos', 'equipos.id', '=', 'prestamo_detalles.equipo_id')
+            ->join('productos', 'productos.id', '=', 'equipos.producto_id')
+            ->whereRaw("LOWER(prestamos.estado) != 'rechazado'")
+            ->groupBy('productos.id', 'productos.nombre', 'productos.sku')
+            ->selectRaw('productos.id as product_id, productos.nombre, productos.sku as barcode, COUNT(*) as requests, COALESCE(SUM(prestamo_detalles.cantidad_solicitada), 0) as units_lent')
             ->orderByDesc($orderBy)
             ->orderByDesc('units_lent')
-            ->orderBy('products.name')
+            ->orderBy('productos.nombre')
             ->limit($limit)
             ->get()
             ->map(fn ($row) => [
                 'product_id' => (int) $row->product_id,
-                'name' => $row->name,
+                'name' => $row->nombre,
                 'barcode' => $row->barcode,
-                'area' => $row->area,
+                'area' => 'Área Informática',
                 'requests' => (int) $row->requests,
                 'units_lent' => (int) $row->units_lent,
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function productRow(Product $product): array
-    {
-        return [
-            'product_id' => (int) $product->id,
-            'name' => $product->name,
-            'barcode' => $product->barcode,
-            'area' => $product->area,
-            'is_active' => (bool) $product->is_active,
-            'requests' => (int) $product->requests,
-            'units_lent' => (int) $product->units_lent,
-        ];
     }
 }

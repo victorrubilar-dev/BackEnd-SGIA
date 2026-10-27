@@ -2,27 +2,26 @@
 
 namespace App\Policies;
 
-use App\Models\Supplier;
-use App\Models\User;
+use App\Models\Usuario;
 
 class SupplierPolicy
 {
     /**
      * Determine whether the user can view any suppliers (AD-01, DIR-01, PAN-01).
      */
-    public function viewAny(User $user): bool
+    public function viewAny(Usuario $user): bool
     {
-        return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
-            User::ROLE_DIRECTOR,
-            User::ROLE_WAREHOUSE,
+        return $user->activo && $user->hasRole([
+            Usuario::ROLE_ADMIN,
+            Usuario::ROLE_DIRECTOR,
+            Usuario::ROLE_WAREHOUSE,
         ]);
     }
 
     /**
      * Determine whether the user can view the supplier.
      */
-    public function view(User $user, Supplier $supplier): bool
+    public function view(Usuario $user, mixed $supplier): bool
     {
         return $this->viewAny($user);
     }
@@ -30,18 +29,18 @@ class SupplierPolicy
     /**
      * Determine whether the user can create suppliers (AD-01, DIR-01).
      */
-    public function create(User $user): bool
+    public function create(Usuario $user): bool
     {
-        return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
-            User::ROLE_DIRECTOR,
+        return $user->activo && $user->hasRole([
+            Usuario::ROLE_ADMIN,
+            Usuario::ROLE_DIRECTOR,
         ]);
     }
 
     /**
      * Determine whether the user can update the supplier (AD-01, DIR-01).
      */
-    public function update(User $user, Supplier $supplier): bool
+    public function update(Usuario $user, mixed $supplier): bool
     {
         return $this->create($user);
     }
@@ -49,7 +48,7 @@ class SupplierPolicy
     /**
      * Determine whether the user can update the supplier status (AD-01, DIR-01).
      */
-    public function updateStatus(User $user, Supplier $supplier): bool
+    public function updateStatus(Usuario $user, mixed $supplier): bool
     {
         return $this->create($user);
     }
@@ -57,8 +56,8 @@ class SupplierPolicy
     /**
      * Determine whether the user can delete a supplier (AD-01).
      */
-    public function delete(User $user, Supplier $supplier): bool
+    public function delete(Usuario $user, mixed $supplier): bool
     {
-        return $user->is_active && $user->isAdmin();
+        return $user->activo && $user->isAdmin();
     }
 }

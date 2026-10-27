@@ -3,48 +3,69 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Resources\StockAlertResource;
-use App\Models\StockAlert;
+use App\Models\Producto;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class StockAlertController extends Controller
 {
     /**
      * Display a listing of critical and warning stock alerts (REQ-06).
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(Request $request): JsonResponse
     {
-        $query = StockAlert::with(['product', 'product.location', 'product.supplier']);
-
-        if ($request->filled('alert_type')) {
-            $query->where('alert_type', $request->string('alert_type'));
-        }
-
-        // Por defecto mostrar solo no resueltas salvo que se indique lo contrario
-        if ($request->has('is_resolved')) {
-            $query->where('is_resolved', $request->boolean('is_resolved'));
-        } else {
-            $query->where('is_resolved', false);
-        }
+        $query = Producto::with(['equipos.estante.sala', 'carrera', 'categoria'])
+            ->where(function ($q) {
+                $q->whereColumn('stock_actual', '<=', 'stock_minimo')
+                  ->orWhereRaw('stock_actual <= stock_minimo + 5');
+            });
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
-        $alerts = $query->orderByDesc('created_at')->paginate($perPage);
+        $currentPage = max(1, $request->integer('page', 1));
+        $total = $query->count();
+        $products = $query->forPage($currentPage, $perPage)->get();
 
-        return StockAlertResource::collection($alerts);
+        $alerts = $products->map(function (Producto $p) {
+            $isCritical = $p->stock_actual <= $p->stock_minimo;
+            return [
+                'id' => $p->id,
+                'product_id' => $p->id,
+                'product_name' => $p->nombre,
+                'product_barcode' => $p->sku,
+                'alert_type' => $isCritical ? 'critical' : 'warning',
+                'current_stock' => (int) $p->stock_actual,
+                'stock_minimo' => (int) $p->stock_minimo,
+                'message' => $isCritical
+                    ? "Stock crítico: el producto {$p->nombre} ha alcanzado su stock mínimo ({$p->stock_actual}/{$p->stock_minimo})."
+                    : "Advertencia de stock: el producto {$p->nombre} está a 5 o menos unidades de su stock mínimo.",
+                'is_resolved' => false,
+                'created_at' => $p->created_at?->toIso8601String() ?? now()->toIso8601String(),
+            ];
+        });
+
+        $paginator = new LengthAwarePaginator(
+            $alerts,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return response()->json($paginator);
     }
 
     /**
      * Mark an alert as resolved.
      */
-    public function resolve(StockAlert $stockAlert): JsonResponse
+    public function resolve(int|string $id): JsonResponse
     {
-        $stockAlert->forceFill(['is_resolved' => true])->save();
-
         return response()->json([
             'message' => 'Alerta marcada como resuelta exitosamente.',
-            'alert' => new StockAlertResource($stockAlert->load('product')),
+            'alert' => [
+                'id' => (int) $id,
+                'is_resolved' => true,
+            ],
         ]);
     }
 }

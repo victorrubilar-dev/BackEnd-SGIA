@@ -7,7 +7,8 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UpdateUserStatusRequest;
 use App\Http\Resources\UserResource;
-use App\Models\User;
+use App\Models\Role;
+use App\Models\Usuario;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,26 +22,42 @@ class UserController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        Gate::authorize('viewAny', User::class);
+        Gate::authorize('viewAny', Usuario::class);
 
-        $query = User::query();
+        $query = Usuario::with(['rol', 'panol', 'carreras']);
 
         if ($request->filled('role')) {
-            $query->where('role', $request->string('role'));
+            $role = $request->string('role');
+            $rolId = match ($role->toString()) {
+                'AD-01', 'Administrador' => 1,
+                'DIR-01', 'Director de carrera' => 2,
+                'PAN-01', 'Pañol' => 3,
+                'Ayudante de pañol' => 4,
+                'PRO-01', 'Docente' => 5,
+                default => null,
+            };
+            if ($rolId) {
+                $query->where('rol_id', $rolId);
+            }
         }
 
-        if ($request->filled('area')) {
-            $query->where('area', $request->string('area'));
+        if ($request->filled('rol_id')) {
+            $query->where('rol_id', $request->integer('rol_id'));
         }
 
-        if ($request->has('is_active')) {
-            $query->where('is_active', $request->boolean('is_active'));
+        if ($request->filled('panol_id')) {
+            $query->where('panol_id', $request->integer('panol_id'));
+        }
+
+        if ($request->has('is_active') || $request->has('activo')) {
+            $isActive = $request->has('is_active') ? $request->boolean('is_active') : $request->boolean('activo');
+            $query->where('activo', $isActive);
         }
 
         if ($request->filled('search')) {
             $search = '%' . $request->string('search') . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', $search)
+                $q->where('nombre', 'ilike', $search)
                   ->orWhere('email', 'ilike', $search);
             });
         }
@@ -58,16 +75,43 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::create([
-            'name' => $validated['name'],
+        $nombre = $validated['nombre'] ?? $validated['name'];
+        $rolId = $validated['rol_id'] ?? null;
+        if (! $rolId && ! empty($validated['role'])) {
+            $rolId = match ($validated['role']) {
+                'AD-01', 'Administrador' => 1,
+                'DIR-01', 'Director de carrera' => 2,
+                'PAN-01', 'Pañol' => 3,
+                'Ayudante de pañol' => 4,
+                'PRO-01', 'Docente' => 5,
+                default => 5,
+            };
+        }
+        if (! $rolId) {
+            $rolId = 5; // Default Docente
+        }
+
+        $isActive = true;
+        if (isset($validated['activo'])) {
+            $isActive = (bool) $validated['activo'];
+        } elseif (isset($validated['is_active'])) {
+            $isActive = (bool) $validated['is_active'];
+        }
+
+        $user = Usuario::create([
+            'nombre' => $nombre,
             'email' => $validated['email'],
-            'role' => $validated['role'],
-            'area' => $validated['area'] ?? null,
+            'rol_id' => $rolId,
+            'panol_id' => $validated['panol_id'] ?? null,
             'password' => Hash::make($validated['password']),
-            'is_active' => $validated['is_active'] ?? true,
+            'activo' => $isActive,
         ]);
 
-        return (new UserResource($user))
+        if (! empty($validated['carreras'])) {
+            $user->carreras()->sync($validated['carreras']);
+        }
+
+        return (new UserResource($user->load(['rol', 'panol', 'carreras'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -75,40 +119,70 @@ class UserController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Request $request, User $user): UserResource
+    public function show(Request $request, Usuario $user): UserResource
     {
         Gate::authorize('view', $user);
 
-        return new UserResource($user);
+        return new UserResource($user->load(['rol', 'panol', 'carreras']));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateUserRequest $request, User $user): UserResource
+    public function update(UpdateUserRequest $request, Usuario $user): UserResource
     {
         $validated = $request->validated();
 
-        if (! empty($validated['password'])) {
-            $validated['password'] = Hash::make($validated['password']);
-        } else {
-            unset($validated['password']);
+        $data = [];
+        if (isset($validated['nombre']) || isset($validated['name'])) {
+            $data['nombre'] = $validated['nombre'] ?? $validated['name'];
+        }
+        if (isset($validated['email'])) {
+            $data['email'] = $validated['email'];
+        }
+        if (isset($validated['rol_id'])) {
+            $data['rol_id'] = $validated['rol_id'];
+        } elseif (! empty($validated['role'])) {
+            $data['rol_id'] = match ($validated['role']) {
+                'AD-01', 'Administrador' => 1,
+                'DIR-01', 'Director de carrera' => 2,
+                'PAN-01', 'Pañol' => 3,
+                'Ayudante de pañol' => 4,
+                'PRO-01', 'Docente' => 5,
+                default => $user->rol_id,
+            };
+        }
+        if (array_key_exists('panol_id', $validated)) {
+            $data['panol_id'] = $validated['panol_id'];
+        }
+        if (isset($validated['activo'])) {
+            $data['activo'] = (bool) $validated['activo'];
+        } elseif (isset($validated['is_active'])) {
+            $data['activo'] = (bool) $validated['is_active'];
         }
 
-        $user->update($validated);
+        if (! empty($validated['password'])) {
+            $data['password'] = Hash::make($validated['password']);
+        }
 
-        return new UserResource($user);
+        $user->update($data);
+
+        if (array_key_exists('carreras', $validated)) {
+            $user->carreras()->sync($validated['carreras'] ?? []);
+        }
+
+        return new UserResource($user->load(['rol', 'panol', 'carreras']));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, User $user): JsonResponse
+    public function destroy(Request $request, Usuario $user): JsonResponse
     {
         Gate::authorize('delete', $user);
 
         $user->tokens()->delete();
-        $user->loginRecords()->delete();
+        $user->carreras()->detach();
         $user->delete();
 
         return response()->json([
@@ -119,11 +193,13 @@ class UserController extends Controller
     /**
      * Update the active status of the specified user.
      */
-    public function updateStatus(UpdateUserStatusRequest $request, User $user): JsonResponse
+    public function updateStatus(UpdateUserStatusRequest $request, Usuario $user): JsonResponse
     {
-        $isActive = $request->boolean('is_active');
+        Gate::authorize('updateStatus', $user);
 
-        $user->forceFill(['is_active' => $isActive])->save();
+        $isActive = $request->has('activo') ? $request->boolean('activo') : $request->boolean('is_active');
+
+        $user->forceFill(['activo' => $isActive])->save();
 
         if (! $isActive) {
             // Revoke active sessions for deactivated user
@@ -132,7 +208,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Estado de usuario actualizado exitosamente.',
-            'user' => new UserResource($user),
+            'user' => new UserResource($user->load(['rol', 'panol', 'carreras'])),
         ]);
     }
 }

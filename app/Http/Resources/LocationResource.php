@@ -16,17 +16,19 @@ class LocationResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'nombre' => $this->nombre ?? $this->sala,
-            'tipo' => $this->tipo ?? 'sala',
-            'sala' => $this->sala ?? $this->nombre,
-            'cajon' => $this->cajon,
-            'descripcion' => $this->descripcion,
-            'cajones_count' => $this->whenCounted('cajones'),
-            'cajones' => CajonResource::collection($this->whenLoaded('cajones')),
-            'created_by' => $this->created_by,
-            'updated_by' => $this->updated_by,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'nombre' => $this->nombre_codigo ?? $this->nombre,
+            'nombre_codigo' => $this->nombre_codigo ?? $this->nombre,
+            'edificio' => $this->edificio,
+            'piso' => $this->piso,
+            'panol_id' => $this->panol_id,
+            'panol' => $this->relationLoaded('panol') && $this->panol ? [
+                'id' => $this->panol->id,
+                'nombre' => $this->panol->nombre,
+            ] : null,
+            'estantes_count' => $this->estantes_count ?? ($this->relationLoaded('estantes') ? $this->estantes->count() : null),
+            'cajones_count' => $this->estantes_count ?? ($this->relationLoaded('estantes') ? $this->estantes->count() : null),
+            'estantes' => CajonResource::collection($this->whenLoaded('estantes')),
+            'cajones' => CajonResource::collection($this->whenLoaded('estantes')),
         ];
     }
 }

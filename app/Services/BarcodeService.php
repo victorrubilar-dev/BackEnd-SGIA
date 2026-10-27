@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\Product;
+use App\Models\Producto;
 use Picqer\Barcode\BarcodeGeneratorHTML;
 use Picqer\Barcode\BarcodeGeneratorPNG;
 use Picqer\Barcode\BarcodeGeneratorSVG;
@@ -17,7 +17,7 @@ class BarcodeService
         do {
             $randomDigits = str_pad((string) random_int(10000000, 99999999), 8, '0', STR_PAD_LEFT);
             $code = "{$prefix}-{$randomDigits}";
-        } while (Product::where('barcode', $code)->exists());
+        } while (Producto::where('sku', $code)->exists());
 
         return $code;
     }

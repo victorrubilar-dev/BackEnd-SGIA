@@ -17,7 +17,7 @@ class EnsureUserIsActive
     {
         $user = $request->user();
 
-        if ($user && ! $user->is_active) {
+        if ($user && ! ($user->activo ?? $user->is_active)) {
             $user->currentAccessToken()?->delete();
 
             return response()->json([

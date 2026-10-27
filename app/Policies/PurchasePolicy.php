@@ -2,27 +2,26 @@
 
 namespace App\Policies;
 
-use App\Models\Purchase;
-use App\Models\User;
+use App\Models\Usuario;
 
 class PurchasePolicy
 {
     /**
      * Determine whether the user can view any purchases (AD-01, DIR-01, PAN-01).
      */
-    public function viewAny(User $user): bool
+    public function viewAny(Usuario $user): bool
     {
-        return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
-            User::ROLE_DIRECTOR,
-            User::ROLE_WAREHOUSE,
+        return $user->activo && $user->hasRole([
+            Usuario::ROLE_ADMIN,
+            Usuario::ROLE_DIRECTOR,
+            Usuario::ROLE_WAREHOUSE,
         ]);
     }
 
     /**
      * Determine whether the user can view the purchase.
      */
-    public function view(User $user, Purchase $purchase): bool
+    public function view(Usuario $user, mixed $purchase): bool
     {
         return $this->viewAny($user);
     }
@@ -30,18 +29,18 @@ class PurchasePolicy
     /**
      * Determine whether the user can create purchases (AD-01, DIR-01).
      */
-    public function create(User $user): bool
+    public function create(Usuario $user): bool
     {
-        return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
-            User::ROLE_DIRECTOR,
+        return $user->activo && $user->hasRole([
+            Usuario::ROLE_ADMIN,
+            Usuario::ROLE_DIRECTOR,
         ]);
     }
 
     /**
      * Determine whether the user can update the purchase status (AD-01, DIR-01, PAN-01).
      */
-    public function updateStatus(User $user, Purchase $purchase): bool
+    public function updateStatus(Usuario $user, mixed $purchase): bool
     {
         return $this->viewAny($user);
     }
@@ -49,7 +48,7 @@ class PurchasePolicy
     /**
      * Determine whether the user can scan the arrival guide/invoice (AD-01, DIR-01, PAN-01).
      */
-    public function scanArrival(User $user, Purchase $purchase): bool
+    public function scanArrival(Usuario $user, mixed $purchase): bool
     {
         return $this->viewAny($user);
     }

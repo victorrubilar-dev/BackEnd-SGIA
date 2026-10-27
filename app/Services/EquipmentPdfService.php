@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
-use App\Models\IncidentReport;
-use App\Models\Product;
+use App\Models\InformeNovedad;
+use App\Models\Producto;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\View\View;
@@ -19,12 +19,12 @@ class EquipmentPdfService
      * Ficha técnica formal del equipo en PDF: datos del producto,
      * proveedor, ubicación física e historial de novedades.
      */
-    public function technicalSheet(Product $product): string
+    public function technicalSheet(Producto $product): string
     {
-        $product->loadMissing(['supplier', 'cajon.location', 'location']);
+        $product->loadMissing(['equipos.estante.sala', 'categoria', 'carrera']);
 
         $reports = $product->incidentReports()
-            ->with('reporter')
+            ->with('usuario')
             ->latest()
             ->limit(10)
             ->get();
@@ -39,11 +39,11 @@ class EquipmentPdfService
     /**
      * Listado de informes de novedades del equipo en PDF.
      *
-     * @param  Collection<int, IncidentReport>  $reports
+     * @param  Collection<int, InformeNovedad>  $reports
      */
-    public function reportsList(Product $product, Collection $reports): string
+    public function reportsList(Producto $product, Collection $reports): string
     {
-        $product->loadMissing(['supplier', 'cajon.location', 'location']);
+        $product->loadMissing(['equipos.estante.sala', 'categoria', 'carrera']);
 
         return $this->render(view('equipment.reports', [
             'product' => $product,

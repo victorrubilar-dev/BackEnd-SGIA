@@ -16,15 +16,16 @@ class CajonResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'codigo' => $this->codigo,
-            'descripcion' => $this->descripcion,
-            'location_id' => $this->location_id,
-            'location' => new LocationResource($this->whenLoaded('location')),
-            'products_count' => $this->whenCounted('products'),
-            'created_by' => $this->created_by,
-            'updated_by' => $this->updated_by,
-            'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
+            'codigo' => $this->codigo_barras ?? $this->codigo ?? $this->nombre,
+            'codigo_barras' => $this->codigo_barras ?? $this->codigo,
+            'nombre' => $this->nombre,
+            'descripcion' => $this->nombre,
+            'location_id' => $this->sala_id ?? $this->location_id,
+            'sala_id' => $this->sala_id ?? $this->location_id,
+            'location' => new LocationResource($this->whenLoaded('sala') ?? $this->whenLoaded('location')),
+            'sala' => new LocationResource($this->whenLoaded('sala') ?? $this->whenLoaded('location')),
+            'products_count' => $this->whenCounted('equipos') ?? $this->whenCounted('products'),
+            'equipos_count' => $this->whenCounted('equipos'),
         ];
     }
 }

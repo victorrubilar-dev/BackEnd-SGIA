@@ -3,23 +3,20 @@
 namespace App\Services;
 
 use App\Exceptions\InvalidLoanStatusTransition;
-use App\Models\Loan;
-use App\Models\LoanItem;
-use App\Models\Product;
-use App\Models\User;
+use App\Models\Equipo;
+use App\Models\Estante;
+use App\Models\Panol;
+use App\Models\Prestamo;
+use App\Models\PrestamoDetalle;
+use App\Models\Producto;
+use App\Models\Sala;
+use App\Models\Usuario;
 use App\Notifications\LoanStatusNotification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-/**
- * Servicio de la entidad Loan (FU-04).
- *
- * REQ-09: creación de la solicitud remota del docente con validación de
- * disponibilidad de stock. REQ-10: operaciones del pañol (aprobar, rechazar,
- * entregar y préstamo presencial directo) con descuento atómico de stock y
- * notificación al solicitante.
- */
 class LoanService
 {
     public function __construct(private readonly StockAlertService $stockAlertService)
@@ -28,27 +25,32 @@ class LoanService
 
     /**
      * Crea la solicitud remota de préstamo del docente en estado `pendiente`.
-     *
-     * @param  array<string, mixed>  $validated  datos validados por StoreLoanRequest
      */
-    public function createRequest(array $validated, User $creator): Loan
+    public function createRequest(array $validated, Usuario $creator): Prestamo
     {
         $items = $validated['items'];
 
         $this->assertItemsAvailable($items);
 
         return DB::transaction(function () use ($validated, $creator, $items) {
-            $loan = Loan::create([
-                'code' => Loan::generateUniqueCode(Loan::TYPE_REMOTE),
-                'type' => Loan::TYPE_REMOTE,
-                'requested_by' => $creator->id,
-                'borrower_name' => $creator->name,
-                'subject' => $validated['subject'],
-                'room' => $validated['room'],
-                'loan_date' => $validated['loan_date'],
+            $panolId = $creator->panol_id ?? Panol::first()?->id ?? 1;
+
+            $meta = [
+                'subject' => $validated['subject'] ?? null,
+                'room' => $validated['room'] ?? null,
                 'time_block' => $validated['time_block'] ?? null,
-                'status' => LoanStateMachine::STATUS_PENDING,
+                'borrower_name' => $creator->nombre,
                 'notes' => $validated['notes'] ?? null,
+            ];
+
+            $loan = Prestamo::create([
+                'panol_id' => $panolId,
+                'tipo_prestamo' => Prestamo::TYPE_REMOTE,
+                'profesor_id' => $creator->id,
+                'estado' => LoanStateMachine::STATUS_PENDING,
+                'fecha_solicitud' => now(),
+                'fecha_hora_prestamo' => isset($validated['loan_date']) ? date('Y-m-d H:i:s', strtotime($validated['loan_date'])) : now(),
+                'observaciones' => json_encode($meta, JSON_UNESCAPED_UNICODE),
             ]);
 
             $this->attachItems($loan, $items);
@@ -60,25 +62,22 @@ class LoanService
     /**
      * Aprueba la solicitud remota: descuenta el stock de cada producto,
      * deja el préstamo `en_proceso` y notifica al solicitante (REQ-10).
-     *
-     * @throws InvalidLoanStatusTransition|ValidationException
      */
-    public function approve(Loan $loan, User $approver): Loan
+    public function approve(Prestamo $loan, Usuario $approver): Prestamo
     {
         $loan = DB::transaction(function () use ($loan, $approver) {
-            $loan->loadMissing('items');
+            $loan->loadMissing('items.equipo.producto');
 
-            // Valida la máquina de estados antes de tocar el stock.
             if (! LoanStateMachine::canTransition($loan->status, LoanStateMachine::STATUS_IN_PROGRESS)) {
                 throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_IN_PROGRESS);
             }
 
             $this->deductStock($loan);
 
-            $this->transition($loan, LoanStateMachine::STATUS_IN_PROGRESS, [
-                'approved_by' => $approver->id,
-                'approved_at' => now(),
-            ]);
+            $loan->estado = LoanStateMachine::STATUS_IN_PROGRESS;
+            $loan->despachado_por_id = $approver->id;
+            $loan->fecha_hora_prestamo = now();
+            $loan->save();
 
             return $loan;
         });
@@ -94,14 +93,16 @@ class LoanService
     /**
      * Rechaza la solicitud remota indicando el motivo obligatorio y notifica
      * al solicitante (REQ-10).
-     *
-     * @throws InvalidLoanStatusTransition
      */
-    public function reject(Loan $loan, User $rejector, string $reason): Loan
+    public function reject(Prestamo $loan, Usuario $rejector, string $reason): Prestamo
     {
-        $this->transition($loan, LoanStateMachine::STATUS_REJECTED, [
-            'rejection_reason' => $reason,
-        ]);
+        if (! LoanStateMachine::canTransition($loan->status, LoanStateMachine::STATUS_REJECTED)) {
+            throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_REJECTED);
+        }
+
+        $loan->setMetadataValue('rejection_reason', $reason);
+        $loan->estado = LoanStateMachine::STATUS_REJECTED;
+        $loan->save();
 
         $this->notifyRequester($loan, "Tu solicitud de préstamo {$loan->code} fue rechazada. Motivo: {$reason}");
 
@@ -110,15 +111,17 @@ class LoanService
 
     /**
      * Confirma la entrega material al docente: `en_proceso` -> `procesado`.
-     *
-     * @throws InvalidLoanStatusTransition
      */
-    public function deliver(Loan $loan, User $processor): Loan
+    public function deliver(Prestamo $loan, Usuario $processor): Prestamo
     {
-        $this->transition($loan, LoanStateMachine::STATUS_PROCESSED, [
-            'processed_by' => $processor->id,
-            'processed_at' => now(),
-        ]);
+        if (! LoanStateMachine::canTransition($loan->status, LoanStateMachine::STATUS_PROCESSED)) {
+            throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_PROCESSED);
+        }
+
+        $loan->estado = LoanStateMachine::STATUS_PROCESSED;
+        $loan->recibido_por_id = $processor->id;
+        $loan->fecha_hora_devolucion_real = null;
+        $loan->save();
 
         $this->notifyRequester(
             $loan,
@@ -131,36 +134,38 @@ class LoanService
     /**
      * Registra un préstamo presencial directo en el pañol: crea el préstamo
      * `procesado` y descuenta el stock atómicamente (REQ-10).
-     *
-     * @param  array<string, mixed>  $validated  datos validados por StoreLoanCheckoutRequest
-     *
-     * @throws ValidationException
      */
-    public function checkout(array $validated, User $operator): Loan
+    public function checkout(array $validated, Usuario $operator): Prestamo
     {
         $items = $validated['items'];
 
         $this->assertItemsAvailable($items);
 
         return DB::transaction(function () use ($validated, $operator, $items) {
-            $loan = Loan::create([
-                'code' => Loan::generateUniqueCode(Loan::TYPE_DIRECT),
-                'type' => Loan::TYPE_DIRECT,
-                'requested_by' => null,
+            $panolId = $operator->panol_id ?? Panol::first()?->id ?? 1;
+
+            $meta = [
+                'subject' => $validated['subject'] ?? null,
+                'room' => $validated['room'] ?? null,
+                'time_block' => $validated['time_block'] ?? null,
                 'borrower_name' => $validated['borrower_name'],
                 'borrower_document' => $validated['borrower_document'] ?? null,
-                'subject' => $validated['subject'],
-                'room' => $validated['room'],
-                'loan_date' => $validated['loan_date'],
-                'time_block' => $validated['time_block'] ?? null,
-                'status' => LoanStateMachine::STATUS_PROCESSED,
-                'processed_by' => $operator->id,
-                'processed_at' => now(),
                 'notes' => $validated['notes'] ?? null,
+            ];
+
+            $loan = Prestamo::create([
+                'panol_id' => $panolId,
+                'tipo_prestamo' => Prestamo::TYPE_DIRECT,
+                'despachado_por_id' => $operator->id,
+                'recibido_por_id' => $operator->id,
+                'estado' => LoanStateMachine::STATUS_PROCESSED,
+                'fecha_solicitud' => now(),
+                'fecha_hora_prestamo' => now(),
+                'observaciones' => json_encode($meta, JSON_UNESCAPED_UNICODE),
             ]);
 
             $this->attachItems($loan, $items);
-            $loan->load('items');
+            $loan->load('items.equipo.producto');
             $this->deductStock($loan);
 
             return $loan;
@@ -168,54 +173,48 @@ class LoanService
     }
 
     /**
-     * Transiciona el préstamo a otro estado respetando la máquina de estados
-     * y persiste los datos complementarios (aprobador, motivo, entrega...).
-     *
-     * @param  array<string, mixed>  $attributes
-     *
-     * @throws InvalidLoanStatusTransition
+     * Transiciona el préstamo a otro estado respetando la máquina de estados.
      */
-    public function transition(Loan $loan, string $toStatus, array $attributes = []): Loan
+    public function transition(Prestamo $loan, string $toStatus, array $attributes = []): Prestamo
     {
         if (! LoanStateMachine::canTransition($loan->status, $toStatus)) {
             throw new InvalidLoanStatusTransition($loan->status, $toStatus);
         }
 
-        $loan->forceFill($attributes + ['status' => $toStatus])->save();
+        $attributes['estado'] = $toStatus;
+        $loan->forceFill($attributes)->save();
 
         return $loan;
     }
 
     /**
-     * Descuenta el stock de los productos del préstamo dentro de la
-     * transacción, bloqueando las filas para evitar stock negativo por
-     * solicitudes concurrentes. También evalúa las alertas de stock (REQ-06).
-     *
-     * @throws ValidationException
+     * Descuenta el stock de los productos del préstamo dentro de la transacción.
      */
-    private function deductStock(Loan $loan): void
+    private function deductStock(Prestamo $loan): void
     {
         foreach ($loan->items as $item) {
-            if ($item->product_id === null) {
+            $product = $item->equipo?->producto ?? Producto::find($item->product_id);
+
+            if ($product === null) {
                 continue;
             }
 
-            $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
+            $product = Producto::whereKey($product->id)->lockForUpdate()->first();
 
             if ($product === null) {
                 throw ValidationException::withMessages([
-                    'items' => "El producto \"{$item->name}\" ya no existe en el inventario.",
+                    'items' => "El producto ya no existe en el inventario.",
                 ]);
             }
 
-            if ($product->quantity < $item->quantity) {
+            if ($product->stock_actual < $item->quantity) {
                 throw ValidationException::withMessages([
-                    'items' => "Stock insuficiente para \"{$product->name}\": "
-                        . "se requieren {$item->quantity} y hay {$product->quantity} disponibles.",
+                    'items' => "Stock insuficiente para \"{$product->nombre}\": "
+                        . "se requieren {$item->quantity} y hay {$product->stock_actual} disponibles.",
                 ]);
             }
 
-            $product->quantity -= $item->quantity;
+            $product->stock_actual -= $item->quantity;
             $product->save();
 
             $this->stockAlertService->checkStock($product);
@@ -225,29 +224,24 @@ class LoanService
     /**
      * Notifica al docente solicitante, si tiene usuario en el sistema.
      */
-    private function notifyRequester(Loan $loan, string $message): void
+    private function notifyRequester(Prestamo $loan, string $message): void
     {
-        $requester = $loan->requested_by !== null
-            ? User::find($loan->requested_by)
+        $requester = $loan->profesor_id !== null
+            ? Usuario::find($loan->profesor_id)
             : null;
 
-        if ($requester !== null && $requester->is_active) {
+        if ($requester !== null && $requester->activo) {
             Notification::send($requester, new LoanStatusNotification($loan, $message));
         }
     }
 
     /**
-     * Valida que cada producto exista, esté activo y tenga stock suficiente
-     * para la cantidad solicitada.
-     *
-     * @param  array<int, array<string, mixed>>  $items
-     *
-     * @throws ValidationException
+     * Valida que cada producto exista y tenga stock suficiente.
      */
     public function assertItemsAvailable(array $items): void
     {
         foreach ($items as $index => $item) {
-            $product = Product::find($item['product_id'] ?? 0);
+            $product = Producto::find($item['product_id'] ?? 0);
 
             if ($product === null) {
                 throw ValidationException::withMessages([
@@ -255,38 +249,49 @@ class LoanService
                 ]);
             }
 
-            if (! $product->is_active) {
-                throw ValidationException::withMessages([
-                    "items.{$index}.product_id" => "El producto \"{$product->name}\" está inactivo y no puede prestarse.",
-                ]);
-            }
-
             $requested = (int) $item['quantity'];
 
-            if ($product->quantity < $requested) {
+            if ($product->stock_actual < $requested) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.quantity" => "Stock insuficiente para \"{$product->name}\": "
-                        . "se solicitaron {$requested} y hay {$product->quantity} disponibles.",
+                    "items.{$index}.quantity" => "Stock insuficiente para \"{$product->nombre}\": "
+                        . "se solicitaron {$requested} y hay {$product->stock_actual} disponibles.",
                 ]);
             }
         }
     }
 
     /**
-     * Crea los ítems del préstamo tomando el nombre actual del producto.
-     *
-     * @param  array<int, array<string, mixed>>  $items
+     * Crea los ítems del préstamo tomando el equipo o producto.
      */
-    public function attachItems(Loan $loan, array $items): Loan
+    public function attachItems(Prestamo $loan, array $items): Prestamo
     {
-        foreach ($items as $item) {
-            $product = Product::find($item['product_id']);
+        $defaultEstante = Estante::first() ?? Estante::create([
+            'sala_id' => Sala::first()?->id ?? 1,
+            'nombre' => 'Estante General',
+            'codigo_barras' => 'EST-GEN-01',
+        ]);
 
-            LoanItem::create([
-                'loan_id' => $loan->id,
-                'product_id' => $product?->id,
-                'name' => $product?->name ?? ('Producto #' . $item['product_id']),
-                'quantity' => (int) $item['quantity'],
+        foreach ($items as $item) {
+            $product = Producto::find($item['product_id']);
+
+            if (! $product) {
+                continue;
+            }
+
+            $equipo = Equipo::firstOrCreate(
+                ['producto_id' => $product->id],
+                [
+                    'estante_id' => $defaultEstante->id,
+                    'codigo_barras' => $product->sku . '-EQ01',
+                    'estado' => 'DISPONIBLE',
+                ]
+            );
+
+            PrestamoDetalle::create([
+                'prestamo_id' => $loan->id,
+                'equipo_id' => $equipo->id,
+                'cantidad_solicitada' => (int) $item['quantity'],
+                'cantidad_entregada' => $loan->status === LoanStateMachine::STATUS_PROCESSED ? (int) $item['quantity'] : 0,
             ]);
         }
 

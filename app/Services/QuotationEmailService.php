@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Mail\QuotationRequestMail;
-use App\Models\Quotation;
-use App\Models\Supplier;
+use App\Models\ProcesoCotizacion;
+use App\Models\Proveedor;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -18,14 +18,14 @@ class QuotationEmailService
      * Envía la solicitud de cotización a un proveedor. Devuelve false si el
      * proveedor no tiene correo registrado.
      */
-    public function sendRequest(Quotation $quotation, Supplier $supplier): bool
+    public function sendRequest(ProcesoCotizacion $quotation, Proveedor $supplier): bool
     {
         if (empty($supplier->email)) {
             return false;
         }
 
         Mail::to($supplier->email)->send(
-            new QuotationRequestMail($quotation->loadMissing('items', 'creator'), $supplier)
+            new QuotationRequestMail($quotation->loadMissing('cotizaciones.items.producto', 'usuario'), $supplier)
         );
 
         return true;
@@ -36,19 +36,19 @@ class QuotationEmailService
      *
      * @return int cantidad de correos efectivamente enviados
      */
-    public function sendToContactedSuppliers(Quotation $quotation): int
+    public function sendToContactedSuppliers(ProcesoCotizacion $quotation): int
     {
         $sent = 0;
 
-        $contacts = $quotation->suppliers()->with('supplier')->get();
+        $cotizaciones = $quotation->cotizaciones()->with('proveedor')->get();
 
-        foreach ($contacts as $contact) {
-            if (! $contact->supplier) {
+        foreach ($cotizaciones as $cotizacion) {
+            if (! $cotizacion->proveedor) {
                 continue;
             }
 
             try {
-                if ($this->sendRequest($quotation, $contact->supplier)) {
+                if ($this->sendRequest($quotation, $cotizacion->proveedor)) {
                     $sent++;
                 }
             } catch (Throwable $e) {

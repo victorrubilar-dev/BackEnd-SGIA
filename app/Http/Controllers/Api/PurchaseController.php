@@ -8,9 +8,11 @@ use App\Http\Requests\ScanArrivalRequest;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseStatusRequest;
 use App\Http\Resources\PurchaseResource;
-use App\Models\Purchase;
-use App\Models\Quotation;
-use App\Models\QuotationItem;
+use App\Models\Carrera;
+use App\Models\Cotizacion;
+use App\Models\CotizacionItem;
+use App\Models\ProcesoCotizacion;
+use App\Models\Producto;
 use App\Services\InvoiceOcrService;
 use App\Services\PurchaseService;
 use App\Services\PurchaseStateMachine;
@@ -26,14 +28,12 @@ class PurchaseController extends Controller
 {
     /**
      * List purchase orders with filters (REQ-08).
-     *
-     * Query params: status (alias: estado), supplier_id, search, per_page.
      */
     public function index(Request $request): AnonymousResourceCollection|JsonResponse
     {
-        Gate::authorize('viewAny', Purchase::class);
+        Gate::authorize('viewAny', ProcesoCotizacion::class);
 
-        $query = Purchase::with(['supplier', 'items']);
+        $query = ProcesoCotizacion::with(['cotizaciones.proveedor', 'cotizaciones.items.producto', 'usuario']);
 
         $status = $request->input('status', $request->input('estado'));
 
@@ -44,38 +44,29 @@ class PurchaseController extends Controller
         }
 
         if ($status !== null) {
-            $query->where('status', $status);
+            $query->whereRaw('LOWER(estado) = ?', [strtolower($status)]);
         }
 
         if ($request->filled('supplier_id')) {
-            $query->where('supplier_id', $request->integer('supplier_id'));
-        }
-
-        if ($request->filled('quotation_id')) {
-            $query->where('quotation_id', $request->integer('quotation_id'));
+            $query->whereHas('cotizaciones', fn ($q) => $q->where('proveedor_id', $request->integer('supplier_id')));
         }
 
         if ($request->filled('search')) {
             $search = '%' . $request->string('search') . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('code', 'ilike', $search)
-                    ->orWhere('guide_number', 'ilike', $search)
-                    ->orWhere('invoice_number', 'ilike', $search);
+                $q->where('titulo_proceso', 'ilike', $search)
+                  ->orWhere('id', 'ilike', $search);
             });
         }
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
-        $purchases = $query->orderByDesc('created_at')->paginate($perPage);
+        $purchases = $query->orderByDesc('id')->paginate($perPage);
 
         return PurchaseResource::collection($purchases);
     }
 
     /**
      * Register a new purchase order in `pendiente` status (REQ-08).
-     *
-     * Puede crearse desde cero (proveedor + ítems) o a partir de una cotización
-     * aceptada (REQ-07 -> REQ-08), en cuyo caso se copian proveedor e ítems y la
-     * cotización queda marcada como `convertida`.
      */
     public function store(StorePurchaseRequest $request, QuotationService $quotationService): JsonResponse
     {
@@ -83,9 +74,9 @@ class PurchaseController extends Controller
         $quotation = null;
 
         if (! empty($validated['quotation_id'])) {
-            $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
+            $quotation = ProcesoCotizacion::with('cotizaciones.items')->findOrFail($validated['quotation_id']);
 
-            if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
+            if ($quotation->status !== 'aceptada') {
                 throw ValidationException::withMessages([
                     'quotation_id' => 'Solo se puede generar una orden de compra desde una cotización aceptada '
                         . "(estado actual: \"{$quotation->status}\").",
@@ -99,65 +90,71 @@ class PurchaseController extends Controller
             }
         }
 
-        $items = $validated['items']
-            ?? $quotation?->items->map(fn (QuotationItem $item) => [
-                'product_id' => $item->product_id,
-                'name' => $item->name,
-                'quantity' => $item->quantity,
-            ])->all();
-
         $supplierId = $validated['supplier_id']
             ?? ($quotation ? $quotationService->preferredSupplierId($quotation) : null);
 
-        if ($quotation && empty($validated['items']) && $quotation->items->isEmpty()) {
+        $items = $validated['items'] ?? ($quotation ? $quotation->items->map(fn ($it) => [
+            'product_id' => $it->producto_id,
+            'name' => $it->name,
+            'quantity' => $it->quantity,
+            'unit_price' => $it->unit_price,
+        ])->all() : []);
+
+        if (empty($items)) {
             throw ValidationException::withMessages([
-                'items' => 'La cotización no tiene ítems para copiar en la orden de compra.',
+                'items' => 'La orden de compra debe incluir al menos un producto.',
             ]);
         }
 
-        if ($quotation && $supplierId === null) {
+        if ($supplierId === null) {
             throw ValidationException::withMessages([
                 'supplier_id' => 'La cotización no tiene proveedores contactados para asignar a la orden de compra.',
             ]);
         }
 
         $purchase = DB::transaction(function () use ($validated, $request, $quotation, $quotationService, $items, $supplierId) {
-            $items = collect($items);
+            $itemsCollect = collect($items);
 
-            $total = $items->contains(fn (array $item) => ! isset($item['unit_price']))
+            $total = $itemsCollect->contains(fn (array $item) => ! isset($item['unit_price']))
                 ? null
-                : $items->sum(fn (array $item) => $item['unit_price'] * $item['quantity']);
+                : $itemsCollect->sum(fn (array $item) => $item['unit_price'] * $item['quantity']);
 
-            $purchase = Purchase::create([
-                'code' => Purchase::generateUniqueCode(),
-                'supplier_id' => $supplierId,
-                'created_by' => $request->user()->id,
-                'quotation_id' => $quotation?->id,
-                'status' => PurchaseStateMachine::STATUS_PENDING,
-                'quotation_reference' => $validated['quotation_reference'] ?? $quotation?->code,
-                'expected_at' => $validated['expected_at'] ?? null,
-                'notes' => $validated['notes'] ?? null,
-                'total' => $total,
+            $carreraId = $request->user()?->carreras()->first()?->id ?? Carrera::first()?->id ?? 1;
+            $titulo = $validated['notes'] ?? ('Orden de Compra ' . date('d/m/Y H:i'));
+
+            $purchase = ProcesoCotizacion::create([
+                'usuario_id' => $request->user()->id,
+                'carrera_id' => $carreraId,
+                'titulo_proceso' => $titulo,
+                'estado' => PurchaseStateMachine::STATUS_PENDING,
             ]);
 
-            foreach ($items as $item) {
-                $purchase->items()->create([
-                    'product_id' => $item['product_id'] ?? null,
-                    'name' => $item['name'],
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'] ?? null,
+            $cotizacion = Cotizacion::create([
+                'proceso_cotizacion_id' => $purchase->id,
+                'proveedor_id' => $supplierId,
+                'numero_cotizacion' => $validated['quotation_reference'] ?? $quotation?->code,
+                'monto_total' => $total,
+                'estado' => 'adjudicada',
+                'fecha_envio' => now(),
+            ]);
+
+            foreach ($itemsCollect as $item) {
+                CotizacionItem::create([
+                    'cotizacion_id' => $cotizacion->id,
+                    'producto_id' => $item['product_id'] ?? Producto::first()?->id ?? 1,
+                    'cantidad_solicitada' => $item['quantity'],
+                    'precio_unitario_ofertado' => $item['unit_price'] ?? null,
                 ]);
             }
 
             if ($quotation) {
-                // La cotización aprobada queda vinculada y convertida en OC.
                 $quotationService->markAsConverted($quotation, $purchase);
             }
 
             return $purchase;
         });
 
-        return (new PurchaseResource($purchase->load(['supplier', 'items', 'quotation'])))
+        return (new PurchaseResource($purchase->load(['cotizaciones.proveedor', 'cotizaciones.items.producto'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -165,21 +162,19 @@ class PurchaseController extends Controller
     /**
      * Display the specified purchase order with its items.
      */
-    public function show(Purchase $purchase): PurchaseResource
+    public function show(ProcesoCotizacion $purchase): PurchaseResource
     {
         Gate::authorize('view', $purchase);
 
-        return new PurchaseResource($purchase->load(['supplier', 'items', 'creator']));
+        return new PurchaseResource($purchase->load(['cotizaciones.proveedor', 'cotizaciones.items.producto', 'usuario']));
     }
 
     /**
      * Advance the purchase status through the state machine (REQ-08).
-     *
-     * pendiente -> en_camino -> completa
      */
     public function updateStatus(
         UpdatePurchaseStatusRequest $request,
-        Purchase $purchase,
+        ProcesoCotizacion $purchase,
         PurchaseService $purchaseService
     ): JsonResponse {
         $toStatus = $request->validated('status');
@@ -193,20 +188,16 @@ class PurchaseController extends Controller
         return response()->json([
             'message' => "Estado de la orden de compra actualizado a \"{$purchase->status}\".",
             'allowed_transitions' => PurchaseStateMachine::allowedFrom($purchase->status),
-            'purchase' => new PurchaseResource($purchase->load(['supplier', 'items'])),
+            'purchase' => new PurchaseResource($purchase->load(['cotizaciones.proveedor', 'cotizaciones.items.producto'])),
         ]);
     }
 
     /**
-     * Mark the purchase as `completa` by scanning the dispatch guide /
-     * arrival invoice (REQ-08).
-     *
-     * On completion it notifies the warehouse keeper (PAN-01) to physically
-     * receive the items into stock.
+     * Mark the purchase as `completa` by scanning the dispatch guide.
      */
     public function arrivalScan(
         ScanArrivalRequest $request,
-        Purchase $purchase,
+        ProcesoCotizacion $purchase,
         PurchaseService $purchaseService,
         InvoiceOcrService $ocrService
     ): JsonResponse {
@@ -216,11 +207,9 @@ class PurchaseController extends Controller
 
         if ($request->hasFile('document')) {
             $file = $request->file('document');
-
             $attributes['arrival_document'] = $file->store('purchases/arrival', 'public');
 
             if ($invoiceNumber === null) {
-                // Extrae el número de factura desde el documento escaneado (OCR).
                 $invoiceNumber = $ocrService->extractProductsFromInvoice($file)['invoice_number'];
             }
         }
@@ -241,22 +230,20 @@ class PurchaseController extends Controller
 
         return response()->json([
             'message' => "Orden de compra {$purchase->code} completada. El pañolero fue notificado para el ingreso físico a stock.",
-            'guide_number' => $purchase->guide_number,
-            'invoice_number' => $purchase->invoice_number,
-            'arrival_document' => $purchase->arrival_document,
-            'received_at' => $purchase->received_at?->toIso8601String(),
-            'purchase' => new PurchaseResource($purchase->load(['supplier', 'items'])),
+            'guide_number' => $attributes['guide_number'] ?? null,
+            'invoice_number' => $attributes['invoice_number'] ?? null,
+            'arrival_document' => $attributes['arrival_document'] ?? null,
+            'received_at' => now()->toIso8601String(),
+            'purchase' => new PurchaseResource($purchase->load(['cotizaciones.proveedor', 'cotizaciones.items.producto'])),
         ]);
     }
 
     /**
      * Response for transitions that violate the state machine.
-     *
-     * @return JsonResponse<int, array<string, mixed>>
      */
     private function invalidTransitionResponse(
         InvalidPurchaseStatusTransition $e,
-        Purchase $purchase
+        ProcesoCotizacion $purchase
     ): JsonResponse {
         return response()->json([
             'message' => $e->getMessage(),

@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Models\User;
+use App\Models\Usuario;
 use Illuminate\Auth\Access\Response;
 
 class UserPolicy
@@ -10,7 +10,7 @@ class UserPolicy
     /**
      * Determine whether the user can view any models.
      */
-    public function viewAny(User $user): bool
+    public function viewAny(Usuario $user): bool
     {
         return $user->isAdmin();
     }
@@ -18,7 +18,7 @@ class UserPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, User $model): bool
+    public function view(Usuario $user, mixed $model): bool
     {
         return $user->isAdmin();
     }
@@ -26,7 +26,7 @@ class UserPolicy
     /**
      * Determine whether the user can create models.
      */
-    public function create(User $user): bool
+    public function create(Usuario $user): bool
     {
         return $user->isAdmin();
     }
@@ -34,7 +34,7 @@ class UserPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, User $model): bool
+    public function update(Usuario $user, mixed $model): bool
     {
         return $user->isAdmin();
     }
@@ -42,7 +42,7 @@ class UserPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, User $model): Response
+    public function delete(Usuario $user, mixed $model): Response
     {
         if (! $user->isAdmin()) {
             return Response::deny('No tienes permisos de administrador.');
@@ -58,7 +58,7 @@ class UserPolicy
     /**
      * Determine whether the user can update the status of the model.
      */
-    public function updateStatus(User $user, User $model): Response
+    public function updateStatus(Usuario $user, mixed $model): Response
     {
         if (! $user->isAdmin()) {
             return Response::deny('No tienes permisos de administrador.');

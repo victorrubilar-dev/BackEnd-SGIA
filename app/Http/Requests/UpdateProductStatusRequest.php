@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Product;
+use App\Models\Producto;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateProductStatusRequest extends FormRequest

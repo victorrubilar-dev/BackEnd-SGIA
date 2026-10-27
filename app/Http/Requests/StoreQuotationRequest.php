@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Quotation;
+use App\Models\ProcesoCotizacion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -10,7 +10,7 @@ class StoreQuotationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create', Quotation::class) ?? false;
+        return $this->user()?->can('create', ProcesoCotizacion::class) ?? false;
     }
 
     public function rules(): array
@@ -18,14 +18,16 @@ class StoreQuotationRequest extends FormRequest
         return [
             // Mínimo 1 producto con cantidad positiva
             'products' => ['required', 'array', 'min:1'],
-            'products.*.id' => ['required', 'integer', 'exists:products,id'],
+            'products.*.id' => ['required', 'integer', 'exists:productos,id'],
             'products.*.quantity' => ['required', 'integer', 'min:1'],
             'products.*.name' => ['sometimes', 'string', 'max:255'],
 
             // Mínimo 3 proveedores distintos
             'supplier_ids' => ['required', 'array', 'min:3', 'distinct'],
-            'supplier_ids.*' => ['required', 'integer', Rule::exists('suppliers', 'id')],
+            'supplier_ids.*' => ['required', 'integer', Rule::exists('proveedores', 'id')],
 
+            'title' => ['nullable', 'string', 'max:150'],
+            'titulo' => ['nullable', 'string', 'max:150'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'expires_at' => ['nullable', 'date'],
         ];

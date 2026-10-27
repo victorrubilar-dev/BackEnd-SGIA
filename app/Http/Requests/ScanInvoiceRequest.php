@@ -2,14 +2,14 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Product;
+use App\Models\Producto;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ScanInvoiceRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('scanInvoice', Product::class) ?? false;
+        return $this->user()?->can('scanInvoice', Producto::class) ?? false;
     }
 
     public function rules(): array

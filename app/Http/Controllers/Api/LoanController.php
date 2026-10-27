@@ -8,7 +8,7 @@ use App\Http\Requests\RejectLoanRequest;
 use App\Http\Requests\StoreLoanCheckoutRequest;
 use App\Http\Requests\StoreLoanRequest;
 use App\Http\Resources\LoanResource;
-use App\Models\Loan;
+use App\Models\Prestamo;
 use App\Services\LoanService;
 use App\Services\LoanStateMachine;
 use Illuminate\Http\JsonResponse;
@@ -21,15 +21,12 @@ class LoanController extends Controller
 {
     /**
      * Registra una solicitud remota de préstamo del docente (REQ-09).
-     *
-     * Body: items (product_id + quantity), subject, room, loan_date.
-     * La solicitud nace en estado `pendiente` hasta que el pañol la procese.
      */
     public function store(StoreLoanRequest $request, LoanService $loanService): JsonResponse
     {
         $loan = $loanService->createRequest($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load('items')))->resolve();
+        $data = (new LoanResource($loan->load(['items.equipo.producto'])))->resolve();
 
         return response()->json([
             'message' => 'Solicitud enviada correctamente.',
@@ -40,14 +37,12 @@ class LoanController extends Controller
 
     /**
      * Lista las solicitudes propias del docente autenticado (REQ-09).
-     *
-     * Query params: estado (alias: status), per_page.
      */
     public function myRequests(Request $request): AnonymousResourceCollection
     {
-        $query = Loan::where('requested_by', $request->user()->id)
-            ->with('items.product')
-            ->orderByDesc('created_at');
+        $query = Prestamo::where('profesor_id', $request->user()->id)
+            ->with(['items.equipo.producto'])
+            ->orderByDesc('id');
 
         $status = $request->input('estado', $request->input('status'));
 
@@ -58,7 +53,7 @@ class LoanController extends Controller
         }
 
         if ($status !== null) {
-            $query->where('status', $status);
+            $query->whereRaw('LOWER(estado) = ?', [strtolower($status)]);
         }
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -68,21 +63,13 @@ class LoanController extends Controller
 
     /**
      * Historial de préstamos con filtros (REQ-11).
-     *
-     * Query params: estado (alias status), insumo (alias product / product_id),
-     * profesor (alias teacher / borrower), sala (alias room), tipo (alias type),
-     * search (código o asignatura), per_page.
-     *
-     * Cada préstamo incluye el campo explícito `status` más los booleanos
-     * `is_processed` / `is_in_progress` para que el cliente diferencie
-     * visualmente los préstamos procesados de los que siguen en proceso.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        Gate::authorize('viewAny', Loan::class);
+        Gate::authorize('viewAny', Prestamo::class);
 
-        $query = Loan::with(['items.product.location', 'requester'])
-            ->orderByDesc('created_at');
+        $query = Prestamo::with(['items.equipo.producto.equipos.estante.sala', 'profesor', 'despachadoPor', 'recibidoPor'])
+            ->orderByDesc('id');
 
         $status = $request->input('estado', $request->input('status'));
 
@@ -93,25 +80,25 @@ class LoanController extends Controller
         }
 
         if ($status !== null) {
-            $query->where('status', $status);
+            $query->whereRaw('LOWER(estado) = ?', [strtolower($status)]);
         }
 
         $type = $request->input('tipo', $request->input('type'));
 
-        if ($type !== null && ! in_array($type, [Loan::TYPE_REMOTE, Loan::TYPE_DIRECT], true)) {
+        if ($type !== null && ! in_array($type, [Prestamo::TYPE_REMOTE, Prestamo::TYPE_DIRECT], true)) {
             throw ValidationException::withMessages([
                 'tipo' => 'El tipo debe ser: remoto o presencial.',
             ]);
         }
 
         if ($type !== null) {
-            $query->where('type', $type);
+            $query->whereRaw('LOWER(tipo_prestamo) = ?', [strtolower($type)]);
         }
 
         $room = $request->input('sala') ?? $request->input('room');
 
         if ($room !== null && $room !== '') {
-            $query->where('room', 'ilike', '%' . $room . '%');
+            $query->where('observaciones', 'ilike', '%' . $room . '%');
         }
 
         $teacher = $request->input('profesor')
@@ -121,32 +108,29 @@ class LoanController extends Controller
         if ($teacher !== null && $teacher !== '') {
             $like = '%' . $teacher . '%';
             $query->where(function ($q) use ($like) {
-                $q->where('borrower_name', 'ilike', $like)
-                    ->orWhereHas('requester', fn ($qq) => $qq->where('name', 'ilike', $like));
+                $q->where('observaciones', 'ilike', $like)
+                    ->orWhereHas('profesor', fn ($qq) => $qq->where('nombre', 'ilike', $like));
             });
         }
 
         if ($request->filled('product_id')) {
-            $query->whereHas(
-                'items',
-                fn ($q) => $q->where('product_id', $request->integer('product_id'))
-            );
+            $productId = $request->integer('product_id');
+            $query->whereHas('items.equipo', fn ($q) => $q->where('producto_id', $productId));
         } else {
             $product = $request->input('insumo') ?? $request->input('product');
 
             if ($product !== null && $product !== '') {
                 $like = '%' . $product . '%';
-                $query->whereHas('items', function ($q) use ($like) {
-                    $q->where('name', 'ilike', $like)
-                        ->orWhereHas('product', fn ($qq) => $qq->where('name', 'ilike', $like));
-                });
+                $query->whereHas('items.equipo.producto', fn ($q) => $q->where('nombre', 'ilike', $like));
             }
         }
 
         if ($request->filled('search')) {
             $like = '%' . $request->string('search') . '%';
-            $query->where(fn ($q) => $q->where('code', 'ilike', $like)
-                ->orWhere('subject', 'ilike', $like));
+            $query->where(function ($q) use ($like) {
+                $q->where('id', 'ilike', $like)
+                  ->orWhere('observaciones', 'ilike', $like);
+            });
         }
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -155,32 +139,28 @@ class LoanController extends Controller
     }
 
     /**
-     * Detalle de un préstamo: ítems con stock y ubicación, personas
-     * involucradas y transiciones permitidas (REQ-11).
+     * Detalle de un préstamo.
      */
-    public function show(Loan $loan): LoanResource
+    public function show(Prestamo $loan): LoanResource
     {
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'requester', 'approver', 'processor'])
+            $loan->load(['items.equipo.producto.equipos.estante.sala', 'profesor', 'despachadoPor', 'recibidoPor'])
         );
     }
 
     /**
      * Solicitudes remotas pendientes de despachar en el pañol (REQ-10).
-     *
-     * Cada ítem incluye la cantidad solicitada, el stock disponible y la
-     * ubicación física (sala / cajón) del producto.
      */
     public function pending(Request $request): AnonymousResourceCollection
     {
-        Gate::authorize('pending', Loan::class);
+        Gate::authorize('pending', Prestamo::class);
 
-        $query = Loan::where('status', LoanStateMachine::STATUS_PENDING)
-            ->where('type', Loan::TYPE_REMOTE)
-            ->with(['items.product.location', 'requester'])
-            ->orderBy('created_at');
+        $query = Prestamo::whereRaw('LOWER(estado) = ?', [LoanStateMachine::STATUS_PENDING])
+            ->whereRaw('LOWER(tipo_prestamo) = ?', [Prestamo::TYPE_REMOTE])
+            ->with(['items.equipo.producto.equipos.estante.sala', 'profesor'])
+            ->orderBy('id');
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
 
@@ -190,7 +170,7 @@ class LoanController extends Controller
     /**
      * Aprueba la solicitud: descuenta el stock y notifica al docente (REQ-10).
      */
-    public function approve(Request $request, Loan $loan, LoanService $loanService): JsonResponse
+    public function approve(Request $request, Prestamo $loan, LoanService $loanService): JsonResponse
     {
         Gate::authorize('approve', $loan);
 
@@ -203,14 +183,14 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} aprobado: stock descontado y docente notificado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->fresh(['items.product'])),
+            'loan' => new LoanResource($loan->fresh(['items.equipo.producto'])),
         ]);
     }
 
     /**
      * Rechaza la solicitud indicando el motivo y notifica al docente (REQ-10).
      */
-    public function reject(RejectLoanRequest $request, Loan $loan, LoanService $loanService): JsonResponse
+    public function reject(RejectLoanRequest $request, Prestamo $loan, LoanService $loanService): JsonResponse
     {
         try {
             $loanService->reject($loan, $request->user(), $request->validated('rejection_reason'));
@@ -226,10 +206,9 @@ class LoanController extends Controller
     }
 
     /**
-     * Confirma la entrega material al docente: `en_proceso` -> `procesado`
-     * y notifica al solicitante (REQ-10).
+     * Confirma la entrega material al docente: `en_proceso` -> `procesado`.
      */
-    public function deliver(Request $request, Loan $loan, LoanService $loanService): JsonResponse
+    public function deliver(Request $request, Prestamo $loan, LoanService $loanService): JsonResponse
     {
         Gate::authorize('deliver', $loan);
 
@@ -247,36 +226,29 @@ class LoanController extends Controller
     }
 
     /**
-     * Registra un préstamo presencial directo (profesor/estudiante, insumo,
-     * cantidad, asignatura, sala y fecha): descuenta stock y nace `procesado`
-     * (REQ-10).
+     * Registra un préstamo presencial directo en el pañol.
      */
     public function storeCheckout(StoreLoanCheckoutRequest $request, LoanService $loanService): JsonResponse
     {
         $loan = $loanService->checkout($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load(['items.product'])))->resolve();
+        $data = (new LoanResource($loan->load(['items.equipo.producto'])))->resolve();
 
         return response()->json([
-            'message' => 'Préstamo presencial registrado y stock descontado.',
+            'message' => 'Préstamo presencial registrado exitosamente.',
             'loan' => $data,
             'data' => $data,
         ], 201);
     }
 
     /**
-     * Response for transitions that violate the state machine.
-     *
-     * @return JsonResponse<int, array<string, mixed>>
+     * Respuesta homogénea cuando una transición no está permitida.
      */
-    private function invalidTransitionResponse(
-        InvalidLoanStatusTransition $e,
-        Loan $loan
-    ): JsonResponse {
+    private function invalidTransitionResponse(InvalidLoanStatusTransition $e, Prestamo $loan): JsonResponse
+    {
         return response()->json([
             'message' => $e->getMessage(),
             'current_status' => $loan->status,
-            'attempted_status' => $e->to,
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
         ], 422);
     }

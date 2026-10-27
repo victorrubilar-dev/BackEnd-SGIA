@@ -4,20 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
-use App\Http\Requests\UpdateLocationRequest;
 use App\Http\Requests\UpdateProductRequest;
-use App\Http\Requests\UpdateProductStatusRequest;
-use App\Http\Resources\CajonResource;
-use App\Http\Resources\LocationResource;
 use App\Http\Resources\ProductResource;
-use App\Models\Cajon;
-use App\Models\Location;
-use App\Models\Product;
+use App\Models\Carrera;
+use App\Models\Categoria;
+use App\Models\Equipo;
+use App\Models\Estante;
+use App\Models\Producto;
 use App\Services\BarcodeService;
-use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class ProductController extends Controller
@@ -27,62 +25,30 @@ class ProductController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        Gate::authorize('viewAny', Product::class);
+        Gate::authorize('viewAny', Producto::class);
 
-        $query = Product::with(['supplier', 'cajon.location', 'location']);
+        $query = Producto::with(['categoria', 'carrera', 'equipos.estante.sala']);
 
         if ($request->filled('search')) {
             $search = '%' . $request->string('search') . '%';
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'ilike', $search)
-                  ->orWhere('barcode', 'ilike', $search)
-                  ->orWhere('description', 'ilike', $search);
+                $q->where('nombre', 'ilike', $search)
+                  ->orWhere('sku', 'ilike', $search)
+                  ->orWhere('tipo', 'ilike', $search);
             });
         }
 
-        if ($request->filled('area')) {
-            $query->where('area', $request->string('area'));
+        if ($request->filled('carrera')) {
+            $carreraCode = $request->string('carrera');
+            $query->whereHas('carrera', fn ($cq) => $cq->where('codigo', $carreraCode));
         }
 
-        if ($request->has('is_active')) {
-            $query->where('is_active', $request->boolean('is_active'));
+        if ($request->filled('categoria_id')) {
+            $query->where('categoria_id', $request->integer('categoria_id'));
         }
 
-        if ($request->filled('supplier_id')) {
-            $query->where('supplier_id', $request->integer('supplier_id'));
-        }
-
-        if ($request->filled('cajon_id')) {
-            $query->where('cajon_id', $request->integer('cajon_id'));
-        }
-
-        if ($request->filled('location_id')) {
-            $locationId = $request->integer('location_id');
-            $query->where(function ($q) use ($locationId) {
-                $q->where('location_id', $locationId)
-                  ->orWhereHas('cajon', fn ($cq) => $cq->where('location_id', $locationId));
-            });
-        }
-
-        // Filtro por ubicación: sala/ubicacion y/o cajón
-        if ($request->filled('sala') || $request->filled('cajon')) {
-            $query->where(function ($q) use ($request) {
-                if ($request->filled('sala')) {
-                    $sala = '%' . $request->string('sala') . '%';
-                    $q->whereHas('location', fn ($lq) => $lq->where('sala', 'ilike', $sala)->orWhere('nombre', 'ilike', $sala))
-                      ->orWhereHas('cajon.location', fn ($lq) => $lq->where('sala', 'ilike', $sala)->orWhere('nombre', 'ilike', $sala));
-                }
-                if ($request->filled('cajon')) {
-                    $cajon = '%' . $request->string('cajon') . '%';
-                    $q->whereHas('cajon', fn ($cq) => $cq->where('codigo', 'ilike', $cajon))
-                      ->orWhereHas('location', fn ($lq) => $lq->where('cajon', 'ilike', $cajon));
-                }
-            });
-        }
-
-        // Filtro de stock crítico
         if ($request->boolean('critical_only')) {
-            $query->whereColumn('quantity', '<=', 'stock_minimo');
+            $query->whereColumn('stock_actual', '<=', 'stock_minimo');
         }
 
         $perPage = max(1, min(100, $request->integer('per_page', 15)));
@@ -96,62 +62,48 @@ class ProductController extends Controller
      */
     public function store(
         StoreProductRequest $request,
-        BarcodeService $barcodeService,
-        StockAlertService $stockAlertService
+        BarcodeService $barcodeService
     ): JsonResponse {
         $validated = $request->validated();
 
-        // Generación automática de código de barras único si no se proporciona
-        if (empty($validated['barcode'])) {
-            $validated['barcode'] = $barcodeService->generateUniqueCode();
-        }
+        $nombre = $validated['nombre'] ?? $validated['name'];
+        $stock = (int) ($validated['stock_actual'] ?? $validated['quantity'] ?? 0);
+        $sku = $validated['sku'] ?? $validated['barcode'] ?? null;
+        $tipo = $validated['tipo'] ?? 'equipo';
+        $categoriaId = $validated['categoria_id'] ?? Categoria::first()?->id ?? 1;
+        $carreraId = $validated['carrera_id'] ?? $request->user()?->carreras->first()?->id ?? Carrera::first()?->id ?? 1;
 
-        // Asignación de cajón y ubicación
-        if (! empty($validated['sala']) && ! empty($validated['cajon'])) {
-            $location = Location::firstOrCreate(
-                ['nombre' => $validated['sala']],
-                [
-                    'sala' => $validated['sala'],
-                    'tipo' => 'sala',
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $request->user()?->id,
-                ]
-            );
-            $cajon = Cajon::firstOrCreate(
-                ['location_id' => $location->id, 'codigo' => $validated['cajon']],
-                [
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $request->user()?->id,
-                ]
-            );
-            $validated['location_id'] = $location->id;
-            $validated['cajon_id'] = $cajon->id;
-        } elseif (! empty($validated['cajon_id'])) {
-            $cajon = Cajon::find($validated['cajon_id']);
-            if ($cajon) {
-                $validated['location_id'] = $cajon->location_id;
+        $carrera = Carrera::find($carreraId);
+        $carreraCodigo = $carrera ? $carrera->codigo : 'ISD';
+
+        $prefijo = match (strtolower($tipo)) {
+            'insumo' => 'INS',
+            'maqueta' => 'MAQ',
+            default => 'PRO',
+        };
+
+        if (empty($sku)) {
+            try {
+                $result = DB::select("SELECT fn_generar_codigo_sgia(?, ?) as codigo", [$prefijo, $carreraCodigo]);
+                $sku = $result[0]->codigo ?? $barcodeService->generateUniqueCode();
+            } catch (\Throwable) {
+                $sku = $barcodeService->generateUniqueCode();
             }
         }
 
-        unset($validated['sala'], $validated['cajon'], $validated['descripcion']);
+        $producto = Producto::create([
+            'nombre' => $nombre,
+            'sku' => $sku,
+            'tipo' => $tipo,
+            'categoria_id' => $categoriaId,
+            'carrera_id' => $carreraId,
+            'stock_actual' => $stock,
+            'stock_minimo' => $validated['stock_minimo'] ?? 5,
+            'precio_referencia' => $validated['precio_referencia'] ?? null,
+            'foto_url' => $validated['foto_url'] ?? $validated['photo_url'] ?? null,
+        ]);
 
-        if (! isset($validated['is_active'])) {
-            $validated['is_active'] = true;
-        }
-
-        if (! isset($validated['stock_minimo'])) {
-            $validated['stock_minimo'] = 5;
-        }
-
-        $validated['created_by'] = $request->user()?->id;
-        $validated['updated_by'] = $request->user()?->id;
-
-        $product = Product::create($validated);
-
-        // Disparar chequeo de alertas de stock si corresponde
-        $stockAlertService->checkStock($product);
-
-        return (new ProductResource($product->load(['supplier', 'cajon.location', 'location'])))
+        return (new ProductResource($producto->load(['categoria', 'carrera', 'equipos'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -159,11 +111,11 @@ class ProductController extends Controller
     /**
      * Display the specified product.
      */
-    public function show(Product $product): ProductResource
+    public function show(Producto $product): ProductResource
     {
         Gate::authorize('view', $product);
 
-        return new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'creator', 'updater']));
+        return new ProductResource($product->load(['categoria', 'carrera', 'equipos.estante.sala']));
     }
 
     /**
@@ -171,54 +123,48 @@ class ProductController extends Controller
      */
     public function update(
         UpdateProductRequest $request,
-        Product $product,
-        StockAlertService $stockAlertService
+        Producto $product
     ): ProductResource {
         $validated = $request->validated();
 
-        if (! empty($validated['sala']) && ! empty($validated['cajon'])) {
-            $location = Location::firstOrCreate(
-                ['nombre' => $validated['sala']],
-                [
-                    'sala' => $validated['sala'],
-                    'tipo' => 'sala',
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $request->user()?->id,
-                ]
-            );
-            $cajon = Cajon::firstOrCreate(
-                ['location_id' => $location->id, 'codigo' => $validated['cajon']],
-                [
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $request->user()?->id,
-                ]
-            );
-            $validated['location_id'] = $location->id;
-            $validated['cajon_id'] = $cajon->id;
-        } elseif (! empty($validated['cajon_id'])) {
-            $cajon = Cajon::find($validated['cajon_id']);
-            if ($cajon) {
-                $validated['location_id'] = $cajon->location_id;
-            }
+        $data = [];
+        if (isset($validated['nombre']) || isset($validated['name'])) {
+            $data['nombre'] = $validated['nombre'] ?? $validated['name'];
+        }
+        if (isset($validated['sku']) || isset($validated['barcode'])) {
+            $data['sku'] = $validated['sku'] ?? $validated['barcode'];
+        }
+        if (isset($validated['stock_actual']) || isset($validated['quantity'])) {
+            $data['stock_actual'] = $validated['stock_actual'] ?? $validated['quantity'];
+        }
+        if (isset($validated['stock_minimo'])) {
+            $data['stock_minimo'] = $validated['stock_minimo'];
+        }
+        if (array_key_exists('categoria_id', $validated)) {
+            $data['categoria_id'] = $validated['categoria_id'];
+        }
+        if (array_key_exists('carrera_id', $validated)) {
+            $data['carrera_id'] = $validated['carrera_id'];
+        }
+        if (isset($validated['tipo'])) {
+            $data['tipo'] = $validated['tipo'];
+        }
+        if (array_key_exists('precio_referencia', $validated)) {
+            $data['precio_referencia'] = $validated['precio_referencia'];
+        }
+        if (isset($validated['foto_url']) || isset($validated['photo_url'])) {
+            $data['foto_url'] = $validated['foto_url'] ?? $validated['photo_url'];
         }
 
-        unset($validated['sala'], $validated['cajon'], $validated['descripcion']);
+        $product->update($data);
 
-        $validated['updated_by'] = $request->user()?->id;
-        $product->update($validated);
-
-        // Si se actualizó la cantidad o el stock mínimo, evaluar alertas
-        if (isset($validated['quantity']) || isset($validated['stock_minimo'])) {
-            $stockAlertService->checkStock($product);
-        }
-
-        return new ProductResource($product->load(['supplier', 'cajon.location', 'location']));
+        return new ProductResource($product->load(['categoria', 'carrera', 'equipos.estante.sala']));
     }
 
     /**
      * Remove the specified product from storage.
      */
-    public function destroy(Product $product): JsonResponse
+    public function destroy(Producto $product): JsonResponse
     {
         Gate::authorize('delete', $product);
 
@@ -232,109 +178,69 @@ class ProductController extends Controller
     /**
      * Update active status of the product.
      */
-    public function updateStatus(UpdateProductStatusRequest $request, Product $product): JsonResponse
+    public function updateStatus(Request $request, Producto $product): JsonResponse
     {
-        $product->forceFill([
-            'is_active' => $request->boolean('is_active'),
-            'updated_by' => $request->user()?->id,
-        ])->save();
+        Gate::authorize('updateStatus', $product);
 
         return response()->json([
             'message' => 'Estado de producto actualizado exitosamente.',
-            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location'])),
+            'product' => new ProductResource($product->load(['categoria', 'carrera', 'equipos'])),
         ]);
     }
 
     /**
      * Get location details for the product (REQ-05).
      */
-    public function location(Product $product): JsonResponse
+    public function location(Producto $product): JsonResponse
     {
         Gate::authorize('view', $product);
 
-        $location = $product->location ?? $product->cajon?->location;
-        $cajon = $product->cajon;
+        $product->loadMissing(['equipos.estante.sala']);
+        $equipos = $product->equipos;
 
-        if (! $location && ! $cajon) {
+        if ($equipos->isEmpty()) {
             return response()->json([
-                'message' => 'El producto no tiene una ubicación física asignada.',
-                'location' => null,
-                'cajon' => null,
-            ], 404);
+                'message' => 'El producto no tiene unidades o ubicaciones físicas asignadas.',
+                'product_id' => $product->id,
+                'product_name' => $product->nombre,
+                'ubicaciones' => [],
+            ], 200);
         }
+
+        $ubicaciones = $equipos->map(fn ($e) => [
+            'equipo_id' => $e->id,
+            'codigo_barras' => $e->codigo_barras,
+            'numero_serie' => $e->numero_serie,
+            'estado' => $e->estado,
+            'estante_id' => $e->estante_id,
+            'estante' => $e->estante?->codigo,
+            'sala_id' => $e->estante?->sala_id,
+            'sala' => $e->estante?->sala?->nombre,
+        ]);
 
         return response()->json([
             'product_id' => $product->id,
-            'product_name' => $product->name,
-            'cajon' => $cajon ? new CajonResource($cajon->load('location')) : null,
-            'location' => $location ? new LocationResource($location) : null,
-        ]);
-    }
-
-    /**
-     * Update or assign location/cajon for the product (REQ-05).
-     */
-    public function updateLocation(UpdateLocationRequest $request, Product $product): JsonResponse
-    {
-        $validated = $request->validated();
-        $userId = $request->user()?->id;
-
-        if (! empty($validated['cajon_id'])) {
-            $cajon = Cajon::findOrFail($validated['cajon_id']);
-            $product->forceFill([
-                'cajon_id' => $cajon->id,
-                'location_id' => $cajon->location_id,
-                'updated_by' => $userId,
-            ])->save();
-        } elseif (! empty($validated['location_id'])) {
-            $product->forceFill([
-                'location_id' => $validated['location_id'],
-                'updated_by' => $userId,
-            ])->save();
-        } elseif (! empty($validated['sala']) && ! empty($validated['cajon'])) {
-            $location = Location::firstOrCreate(
-                ['nombre' => $validated['sala']],
-                [
-                    'sala' => $validated['sala'],
-                    'tipo' => 'sala',
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $userId,
-                ]
-            );
-            $cajon = Cajon::firstOrCreate(
-                ['location_id' => $location->id, 'codigo' => $validated['cajon']],
-                [
-                    'descripcion' => $request->input('descripcion'),
-                    'created_by' => $userId,
-                ]
-            );
-            $product->forceFill([
-                'cajon_id' => $cajon->id,
-                'location_id' => $location->id,
-                'updated_by' => $userId,
-            ])->save();
-        }
-
-        return response()->json([
-            'message' => 'Ubicación física actualizada exitosamente.',
-            'product' => new ProductResource($product->load(['cajon.location', 'location', 'supplier'])),
+            'product_name' => $product->nombre,
+            'ubicaciones' => $ubicaciones,
         ]);
     }
 
     /**
      * Get barcode representation (Code128 SVG and URI) for the product (REQ-04).
      */
-    public function barcode(Product $product, BarcodeService $barcodeService): JsonResponse
+    public function barcode(Producto $product, BarcodeService $barcodeService): JsonResponse
     {
         Gate::authorize('view', $product);
 
+        $barcode = $product->sku ?? $product->equipos->first()?->codigo_barras ?? 'SGIA-000000';
+
         return response()->json([
             'product_id' => $product->id,
-            'product_name' => $product->name,
-            'barcode' => $product->barcode,
-            'barcode_svg' => $barcodeService->generateSvg($product->barcode),
-            'barcode_image_uri' => $barcodeService->generateBarcodeImageUri($product->barcode),
-            'barcode_html' => $barcodeService->generateHtml($product->barcode),
+            'product_name' => $product->nombre,
+            'barcode' => $barcode,
+            'barcode_svg' => $barcodeService->generateSvg($barcode),
+            'barcode_image_uri' => $barcodeService->generateBarcodeImageUri($barcode),
+            'barcode_html' => $barcodeService->generateHtml($barcode),
         ]);
     }
 }

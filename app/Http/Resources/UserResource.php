@@ -16,14 +16,22 @@ class UserResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'nombre' => $this->nombre ?? $this->name,
+            'name' => $this->nombre ?? $this->name,
             'email' => $this->email,
-            'role' => $this->role,
-            'area' => $this->area,
-            'is_active' => (bool) $this->is_active,
-            'last_login_at' => $this->last_login_at?->toIso8601String(),
+            'rol_id' => $this->rol_id,
+            'rol' => $this->rol?->nombre,
+            'role' => $this->role ?? $this->rol?->nombre,
+            'panol_id' => $this->panol_id,
+            'panol' => $this->panol?->nombre,
+            'activo' => (bool) ($this->activo ?? $this->is_active),
+            'is_active' => (bool) ($this->activo ?? $this->is_active),
+            'carreras' => $this->relationLoaded('carreras') ? $this->carreras->map(fn ($c) => [
+                'id' => $c->id,
+                'codigo' => $c->codigo,
+                'nombre' => $c->nombre,
+            ]) : [],
             'created_at' => $this->created_at?->toIso8601String(),
-            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }
