@@ -21,10 +21,10 @@ Sin cambios de comportamiento.
 
 Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
-- [ ] `vendor/bin/pint` falla en ~90 archivos (`concat_space`, `not_operator_with_successor_space`, imports sin usar, migraciones antiguas). Decidir el estilo (Pint por defecto de Laravel) y ejecutar `pint` una sola vez.
-- [ ] Añadir un `pint.json` solo si se desvía del preset `laravel`.
+- [x] `vendor/bin/pint` falla en ~90 archivos (`concat_space`, `not_operator_with_successor_space`, imports sin usar, migraciones antiguas). Decidir el estilo (Pint por defecto de Laravel) y ejecutar `pint` una sola vez.
+- [x] Añadir un `pint.json` solo si se desvía del preset `laravel` (no hizo falta: se usa el preset por defecto).
 - [ ] Opcional: Larastan nivel 5 como `require-dev` y baseline para lo existente.
-- [ ] CI mínima (GitHub Actions): PostgreSQL service, `composer install`, `pint --test`, `php artisan test`.
+- [x] CI mínima (GitHub Actions): PostgreSQL service, `composer install`, `pint --test`, `php artisan test`.
 
 ## Fase 2 — Documentación y requisitos coherentes
 
