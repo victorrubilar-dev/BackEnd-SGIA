@@ -28,11 +28,11 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 2 — Documentación y requisitos coherentes
 
-- [ ] `TASKS/` mezcla formatos y tiene contradicciones. Ejemplo REQ-06: `Productos.md` pide notificación multicanal (in-app + push) a AD-01 y PAN-01; la versión antigua pedía email a DIR-01 y PAN-01. Fijar una sola definición.
-- [ ] Faltan en `TASKS/` los requisitos REQ-01 y los no funcionales (REQ-NF-01/02) citados por `Autenticación.md`; los módulos FU-01…FU-06 ya no están descritos en ningún sitio. Reconstruirlos o eliminar las referencias.
-- [ ] Un archivo `TASKS/*.md` por módulo, con la misma plantilla: `REQ-xx — título (FU, rol)` + checklist. `Autenticación.md` es una guía de implementación, no una lista de requisitos: separar.
-- [ ] Marcar como `[x]` solo lo que tiene test; hoy `Dashboards.md` marca REST como hecho pero describe GraphQL (ver fase 5).
-- [ ] Reconciliar `ENDPOINTS.md` con `php artisan route:list --path=api`; actualizarlo o generarlo.
+- [x] `TASKS/` tenía contradicciones. REQ-06 quedó definido como lo implementado: alerta a `AD-01` y `PAN-01` en `stock_minimo + 5` y `stock_minimo`; el envío por correo/push quedó como tarea pendiente. (La versión original pedía correo a DIR-01 y PAN-01: si es lo que se quiere, cambiarlo en fase 5.)
+- [x] Faltan en `TASKS/` los requisitos REQ-01 y los no funcionales (REQ-NF-01/02) citados por `Autenticación.md`; los módulos FU-01…FU-06 ya no están descritos en ningún sitio. Recuperados desde el `AGENTS.md` original (git) en `TASKS/README.md`, `TASKS/Autenticación.md` y `TASKS/Requisitos no funcionales.md`.
+- [x] Un archivo `TASKS/*.md` por módulo, con la misma plantilla: `REQ-xx — título (FU, rol)` + checklist. `Autenticación.md` es una guía de implementación, no una lista de requisitos: separado: la guía pasó a `docs/autenticacion.md`.
+- [x] Marcar como `[x]` solo lo que tiene test; hoy `Dashboards.md` marca REST como hecho pero describe GraphQL (ver fase 5).
+- [x] Reconciliar `ENDPOINTS.md` con `php artisan route:list --path=api`; REQ-12, 13 y 14 figuraban como pendientes y ya existen; los pendientes reales quedaron en una sola tabla.
 
 ## Fase 3 — Seguridad y configuración
 

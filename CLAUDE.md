@@ -49,7 +49,8 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 ## Documentación del proyecto
 
 - `ENDPOINTS.md`: catálogo de endpoints. Actualizarlo en el mismo cambio que modifique una ruta.
-- `TASKS/*.md`: requisitos (REQ-xx) por módulo con checkboxes. Marcar `[x]` solo cuando la tarea está hecha **y** tiene test.
+- `TASKS/`: requisitos (REQ-xx) por módulo con checkboxes; `TASKS/README.md` tiene el índice FU → archivo y la regla: marcar `[x]` solo si está hecho **y** tiene test.
+- `docs/autenticacion.md`: guía técnica de Sanctum y CORS.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
 - `README.md`: puesta en marcha para humanos.
 
@@ -57,5 +58,4 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 
 - `InvoiceOcrService` es un **stub**: devuelve datos fijos; no hay OCR real.
 - Las notificaciones solo usan el canal `broadcast`; no hay correo ni push real para alertas.
-- `TASKS/Dashboards.md` pide GraphQL (`/api/metrics`); lo implementado es REST (`/api/dashboard/*`).
-- `vendor/` está versionado en git por error (ver rework, fase 0).
+- Dashboards: el requisito original pedía GraphQL (`/api/metrics`); lo implementado es REST (`/api/dashboard/*`) y sin KPIs ni filtro por período.

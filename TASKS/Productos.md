@@ -1,5 +1,6 @@
-### REQ-03 — Alta/edición de productos vía escaneo de facturas (FU-02, DIR-01)
-- [x] Endpoint que reciba imagen/documento de factura y devuelva un borrador de producto(s) extraído(s) (nombre, cantidad, proveedor) para confirmación posterior. (El OCR/extracción puede ser un servicio externo invocado desde la API; definir en Tecnologías.)
+### REQ-03 — Alta/edición de productos vía escaneo de facturas (FU-02, DIR-01 y AD-01)
+- [x] Endpoint `POST /api/invoices/scan` (alias `/products/scan-invoice`) que recibe la factura y devuelve un borrador de productos.
+- [ ] Extracción real de la factura: hoy `InvoiceOcrService` devuelve datos fijos (ver `rework.md`, fase 5).
 - [x] Endpoint `POST /api/products` para confirmar el borrador y crear el producto (nombre, cantidad, proveedor, área, foto opcional).
 - [x] Endpoint `PATCH /api/products/{id}` para editar y `PATCH /api/products/{id}/status` para activar/desactivar.
 
@@ -18,6 +19,8 @@
 - [x] Seeder con ubicaciones y cajones precargados para pruebas.
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
-- [x] Definir `stock_minimo` por producto.
-- [x] Job/evento que dispare alerta cuando el stock llegue a `minimo + 5` y cuando llegue al `minimo`.
-- [x] Notificación multicanal (in-app/web + push a móvil) a usuarios AD-01 y PAN-01. (Canal de push a definir en Tecnologías.)
+- [x] Campo `stock_minimo` por producto.
+- [x] La alerta se dispara al llegar a `stock_minimo + 5` y al llegar a `stock_minimo`; se resuelve al recuperar stock.
+- [x] Destinatarios: usuarios activos `AD-01` y `PAN-01`.
+- [x] Registro de la alerta en BD y `GET /api/alerts/critical-stock` para el panel.
+- [ ] Envío por correo y push móvil: hoy la notificación solo usa el canal `broadcast` (ver `rework.md`, fase 5).

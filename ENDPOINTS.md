@@ -183,51 +183,52 @@
 
 ---
 
-## 🟡 Endpoints Pendientes (Por Implementar)
-
 ### 12. Fichas Técnicas de Equipos (`FU-05` / `REQ-12`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/equipment/{id}/specs` | Todos (`auth`) | Especificaciones técnicas de equipos, manual de usuario en S3, fecha de compra, vida útil estimada e historial. |
-| `PUT` | `/api/equipment/{id}/specs` | `DIR-01`, `AD-01` | Actualizar especificaciones técnicas y enlaces a manuales. |
-| `GET` | `/api/equipment/{id}/technical-sheet` | Todos (`auth`) | Genera y descarga la ficha técnica formal en PDF. |
-| `GET` | `/api/equipment/{id}/reports` | `DIR-01`, `PAN-01`, `AD-01` | Historial de hojas de vida, mantenciones y novedades del equipo descargables en PDF. |
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/equipment/{id}/technical-sheet` | Todos (`auth`) | Descarga la ficha técnica en PDF: datos del equipo, proveedor, ubicación física e historial de novedades. | ✅ Implementado |
+| `GET` | `/api/equipment/{id}/reports` | Todos (`auth`) | Informes de novedades del equipo, paginados en JSON o en PDF con `?format=pdf`.<br>**Query Params:** `severity` (`leve`, `media`, `critica`), `status`, `per_page` (1-100). | ✅ Implementado |
 
 ---
 
-### 13. Informes de Novedades y Fallas (`FU-05` / `REQ-13`)
+### 13. Informes de Novedades (`FU-05` / `REQ-13`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `POST` | `/api/incident-reports` | `PRO-01`, `PAN-01` | Reporte de equipo dañado o faltante durante clases o devolución.<br>**Body:** `product_id`, `description`, `severity` (`leve`, `media`, `critica`), `photo` (adjunto opcional). Cambia el ítem a `en_revision` o `en_reparacion` y notifica a Pañol y Director. |
-| `GET` | `/api/incident-reports` | `DIR-01`, `PAN-01`, `AD-01` | Listado de novedades reportadas con filtros por gravedad y estado de atención. |
-| `PATCH` | `/api/incident-reports/{id}/status` | `PAN-01`, `DIR-01` | Actualizar el estado de la incidencia (`en_revision`, `en_reparacion`, `reparado`, `dado_de_baja`). |
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `POST` | `/api/equipment/{id}/reports` | `PRO-01`, `PAN-01` | Crea un informe de novedades asociado al equipo (`multipart/form-data`).<br>**Body:** `description` (obligatorio si no hay `title`), `title`, `severity` (`leve`, `media`, `critica`), `attachment` (opcional: pdf, jpg, png o webp, máx. 10 MB). | ✅ Implementado |
 
 ---
 
-### 14. Dashboards y Analítica (`FU-06` / `REQ-14`)
+### 14. Dashboards de Demanda (`FU-06` / `REQ-14`)
 
-| Método | Endpoint Planificado | Roles Previstos | Descripción / Parámetros esperados |
-|---|---|---|---|
-| `GET` | `/api/dashboard/stats` | `DIR-01`, `AD-01` | Resumen analítico general: total productos por estado (disponible, prestado, reparación, baja), préstamos activos vs atrasados, alertas críticas y tasa de rotación mensual. |
-| `GET` | `/api/dashboard/top-products` | `DIR-01`, `AD-01` | Ranking de los 10 productos/equipos con mayor demanda. |
-| `GET` | `/api/dashboard/top-supplies` | `DIR-01`, `AD-01` | Ranking de insumos fungibles más solicitados. |
-| `GET` | `/api/dashboard/careers-distribution` | `DIR-01`, `AD-01` | Distribución de consumo de insumos y préstamos por carrera/área académica. |
-| `GET` | `/api/dashboard/least-demanded` | `DIR-01`, `AD-01` | Equipos con menor rotación o sin uso en el último periodo (inventario ocioso). |
-| `GET` | `/api/dashboard/top-teachers` | `DIR-01`, `AD-01` | Docentes con mayor cantidad de solicitudes de préstamos. |
-| `GET` | `/api/dashboard/loans-by-teacher` | `DIR-01`, `AD-01` | Préstamos agrupados por docente y asignatura para análisis curricular. |
+Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10) salvo `careers-distribution`.
+
+| Método | Endpoint | Descripción | Estado |
+|---|---|---|:---:|
+| `GET` | `/api/dashboard/top-products` | Productos/equipos más solicitados. | ✅ Implementado |
+| `GET` | `/api/dashboard/top-supplies` | Insumos fungibles más solicitados. | ✅ Implementado |
+| `GET` | `/api/dashboard/careers-distribution` | Distribución de uso por carrera/área. | ✅ Implementado |
+| `GET` | `/api/dashboard/least-demanded` | Equipos con menor demanda (inventario ocioso). | ✅ Implementado |
+| `GET` | `/api/dashboard/top-teachers` | Docentes con más solicitudes. | ✅ Implementado |
 
 ---
 
-## 📊 Resumen Estadístico de Endpoints
+## 🟡 Endpoints Pendientes (Por Implementar)
 
-```mermaid
-pie title Estado de Implementación de Endpoints SGIA
-    "Implementados (Activos)" : 49
-    "Por Implementar (Planificados)" : 7
-```
+| Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
+|---|---|---|---|---|
+| `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01`, `AD-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
+| `GET` | `/api/incident-reports` | `DIR-01`, `PAN-01`, `AD-01` | Listado global de novedades con filtros (hoy solo por equipo). | REQ-13 |
+| `PATCH` | `/api/incident-reports/{id}/status` | `PAN-01`, `DIR-01` | Estado de atención (`en_revision`, `en_reparacion`, `reparado`, `dado_de_baja`). | REQ-13 |
+| `GET` | `/api/dashboard/stats` | `DIR-01`, `AD-01` | KPIs: activos por estado, préstamos activos y atrasados, alertas, rotación. | REQ-14 |
+| `GET` | `/api/dashboard/loans-by-teacher` | `DIR-01`, `AD-01` | Préstamos por docente y asignatura. | REQ-14 |
+| `POST` | `/api/loans/checkin` | `PAN-01` | Devolución (ver sección 10). | REQ-10 |
+| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancelar solicitud pendiente (ver sección 9). | REQ-09 |
+| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exportar préstamos en PDF/Excel (ver sección 11). | REQ-11 |
 
-- **Total endpoints implementados:** **49** endpoints principales (56 con alias).
-- **Total endpoints planificados:** **7** endpoints.
-- **Total proyectado de la API:** **56** endpoints REST.
+---
+
+## 📊 Resumen
+
+Fuente de verdad: `php artisan route:list --path=api` (79 rutas, contando alias y las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
