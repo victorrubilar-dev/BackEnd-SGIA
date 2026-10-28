@@ -33,6 +33,9 @@ class PurchaseResource extends JsonResource
             'guide_number' => $this->guide_number,
             'invoice_number' => $this->invoice_number,
             'arrival_document' => $this->arrival_document,
+            'arrival_document_url' => $this->arrival_document
+                ? url("/api/purchases/{$this->id}/arrival-document")
+                : null,
             'received_at' => $this->received_at?->toIso8601String(),
             'items' => PurchaseItemResource::collection($this->whenLoaded('items')),
             'created_at' => $this->created_at?->toIso8601String(),

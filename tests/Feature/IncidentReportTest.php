@@ -25,7 +25,7 @@ class IncidentReportTest extends TestCase
     {
         parent::setUp();
 
-        Storage::fake('public');
+        Storage::fake('local');
 
         $this->teacher = User::factory()->create([
             'email' => 'pro_nov_'.uniqid().'@inacap.cl',
@@ -97,9 +97,9 @@ class IncidentReportTest extends TestCase
 
         $this->assertNotNull($attachment);
         $this->assertStringStartsWith('incidents/', $attachment);
-        Storage::disk('public')->assertExists($attachment);
+        Storage::disk('local')->assertExists($attachment);
         $response->assertJsonPath('data.attachment_original_name', 'informe_falla.pdf');
-        $this->assertStringContainsString('/storage/incidents/', (string) $response->json('data.attachment_url'));
+        $this->assertStringEndsWith('/attachment', (string) $response->json('data.attachment_url'));
     }
 
     public function test_incident_report_accepts_spanish_field_aliases(): void
@@ -122,7 +122,7 @@ class IncidentReportTest extends TestCase
 
         $this->assertSame('Cable de prueba dañado', $report?->title);
         $this->assertSame('foto_falla.jpg', $report?->attachment_original_name);
-        Storage::disk('public')->assertExists((string) $report?->attachment);
+        Storage::disk('local')->assertExists((string) $report?->attachment);
     }
 
     public function test_registered_report_appears_in_equipment_life_sheet(): void
@@ -223,5 +223,39 @@ class IncidentReportTest extends TestCase
         $this->postJson('/api/equipment/9999999/reports', [
             'description' => 'No existe el equipo al que se asocia este informe.',
         ])->assertStatus(404);
+    }
+
+    public function test_attachment_is_private_and_downloadable_only_by_authorized_roles(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        $this->postJson("/api/equipment/{$this->product->id}/reports", [
+            'description' => 'Pantalla con lineas verticales en el equipo.',
+            'attachment' => UploadedFile::fake()->create('falla.pdf', 50, 'application/pdf'),
+        ])->assertCreated();
+
+        $report = IncidentReport::where('product_id', $this->product->id)->firstOrFail();
+
+        Storage::disk('local')->assertExists($report->attachment);
+        Storage::disk('public')->assertMissing($report->attachment);
+
+        // El docente que lo reportó no puede ver informes (solo AD/DIR/PAN).
+        $this->get("/api/incident-reports/{$report->id}/attachment")->assertForbidden();
+
+        Sanctum::actingAs($this->director);
+        $this->get("/api/incident-reports/{$report->id}/attachment")
+            ->assertOk()
+            ->assertDownload('falla.pdf');
+    }
+
+    public function test_attachment_download_returns_404_when_report_has_no_attachment(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $id = $this->postJson("/api/equipment/{$this->product->id}/reports", [
+            'description' => 'Sin adjunto en este informe de prueba.',
+        ])->assertCreated()->json('data.id');
+
+        Sanctum::actingAs($this->director);
+        $this->getJson("/api/incident-reports/{$id}/attachment")->assertNotFound();
     }
 }

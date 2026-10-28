@@ -9,6 +9,8 @@
 
 ## Convenciones y Roles de Usuario
 
+> Límite `throttle:sensitive` (10 solicitudes por minuto por usuario) en cambio de contraseña, escaneo de facturas, escaneo de llegada e informes de novedades; `429` al superarlo.
+
 | Código | Rol | Descripción |
 |---|---|---|
 | **AD-01** | Administrador | Acceso total al sistema, gestión de usuarios, auditoría y catálogos. |
@@ -99,7 +101,7 @@
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/alerts/critical-stock` | Todos (`auth`) | Listado paginado de alertas activas generadas automáticamente cuando un producto llega a `stock_minimo + 5` (warning) o a `<= stock_minimo` (critical).<br>**Query Params:** `alert_type` (`warning` \| `critical`), `is_resolved` (`false` por defecto), `per_page`. | ✅ Implementado |
+| `GET` | `/api/alerts/critical-stock` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de alertas activas generadas automáticamente cuando un producto llega a `stock_minimo + 5` (warning) o a `<= stock_minimo` (critical).<br>**Query Params:** `alert_type` (`warning` \| `critical`), `is_resolved` (`false` por defecto), `per_page`. | ✅ Implementado |
 | `PATCH` | `/api/alerts/{id}/resolve` | `AD-01`, `PAN-01` | Marca manualmente una alerta de stock como resuelta. | ✅ Implementado |
 
 ---
@@ -115,6 +117,7 @@
 | `GET` | `/api/purchases/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle de la orden de compra, sus ítems adquiridos, la cotización de origen y las transiciones permitidas (`allowed_transitions`). | ✅ Implementado |
 | `PATCH` | `/api/purchases/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Transición de estados según la máquina (`pendiente` → `en_camino` → `completa`); una transición inválida responde `422` con los estados permitidos. Al pasar a `completa` registra `received_at` y notifica al pañolero para el ingreso físico a stock.<br>**Body:** `status` (alias `estado`). | ✅ Implementado |
 | `POST` | `/api/purchases/{id}/arrival-scan` | `AD-01`, `DIR-01`, `PAN-01` | Marca la orden como `completa` al escanear la guía de despacho / factura de llegada: extrae el número de factura vía OCR, guarda el documento escaneado y notifica al pañolero (PAN-01).<br>**Body (multipart o JSON):** `document` (PDF, PNG, JPG, WEBP o JSON hasta 10MB), `guide_number`, `invoice_number` (al menos uno de los tres). | ✅ Implementado |
+| `GET` | `/api/purchases/{id}/arrival-document` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada del documento de llegada (almacenado en disco privado). El recurso de la compra incluye `arrival_document_url`. | ✅ Implementado |
 
 ---
 
@@ -197,6 +200,7 @@
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `POST` | `/api/equipment/{id}/reports` | `PRO-01`, `PAN-01` | Crea un informe de novedades asociado al equipo (`multipart/form-data`).<br>**Body:** `description` (obligatorio si no hay `title`), `title`, `severity` (`leve`, `media`, `critica`), `attachment` (opcional: pdf, jpg, png o webp, máx. 10 MB). | ✅ Implementado |
+| `GET` | `/api/incident-reports/{id}/attachment` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada del adjunto del informe (disco privado). Es la `attachment_url` que devuelve el informe. | ✅ Implementado |
 
 ---
 

@@ -211,4 +211,41 @@ class StockAlertTest extends TestCase
         $alert->refresh();
         $this->assertTrue($alert->is_resolved);
     }
+
+    public function test_teacher_cannot_list_or_resolve_stock_alerts(): void
+    {
+        Sanctum::actingAs($this->teacher);
+
+        $alert = StockAlert::create([
+            'product_id' => Product::factory()->create()->id,
+            'alert_type' => StockAlert::TYPE_WARNING,
+            'current_stock' => 8,
+            'stock_minimo' => 5,
+            'message' => 'Advertencia stock',
+            'is_resolved' => false,
+        ]);
+
+        $this->getJson('/api/alerts/critical-stock')->assertForbidden();
+        $this->patchJson('/api/alerts/'.$alert->id.'/resolve')->assertForbidden();
+
+        $this->assertFalse($alert->fresh()->is_resolved);
+    }
+
+    public function test_director_can_list_but_not_resolve_stock_alerts(): void
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        Sanctum::actingAs($director);
+
+        $alert = StockAlert::create([
+            'product_id' => Product::factory()->create()->id,
+            'alert_type' => StockAlert::TYPE_WARNING,
+            'current_stock' => 8,
+            'stock_minimo' => 5,
+            'message' => 'Advertencia stock',
+            'is_resolved' => false,
+        ]);
+
+        $this->getJson('/api/alerts/critical-stock')->assertOk();
+        $this->patchJson('/api/alerts/'.$alert->id.'/resolve')->assertForbidden();
+    }
 }

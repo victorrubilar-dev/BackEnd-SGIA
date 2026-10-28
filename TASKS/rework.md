@@ -36,12 +36,12 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 3 — Seguridad y configuración
 
-- [ ] `DatabaseSeeder` crea `admin@sgia.cl` con contraseña fija `Admin1234!`; el README usa otra (`Secret-1234`). Leer la contraseña de `env` y no sembrar el admin en producción.
-- [ ] `docker-compose.yml` y `phpunit.xml` llevan `sgia_secret` en claro: pasar a variables de entorno (`${DB_PASSWORD}`).
-- [ ] Revisar que `CORS_ALLOWED_ORIGINS` no tenga valores por defecto de desarrollo en producción.
-- [ ] Subida de archivos (factura, adjunto de novedades): validar MIME real, tamaño máximo y almacenar en disco privado; no servir desde `public/`.
-- [ ] Auditar `Policy` vs. `role:` middleware por endpoint: matriz rol × ruta (tests parametrizados para 401/403).
-- [ ] Revisar límites de rate-limit en el resto de endpoints sensibles (`/password`, escaneo de facturas).
+- [x] `DatabaseSeeder`: la contraseña viene de `SEED_ADMIN_PASSWORD` (`config/sgia.php`); en producción sin ella no crea nada, y los datos de demostración no se siembran en producción. README alineado.
+- [x] `docker-compose.yml` toma usuario y contraseña de `.env` (`DB_PASSWORD` obligatoria); `phpunit.xml` ya no las trae (salen de `.env.testing`, que sigue con la clave de desarrollo).
+- [x] `CORS_ALLOWED_ORIGINS` ya no tiene valor por defecto: sin la variable no se permite ningún origen.
+- [x] Subida de archivos: adjuntos de novedades y documentos de llegada pasaron al disco privado con descarga autenticada. MIME real (`mimes`) y tamaño máximo (10 MB) ya se validaban. Archivos ya guardados en `storage/app/public` hay que moverlos a `storage/app/private` a mano. La factura escaneada no se guarda.
+- [x] Auditoría de acceso: `/alerts/*` no tenía control de rol (cualquier docente podía listar y resolver alertas); ahora `AD/DIR/PAN` leen y `AD/PAN` resuelven. `RouteProtectionTest` exige que toda ruta nueva declare `role:` o esté en la lista de compartidas, y que invitados reciban 401.
+- [x] Límite `throttle:sensitive` (10/min por usuario) en cambio de contraseña, escaneo de facturas, escaneo de llegada e informes con adjunto.
 
 ## Fase 4 — API consistente
 

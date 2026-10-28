@@ -213,7 +213,7 @@ class QuotationPurchaseFlowTest extends TestCase
     public function test_full_flow_from_quotation_to_completed_purchase(): void
     {
         Notification::fake();
-        Storage::fake('public');
+        Storage::fake('local');
 
         Sanctum::actingAs($this->director);
 

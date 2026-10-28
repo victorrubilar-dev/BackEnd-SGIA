@@ -4,7 +4,6 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Storage;
 
 class IncidentReportResource extends JsonResource
 {
@@ -26,9 +25,9 @@ class IncidentReportResource extends JsonResource
             'status' => $this->status,
             'attachment' => $this->attachment,
             'attachment_original_name' => $this->attachment_original_name,
-            // URL pública del adjunto (documento o imagen del reporte).
+            // Descarga autenticada: el adjunto vive en disco privado.
             'attachment_url' => $this->attachment
-                ? Storage::disk('public')->url($this->attachment)
+                ? url("/api/incident-reports/{$this->id}/attachment")
                 : null,
             'reported_by' => $this->reported_by,
             'reporter' => new UserResource($this->whenLoaded('reporter')),

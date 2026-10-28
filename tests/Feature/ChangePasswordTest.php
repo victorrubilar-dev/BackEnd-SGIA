@@ -173,4 +173,16 @@ class ChangePasswordTest extends TestCase
         $user->refresh();
         $this->assertTrue(Hash::check('BrandNewPassword789', $user->password));
     }
+
+    public function test_password_change_is_rate_limited(): void
+    {
+        $user = User::factory()->create(['is_active' => true]);
+        Sanctum::actingAs($user);
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->putJson('/api/password', ['current_password' => 'incorrecta'])->assertStatus(422);
+        }
+
+        $this->putJson('/api/password', ['current_password' => 'incorrecta'])->assertStatus(429);
+    }
 }

@@ -20,7 +20,9 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PurchaseController extends Controller
 {
@@ -217,7 +219,7 @@ class PurchaseController extends Controller
         if ($request->hasFile('document')) {
             $file = $request->file('document');
 
-            $attributes['arrival_document'] = $file->store('purchases/arrival', 'public');
+            $attributes['arrival_document'] = $file->store('purchases/arrival', 'local');
 
             if ($invoiceNumber === null) {
                 // Extrae el número de factura desde el documento escaneado (OCR).
@@ -264,5 +266,23 @@ class PurchaseController extends Controller
             'attempted_status' => $e->to,
             'allowed_transitions' => PurchaseStateMachine::allowedFrom($purchase->status),
         ], 422);
+    }
+
+    /**
+     * GET /api/purchases/{id}/arrival-document
+     *
+     * Descarga el documento de llegada desde el disco privado.
+     */
+    public function arrivalDocument(Purchase $purchase): StreamedResponse
+    {
+        Gate::authorize('view', $purchase);
+
+        abort_unless(
+            $purchase->arrival_document && Storage::disk('local')->exists($purchase->arrival_document),
+            404,
+            'La compra no tiene documento de llegada.'
+        );
+
+        return Storage::disk('local')->download($purchase->arrival_document);
     }
 }

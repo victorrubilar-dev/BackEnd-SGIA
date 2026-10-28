@@ -12,8 +12,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EquipmentReportController extends Controller
 {
@@ -72,7 +74,7 @@ class EquipmentReportController extends Controller
         $originalName = null;
 
         if ($attachment !== null) {
-            $path = $attachment->store('incidents', ['disk' => 'public']);
+            $path = $attachment->store('incidents', 'local');
 
             if ($path === false) {
                 throw ValidationException::withMessages([
@@ -100,5 +102,27 @@ class EquipmentReportController extends Controller
             'message' => 'Informe de novedad registrado correctamente.',
             'data' => (new IncidentReportResource($report))->resolve(),
         ], 201);
+    }
+
+    /**
+     * GET /api/incident-reports/{id}/attachment
+     *
+     * Descarga el adjunto desde el disco privado, solo para quienes pueden
+     * ver informes.
+     */
+    public function attachment(IncidentReport $incidentReport): StreamedResponse
+    {
+        Gate::authorize('view', $incidentReport);
+
+        abort_unless(
+            $incidentReport->attachment && Storage::disk('local')->exists($incidentReport->attachment),
+            404,
+            'El informe no tiene adjunto.'
+        );
+
+        return Storage::disk('local')->download(
+            $incidentReport->attachment,
+            $incidentReport->attachment_original_name
+        );
     }
 }

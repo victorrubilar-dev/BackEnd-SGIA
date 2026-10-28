@@ -21,8 +21,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::get('/user', [AuthController::class, 'me']);
-    Route::put('/password', [AuthController::class, 'changePassword']);
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::put('/password', [AuthController::class, 'changePassword'])->middleware('throttle:sensitive');
+    Route::post('/change-password', [AuthController::class, 'changePassword'])->middleware('throttle:sensitive');
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     Route::get('/tokens', [AuthController::class, 'tokens']);
@@ -37,21 +37,22 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-03: Escaneo de facturas (AD-01 y DIR-01)
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    Route::middleware(['role:AD-01,DIR-01', 'throttle:sensitive'])->group(function () {
         Route::post('/invoices/scan', [InvoiceScanController::class, 'scan']);
         Route::post('/products/scan-invoice', [InvoiceScanController::class, 'scan']);
     });
 
     // REQ-06: Alertas de stock crítico
-    Route::get('/alerts/critical-stock', [StockAlertController::class, 'index']);
-    Route::patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/alerts/critical-stock', [StockAlertController::class, 'index']);
+    Route::middleware('role:AD-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
 
     // REQ-08: Compras y órdenes de compra (FU-03)
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
         Route::patch('/purchases/{purchase}/status', [PurchaseController::class, 'updateStatus']);
-        Route::post('/purchases/{purchase}/arrival-scan', [PurchaseController::class, 'arrivalScan']);
+        Route::post('/purchases/{purchase}/arrival-scan', [PurchaseController::class, 'arrivalScan'])->middleware('throttle:sensitive');
+        Route::get('/purchases/{purchase}/arrival-document', [PurchaseController::class, 'arrivalDocument']);
     });
     Route::middleware('role:AD-01,DIR-01')->group(function () {
         Route::post('/purchases', [PurchaseController::class, 'store']);
@@ -141,11 +142,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // /equipment/{id}/reports: informes de novedades asociados al equipo,
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
     Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
+    // Los adjuntos viven en disco privado: se descargan autenticados.
+    Route::get('/incident-reports/{incidentReport}/attachment', [EquipmentReportController::class, 'attachment']);
 
     // REQ-13: Solicitud de reposición mediante informe de novedades
     // (FU-05, PRO-01/PAN-01): formulario + adjunto opcional, asociado
     // al equipo para su hoja de vida.
-    Route::middleware('role:PRO-01,PAN-01')->group(function () {
+    Route::middleware(['role:PRO-01,PAN-01', 'throttle:sensitive'])->group(function () {
         Route::post('/equipment/{product}/reports', [EquipmentReportController::class, 'store']);
     });
 

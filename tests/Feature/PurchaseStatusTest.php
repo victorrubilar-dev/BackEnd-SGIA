@@ -236,7 +236,7 @@ class PurchaseStatusTest extends TestCase
     public function test_arrival_scan_completes_purchase_and_notifies_warehouse(): void
     {
         Notification::fake();
-        Storage::fake('public');
+        Storage::fake('local');
 
         Sanctum::actingAs($this->warehouse);
 
@@ -321,5 +321,29 @@ class PurchaseStatusTest extends TestCase
         $this->postJson('/api/purchases/'.$purchase->id.'/arrival-scan', [
             'guide_number' => 'GD-123123',
         ])->assertStatus(403);
+    }
+
+    public function test_arrival_document_is_private_and_downloadable_by_authorized_roles(): void
+    {
+        Notification::fake();
+        Storage::fake('local');
+        Storage::fake('public');
+
+        Sanctum::actingAs($this->warehouse);
+        $purchase = $this->makePurchase(['status' => Purchase::STATUS_IN_TRANSIT]);
+
+        $this->post('/api/purchases/'.$purchase->id.'/arrival-scan', [
+            'document' => UploadedFile::fake()->create('guia.pdf', 50, 'application/pdf'),
+            'guide_number' => 'GD-1',
+        ])->assertOk()->assertJsonPath('purchase.arrival_document_url', url('/api/purchases/'.$purchase->id.'/arrival-document'));
+
+        $path = $purchase->fresh()->arrival_document;
+        Storage::disk('local')->assertExists($path);
+        Storage::disk('public')->assertMissing($path);
+
+        $this->get('/api/purchases/'.$purchase->id.'/arrival-document')->assertOk();
+
+        Sanctum::actingAs($this->teacher);
+        $this->get('/api/purchases/'.$purchase->id.'/arrival-document')->assertForbidden();
     }
 }
