@@ -53,6 +53,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `TASKS/`: requisitos (REQ-xx) por módulo con checkboxes; `TASKS/README.md` tiene el índice FU → archivo y la regla: marcar `[x]` solo si está hecho **y** tiene test.
 - `docs/autenticacion.md`: guía técnica de Sanctum y CORS.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
+- `TASKS/front-end.md`: cambios del backend que afectan al frontend. Actualizarlo cuando un cambio rompa o modifique el contrato de la API.
 - `README.md`: puesta en marcha para humanos.
 
 ## Estado conocido (leer antes de confiar en el código)

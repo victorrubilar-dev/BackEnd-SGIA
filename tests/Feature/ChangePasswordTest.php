@@ -183,6 +183,6 @@ class ChangePasswordTest extends TestCase
             $this->putJson('/api/password', ['current_password' => 'incorrecta'])->assertStatus(422);
         }
 
-        $this->putJson('/api/password', ['current_password' => 'incorrecta'])->assertStatus(429);
+        $this->putJson('/api/password', ['current_password' => 'incorrecta'])->assertStatus(429)->assertHeader('Retry-After');
     }
 }

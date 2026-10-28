@@ -12,6 +12,7 @@ Fuente: *Informe de Diseño de Arquitectura de Software — SGIA* (INACAP Sede T
 | FU-04 | Préstamos | `Prestamos.md` (REQ-09 a REQ-11) |
 | FU-05 | Mantenimiento y fichas técnicas | `Fichas tecnicas.md` (REQ-12), `Informe de novedades.md` (REQ-13) |
 | FU-06 | Reportes y dashboards | `Dashboards.md` (REQ-14) |
+| — | Cambios para el frontend | `front-end.md` |
 | — | Requisitos no funcionales | `Requisitos no funcionales.md` (REQ-NF-01 a 04) |
 
 ## Plantilla
