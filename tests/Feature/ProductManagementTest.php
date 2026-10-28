@@ -184,4 +184,30 @@ class ProductManagementTest extends TestCase
         $product->refresh();
         $this->assertFalse($product->is_active);
     }
+
+    public function test_product_records_audit_fields_on_create_and_update(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        $id = $this->postJson('/api/products', [
+            'name' => 'Multimetro Digital',
+            'quantity' => 3,
+            'stock_minimo' => 1,
+            'supplier_id' => $this->supplier->id,
+            'area' => 'Electrónica',
+        ])->assertCreated()->json('data.id');
+
+        $this->assertDatabaseHas('products', ['id' => $id, 'created_by' => $this->warehouse->id]);
+
+        $other = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        Sanctum::actingAs($other);
+
+        $this->patchJson("/api/products/{$id}", ['quantity' => 4])->assertOk();
+
+        $this->assertDatabaseHas('products', [
+            'id' => $id,
+            'created_by' => $this->warehouse->id,
+            'updated_by' => $other->id,
+        ]);
+    }
 }

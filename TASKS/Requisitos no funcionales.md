@@ -1,5 +1,5 @@
 ### REQ-NF-01 / REQ-NF-02 — Seguridad OWASP (API)
-- [x] `auth:sanctum` en todas las rutas protegidas.
+- [x] `auth:sanctum` en todas las rutas protegidas (`RouteProtectionTest` recorre todas las rutas `api/*` y exige 401 a invitados).
 - [x] Rate limiting en `POST /api/login` (5 intentos por minuto por IP + correo), con 429 y `Retry-After`.
 - [x] Mensaje único de credenciales incorrectas (sin enumeración de usuarios).
 - [x] Validación con `FormRequest` dedicados.
@@ -8,7 +8,8 @@
 - [ ] Registro de eventos críticos (usuarios, cambios de rol, bajas, aprobación de compras) en una tabla `audit_logs`. No existe.
 
 ### REQ-NF-03 — Accesibilidad de la API
-- [x] Códigos HTTP semánticos (200, 201, 204, 401, 403, 404, 422, 429).
+- [x] Códigos HTTP semánticos (200, 201, 401, 403, 404, 422, 429).
+- [ ] Eliminaciones: hoy responden 200 con mensaje, no 204 (decidir si se cambia o se corrige el requisito).
 - [ ] Error normalizado `{"message": "...", "errors": {...}}` en todos los endpoints (ver `rework.md`, fase 4).
 
 ### REQ-NF-04 — Rendimiento (< 2 s en el 90 % de las consultas)

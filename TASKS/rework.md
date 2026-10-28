@@ -66,6 +66,7 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 ## Fase 6 — Pruebas
 
 - [ ] Hay un solo `tests/Unit/ExampleTest.php` y `ExampleTest` en Feature: borrarlos o reemplazarlos.
+- [x] Verificación de cobertura de la fase 2: se añadieron `RouteProtectionTest`, `DatabaseSeederTest` y un test de auditoría de productos.
 - [ ] Tests unitarios para las máquinas de estado y `StockAlertService` (hoy solo se cubren vía HTTP).
 - [ ] Cobertura (`php artisan test --coverage`) con umbral mínimo en CI una vez definida la fase 1.
 - [ ] Tests de matriz de roles (ver fase 3) y de contrato de respuesta de los Resources.
