@@ -12,8 +12,11 @@ namespace App\Services;
 class QuotationStateMachine
 {
     public const STATUS_PENDING = 'pendiente';
+
     public const STATUS_ACCEPTED = 'aceptada';
+
     public const STATUS_REJECTED = 'rechazada';
+
     public const STATUS_CONVERTED = 'convertida';
 
     /**

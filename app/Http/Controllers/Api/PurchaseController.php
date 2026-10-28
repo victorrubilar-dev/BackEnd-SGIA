@@ -56,7 +56,7 @@ class PurchaseController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where(function ($q) use ($search) {
                 $q->where('code', 'ilike', $search)
                     ->orWhere('guide_number', 'ilike', $search)
@@ -88,7 +88,7 @@ class PurchaseController extends Controller
             if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
                 throw ValidationException::withMessages([
                     'quotation_id' => 'Solo se puede generar una orden de compra desde una cotización aceptada '
-                        . "(estado actual: \"{$quotation->status}\").",
+                        ."(estado actual: \"{$quotation->status}\").",
                 ]);
             }
 

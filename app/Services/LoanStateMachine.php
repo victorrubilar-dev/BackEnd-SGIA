@@ -17,8 +17,11 @@ namespace App\Services;
 class LoanStateMachine
 {
     public const STATUS_PENDING = 'pendiente';
+
     public const STATUS_IN_PROGRESS = 'en_proceso';
+
     public const STATUS_PROCESSED = 'procesado';
+
     public const STATUS_REJECTED = 'rechazado';
 
     /**

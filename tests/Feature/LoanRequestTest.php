@@ -26,19 +26,19 @@ class LoanRequestTest extends TestCase
         parent::setUp();
 
         $this->teacher = User::factory()->create([
-            'email' => 'docente_prest_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_prest_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->otherTeacher = User::factory()->create([
-            'email' => 'docente2_prest_' . uniqid() . '@inacap.cl',
+            'email' => 'docente2_prest_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_prest_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_prest_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);

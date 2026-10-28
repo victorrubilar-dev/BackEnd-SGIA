@@ -54,7 +54,7 @@ class RoleMiddlewareTest extends TestCase
 
         $token = $admin->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/test-admin-only');
 
         $response->assertStatus(200);
@@ -75,7 +75,7 @@ class RoleMiddlewareTest extends TestCase
 
         $token = $teacher->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/test-admin-only');
 
         $response->assertStatus(403);
@@ -98,7 +98,7 @@ class RoleMiddlewareTest extends TestCase
 
         $token = $warehouse->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/test-multi-role');
 
         $response->assertStatus(200);

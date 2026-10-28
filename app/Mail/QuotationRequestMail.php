@@ -20,8 +20,7 @@ class QuotationRequestMail extends Mailable
     public function __construct(
         public Quotation $quotation,
         public Supplier $supplier
-    ) {
-    }
+    ) {}
 
     public function envelope(): Envelope
     {

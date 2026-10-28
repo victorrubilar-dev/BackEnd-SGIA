@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Http\Requests\UpdateSupplierStatusRequest;
-use App\Http\Resources\ProductResource;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
 use Illuminate\Http\JsonResponse;
@@ -28,7 +27,7 @@ class SupplierController extends Controller
         $query = Supplier::withCount('products');
 
         if ($request->filled('category')) {
-            $query->where('category', 'ilike', '%' . $request->string('category') . '%');
+            $query->where('category', 'ilike', '%'.$request->string('category').'%');
         }
 
         if ($request->has('is_active')) {
@@ -36,7 +35,7 @@ class SupplierController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', $search)
                     ->orWhere('contact_name', 'ilike', $search)

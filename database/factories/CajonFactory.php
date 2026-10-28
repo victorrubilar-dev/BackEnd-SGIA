@@ -16,7 +16,7 @@ class CajonFactory extends Factory
     public function definition(): array
     {
         return [
-            'codigo' => 'Cajon-' . fake()->unique()->numberBetween(1, 9999),
+            'codigo' => 'Cajon-'.fake()->unique()->numberBetween(1, 9999),
             'descripcion' => fake()->sentence(),
             'location_id' => Location::factory(),
         ];

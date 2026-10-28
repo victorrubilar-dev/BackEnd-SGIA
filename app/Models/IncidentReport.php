@@ -12,7 +12,9 @@ class IncidentReport extends Model
     use HasFactory;
 
     public const SEVERITY_LOW = 'leve';
+
     public const SEVERITY_MEDIUM = 'media';
+
     public const SEVERITY_HIGH = 'critica';
 
     public const SEVERITIES = [
@@ -22,9 +24,13 @@ class IncidentReport extends Model
     ];
 
     public const STATUS_REPORTED = 'reportado';
+
     public const STATUS_IN_REVIEW = 'en_revision';
+
     public const STATUS_IN_REPAIR = 'en_reparacion';
+
     public const STATUS_REPAIRED = 'reparado';
+
     public const STATUS_DISCARDED = 'dado_de_baja';
 
     public const STATUSES = [
@@ -74,7 +80,7 @@ class IncidentReport extends Model
     public static function generateUniqueCode(): string
     {
         do {
-            $code = 'NV-' . date('Y') . '-' . strtoupper(Str::random(6));
+            $code = 'NV-'.date('Y').'-'.strtoupper(Str::random(6));
         } while (static::where('code', $code)->exists());
 
         return $code;

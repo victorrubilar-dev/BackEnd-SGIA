@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Purchase;
 use App\Services\PurchaseStateMachine;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;

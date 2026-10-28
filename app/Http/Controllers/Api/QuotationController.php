@@ -44,7 +44,7 @@ class QuotationController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where('code', 'ilike', $search);
         }
 

@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Product;
-use Illuminate\Support\Collection;
 
 /**
  * Agregados de demanda para los dashboards (FU-06, DIR-01/AD-01).

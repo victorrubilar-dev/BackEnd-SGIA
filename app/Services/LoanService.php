@@ -22,9 +22,7 @@ use Illuminate\Validation\ValidationException;
  */
 class LoanService
 {
-    public function __construct(private readonly StockAlertService $stockAlertService)
-    {
-    }
+    public function __construct(private readonly StockAlertService $stockAlertService) {}
 
     /**
      * Crea la solicitud remota de préstamo del docente en estado `pendiente`.
@@ -211,7 +209,7 @@ class LoanService
             if ($product->quantity < $item->quantity) {
                 throw ValidationException::withMessages([
                     'items' => "Stock insuficiente para \"{$product->name}\": "
-                        . "se requieren {$item->quantity} y hay {$product->quantity} disponibles.",
+                        ."se requieren {$item->quantity} y hay {$product->quantity} disponibles.",
                 ]);
             }
 
@@ -266,7 +264,7 @@ class LoanService
             if ($product->quantity < $requested) {
                 throw ValidationException::withMessages([
                     "items.{$index}.quantity" => "Stock insuficiente para \"{$product->name}\": "
-                        . "se solicitaron {$requested} y hay {$product->quantity} disponibles.",
+                        ."se solicitaron {$requested} y hay {$product->quantity} disponibles.",
                 ]);
             }
         }
@@ -285,7 +283,7 @@ class LoanService
             LoanItem::create([
                 'loan_id' => $loan->id,
                 'product_id' => $product?->id,
-                'name' => $product?->name ?? ('Producto #' . $item['product_id']),
+                'name' => $product?->name ?? ('Producto #'.$item['product_id']),
                 'quantity' => (int) $item['quantity'],
             ]);
         }

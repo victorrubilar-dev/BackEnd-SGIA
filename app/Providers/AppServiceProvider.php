@@ -56,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('login', function (Request $request) {
             $email = Str::transliterate(Str::lower((string) $request->input('email')));
-            $throttleKey = $email . '|' . $request->ip();
+            $throttleKey = $email.'|'.$request->ip();
 
             return Limit::perMinute(5)->by($throttleKey)->response(function (Request $request, array $headers) {
                 $retryAfter = $headers['Retry-After'] ?? 60;

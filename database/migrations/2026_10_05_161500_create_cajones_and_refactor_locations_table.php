@@ -22,7 +22,7 @@ return new class extends Migration
         });
 
         // Poblar nombre y tipo a partir de los datos existentes de sala
-        DB::statement("UPDATE locations SET nombre = sala WHERE nombre IS NULL");
+        DB::statement('UPDATE locations SET nombre = sala WHERE nombre IS NULL');
 
         // 2. Crear tabla cajones
         Schema::create('cajones', function (Blueprint $table) {

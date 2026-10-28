@@ -28,13 +28,13 @@ class IncidentReportTest extends TestCase
         Storage::fake('public');
 
         $this->teacher = User::factory()->create([
-            'email' => 'pro_nov_' . uniqid() . '@inacap.cl',
+            'email' => 'pro_nov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->director = User::factory()->create([
-            'email' => 'dir_nov_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_nov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
@@ -204,7 +204,7 @@ class IncidentReportTest extends TestCase
     public function test_warehouse_can_register_incident_report(): void
     {
         $warehouse = User::factory()->create([
-            'email' => 'pan_nov_' . uniqid() . '@inacap.cl',
+            'email' => 'pan_nov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);

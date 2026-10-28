@@ -38,21 +38,21 @@ class DashboardTest extends TestCase
         parent::setUp();
 
         $this->director = User::factory()->create([
-            'email' => 'dir_dash_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_dash_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'area' => 'Informática',
             'is_active' => true,
         ]);
 
         $this->teacherA = User::factory()->create([
-            'email' => 'pro_dash_a_' . uniqid() . '@inacap.cl',
+            'email' => 'pro_dash_a_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'area' => 'Electricidad',
             'is_active' => true,
         ]);
 
         $this->teacherB = User::factory()->create([
-            'email' => 'pro_dash_b_' . uniqid() . '@inacap.cl',
+            'email' => 'pro_dash_b_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'area' => 'Informática',
             'is_active' => true,
@@ -105,7 +105,7 @@ class DashboardTest extends TestCase
     public function test_teacher_and_warehouse_cannot_access_dashboards(): void
     {
         $warehouse = User::factory()->create([
-            'email' => 'pan_dash_' . uniqid() . '@inacap.cl',
+            'email' => 'pan_dash_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);

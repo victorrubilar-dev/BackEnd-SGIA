@@ -18,7 +18,9 @@ class StockAlertTest extends TestCase
     use DatabaseTransactions;
 
     protected User $admin;
+
     protected User $warehouse;
+
     protected User $teacher;
 
     protected function setUp(): void
@@ -26,19 +28,19 @@ class StockAlertTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create([
-            'email' => 'admin_alert_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_alert_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'wh_alert_' . uniqid() . '@inacap.cl',
+            'email' => 'wh_alert_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'teach_alert_' . uniqid() . '@inacap.cl',
+            'email' => 'teach_alert_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -55,7 +57,7 @@ class StockAlertTest extends TestCase
 
         // Reduce stock to 15 (minimo + 5)
         Sanctum::actingAs($this->warehouse);
-        $response = $this->patchJson('/api/products/' . $product->id, [
+        $response = $this->patchJson('/api/products/'.$product->id, [
             'quantity' => 15,
         ]);
         $response->assertStatus(200);
@@ -89,7 +91,7 @@ class StockAlertTest extends TestCase
 
         // Reduce stock to exactly 10 (or lower)
         Sanctum::actingAs($this->warehouse);
-        $response = $this->patchJson('/api/products/' . $product->id, [
+        $response = $this->patchJson('/api/products/'.$product->id, [
             'quantity' => 10,
         ]);
         $response->assertStatus(200);
@@ -126,7 +128,7 @@ class StockAlertTest extends TestCase
 
         // Restock to 20 (> 10 + 5)
         Sanctum::actingAs($this->warehouse);
-        $this->patchJson('/api/products/' . $product->id, [
+        $this->patchJson('/api/products/'.$product->id, [
             'quantity' => 20,
         ])->assertStatus(200);
 
@@ -144,7 +146,7 @@ class StockAlertTest extends TestCase
         ]);
 
         $job = new CheckStockAlertJob($product);
-        $job->handle(new StockAlertService());
+        $job->handle(new StockAlertService);
 
         $this->assertDatabaseHas('stock_alerts', [
             'product_id' => $product->id,
@@ -195,7 +197,7 @@ class StockAlertTest extends TestCase
             'is_resolved' => false,
         ]);
 
-        $response = $this->patchJson('/api/alerts/' . $alert->id . '/resolve');
+        $response = $this->patchJson('/api/alerts/'.$alert->id.'/resolve');
 
         $response->assertStatus(200);
         $response->assertJson([

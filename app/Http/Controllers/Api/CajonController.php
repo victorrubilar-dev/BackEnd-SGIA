@@ -25,11 +25,11 @@ class CajonController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where(function ($q) use ($search) {
                 $q->where('codigo', 'ilike', $search)
-                  ->orWhere('descripcion', 'ilike', $search)
-                  ->orWhereHas('location', fn ($lq) => $lq->where('nombre', 'ilike', $search));
+                    ->orWhere('descripcion', 'ilike', $search)
+                    ->orWhereHas('location', fn ($lq) => $lq->where('nombre', 'ilike', $search));
             });
         }
 

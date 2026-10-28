@@ -14,8 +14,11 @@ class Quotation extends Model
     use HasFactory;
 
     public const STATUS_PENDING = QuotationStateMachine::STATUS_PENDING;
+
     public const STATUS_ACCEPTED = QuotationStateMachine::STATUS_ACCEPTED;
+
     public const STATUS_REJECTED = QuotationStateMachine::STATUS_REJECTED;
+
     public const STATUS_CONVERTED = QuotationStateMachine::STATUS_CONVERTED;
 
     public const STATUSES = QuotationStateMachine::STATUSES;
@@ -72,7 +75,7 @@ class Quotation extends Model
     public static function generateUniqueCode(): string
     {
         do {
-            $code = 'COT-' . date('Y') . '-' . strtoupper(Str::random(6));
+            $code = 'COT-'.date('Y').'-'.strtoupper(Str::random(6));
         } while (static::where('code', $code)->exists());
 
         return $code;

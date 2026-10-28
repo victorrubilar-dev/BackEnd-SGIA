@@ -14,7 +14,9 @@ class LocationAndCajonCrudTest extends TestCase
     use DatabaseTransactions;
 
     protected User $admin;
+
     protected User $warehouse;
+
     protected User $teacher;
 
     protected function setUp(): void
@@ -22,19 +24,19 @@ class LocationAndCajonCrudTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create([
-            'email' => 'admin_loc_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_loc_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_loc_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_loc_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'profe_loc_' . uniqid() . '@inacap.cl',
+            'email' => 'profe_loc_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -153,14 +155,14 @@ class LocationAndCajonCrudTest extends TestCase
         $location = Location::factory()->create(['nombre' => 'Sala Vieja']);
         $cajon = Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'Cajon-Viejo']);
 
-        $resLoc = $this->patchJson('/api/locations/' . $location->id, [
+        $resLoc = $this->patchJson('/api/locations/'.$location->id, [
             'nombre' => 'Sala Renovada',
         ]);
         $resLoc->assertStatus(200);
         $this->assertEquals('Sala Renovada', $location->fresh()->nombre);
         $this->assertEquals($this->warehouse->id, $location->fresh()->updated_by);
 
-        $resCajon = $this->patchJson('/api/cajones/' . $cajon->id, [
+        $resCajon = $this->patchJson('/api/cajones/'.$cajon->id, [
             'codigo' => 'Cajon-Renovado',
         ]);
         $resCajon->assertStatus(200);

@@ -15,9 +15,7 @@ class LoanStatusNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Loan $loan, public string $message)
-    {
-    }
+    public function __construct(public Loan $loan, public string $message) {}
 
     /**
      * Get the notification's delivery channels.

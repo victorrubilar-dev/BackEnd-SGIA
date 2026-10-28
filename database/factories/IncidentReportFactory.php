@@ -18,7 +18,7 @@ class IncidentReportFactory extends Factory
     {
         return [
             'product_id' => Product::factory(),
-            'code' => 'NV-' . date('Y') . '-' . strtoupper(fake()->unique()->bothify('??????')),
+            'code' => 'NV-'.date('Y').'-'.strtoupper(fake()->unique()->bothify('??????')),
             'reported_by' => User::factory(),
             'title' => fake()->sentence(4),
             'description' => fake()->paragraph(),

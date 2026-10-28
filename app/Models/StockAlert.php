@@ -11,6 +11,7 @@ class StockAlert extends Model
     use HasFactory;
 
     public const TYPE_WARNING = 'warning';
+
     public const TYPE_CRITICAL = 'critical';
 
     protected $fillable = [

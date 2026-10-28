@@ -8,6 +8,7 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Genera los PDF del módulo FU-05 (fichas técnicas de equipos y
@@ -54,13 +55,13 @@ class EquipmentPdfService
     /**
      * Respuesta HTTP de descarga para un PDF ya generado.
      *
-     * @return \Symfony\Component\HttpFoundation\Response
+     * @return Response
      */
     public function download(string $pdf, string $filename)
     {
         return response($pdf, 200, [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
             'Content-Length' => strlen($pdf),
             'Cache-Control' => 'private, max-age=0, must-revalidate',
         ]);
@@ -71,7 +72,7 @@ class EquipmentPdfService
      */
     private function render(View $view): string
     {
-        $options = new Options();
+        $options = new Options;
         $options->set('isRemoteEnabled', false);
         $options->set('isHtml5ParserEnabled', true);
 

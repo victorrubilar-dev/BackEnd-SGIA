@@ -24,13 +24,13 @@ class TechnicalSheetTest extends TestCase
         parent::setUp();
 
         $this->teacher = User::factory()->create([
-            'email' => 'pro_ficha_' . uniqid() . '@inacap.cl',
+            'email' => 'pro_ficha_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->director = User::factory()->create([
-            'email' => 'dir_ficha_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_ficha_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
@@ -192,7 +192,7 @@ class TechnicalSheetTest extends TestCase
     public function test_warehouse_can_list_reports_of_equipment(): void
     {
         $warehouse = User::factory()->create([
-            'email' => 'pan_ficha_' . uniqid() . '@inacap.cl',
+            'email' => 'pan_ficha_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);

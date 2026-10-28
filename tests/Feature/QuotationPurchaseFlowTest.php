@@ -8,6 +8,7 @@ use App\Models\Quotation;
 use App\Models\QuotationSupplier;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
@@ -37,13 +38,13 @@ class QuotationPurchaseFlowTest extends TestCase
         parent::setUp();
 
         $this->director = User::factory()->create([
-            'email' => 'dir_flow_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_flow_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_flow_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_flow_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
@@ -115,11 +116,11 @@ class QuotationPurchaseFlowTest extends TestCase
         $this->assertNotNull($quotation->converted_at);
 
         // Trazabilidad en ambos sentidos
-        $this->getJson('/api/purchases?quotation_id=' . $quotation->id)
+        $this->getJson('/api/purchases?quotation_id='.$quotation->id)
             ->assertStatus(200)
             ->assertJsonFragment(['id' => $purchaseId]);
 
-        $this->getJson('/api/quotations/' . $quotation->id)
+        $this->getJson('/api/quotations/'.$quotation->id)
             ->assertStatus(200)
             ->assertJsonPath('data.purchase.id', $purchaseId);
     }
@@ -218,7 +219,7 @@ class QuotationPurchaseFlowTest extends TestCase
 
         // 1. Cotización aceptada por un proveedor
         $quotation = $this->makeQuotation(Quotation::STATUS_PENDING);
-        $this->patchJson('/api/quotations/' . $quotation->id . '/responses', [
+        $this->patchJson('/api/quotations/'.$quotation->id.'/responses', [
             'supplier_id' => $this->supplier->id,
             'status' => QuotationSupplier::STATUS_ACCEPTED,
             'offer_total' => 540000,
@@ -236,17 +237,17 @@ class QuotationPurchaseFlowTest extends TestCase
         $this->assertEquals(Quotation::STATUS_CONVERTED, $quotation->fresh()->status);
 
         // 3. Transición pendiente -> en_camino
-        $this->patchJson('/api/purchases/' . $purchaseId . '/status', [
+        $this->patchJson('/api/purchases/'.$purchaseId.'/status', [
             'status' => Purchase::STATUS_IN_TRANSIT,
         ])->assertStatus(200);
 
         // 4. Llegada de la mercadería mediante escaneo de la guía
-        $this->post('/api/purchases/' . $purchaseId . '/arrival-scan', [
+        $this->post('/api/purchases/'.$purchaseId.'/arrival-scan', [
             'document' => UploadedFile::fake()->create('guia-llegada.pdf', 40, 'application/pdf'),
             'guide_number' => 'GD-2026-777',
         ])->assertStatus(200);
 
         $this->assertEquals(Purchase::STATUS_COMPLETED, Purchase::find($purchaseId)->status);
-        Notification::assertSentTo($this->warehouse, \App\Notifications\PurchaseArrivalNotification::class);
+        Notification::assertSentTo($this->warehouse, PurchaseArrivalNotification::class);
     }
 }

@@ -32,20 +32,20 @@ class LoanHistoryTest extends TestCase
 
         $this->teacher = User::factory()->create([
             'name' => 'Gonzalo Histórico',
-            'email' => 'docente_hist_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->otherTeacher = User::factory()->create([
             'name' => 'Marcela Vera',
-            'email' => 'docente2_hist_' . uniqid() . '@inacap.cl',
+            'email' => 'docente2_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_hist_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
@@ -125,7 +125,7 @@ class LoanHistoryTest extends TestCase
         $byProduct->assertStatus(200);
         $this->assertCount(2, $byProduct->json('data'));
 
-        $byProductId = $this->getJson('/api/loans?product_id=' . $this->products['soldador']->id);
+        $byProductId = $this->getJson('/api/loans?product_id='.$this->products['soldador']->id);
         $byProductId->assertStatus(200);
         $this->assertCount(2, $byProductId->json('data'));
 
@@ -141,7 +141,7 @@ class LoanHistoryTest extends TestCase
         $this->assertCount(4, $byType->json('data'));
 
         // Búsqueda por código
-        $bySearch = $this->getJson('/api/loans?search=' . $this->loans['procesado']->code);
+        $bySearch = $this->getJson('/api/loans?search='.$this->loans['procesado']->code);
         $bySearch->assertStatus(200);
         $this->assertCount(1, $bySearch->json('data'));
 
@@ -214,7 +214,7 @@ class LoanHistoryTest extends TestCase
 
         // Director sí
         Sanctum::actingAs(User::factory()->create([
-            'email' => 'dir_hist_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]));
@@ -222,7 +222,7 @@ class LoanHistoryTest extends TestCase
 
         // Administrador sí
         Sanctum::actingAs(User::factory()->create([
-            'email' => 'admin_hist_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]));

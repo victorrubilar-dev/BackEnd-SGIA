@@ -32,11 +32,11 @@ class ProductController extends Controller
         $query = Product::with(['supplier', 'cajon.location', 'location']);
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', $search)
-                  ->orWhere('barcode', 'ilike', $search)
-                  ->orWhere('description', 'ilike', $search);
+                    ->orWhere('barcode', 'ilike', $search)
+                    ->orWhere('description', 'ilike', $search);
             });
         }
 
@@ -60,7 +60,7 @@ class ProductController extends Controller
             $locationId = $request->integer('location_id');
             $query->where(function ($q) use ($locationId) {
                 $q->where('location_id', $locationId)
-                  ->orWhereHas('cajon', fn ($cq) => $cq->where('location_id', $locationId));
+                    ->orWhereHas('cajon', fn ($cq) => $cq->where('location_id', $locationId));
             });
         }
 
@@ -68,14 +68,14 @@ class ProductController extends Controller
         if ($request->filled('sala') || $request->filled('cajon')) {
             $query->where(function ($q) use ($request) {
                 if ($request->filled('sala')) {
-                    $sala = '%' . $request->string('sala') . '%';
+                    $sala = '%'.$request->string('sala').'%';
                     $q->whereHas('location', fn ($lq) => $lq->where('sala', 'ilike', $sala)->orWhere('nombre', 'ilike', $sala))
-                      ->orWhereHas('cajon.location', fn ($lq) => $lq->where('sala', 'ilike', $sala)->orWhere('nombre', 'ilike', $sala));
+                        ->orWhereHas('cajon.location', fn ($lq) => $lq->where('sala', 'ilike', $sala)->orWhere('nombre', 'ilike', $sala));
                 }
                 if ($request->filled('cajon')) {
-                    $cajon = '%' . $request->string('cajon') . '%';
+                    $cajon = '%'.$request->string('cajon').'%';
                     $q->whereHas('cajon', fn ($cq) => $cq->where('codigo', 'ilike', $cajon))
-                      ->orWhereHas('location', fn ($lq) => $lq->where('cajon', 'ilike', $cajon));
+                        ->orWhereHas('location', fn ($lq) => $lq->where('cajon', 'ilike', $cajon));
                 }
             });
         }

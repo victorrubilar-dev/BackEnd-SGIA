@@ -16,7 +16,7 @@ class LoanFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => 'REM-' . date('Y') . '-' . strtoupper(fake()->unique()->bothify('??????')),
+            'code' => 'REM-'.date('Y').'-'.strtoupper(fake()->unique()->bothify('??????')),
             'type' => Loan::TYPE_REMOTE,
             'requested_by' => User::factory(),
             'borrower_name' => fake()->name(),

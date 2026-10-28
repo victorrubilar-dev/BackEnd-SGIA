@@ -14,8 +14,11 @@ class InvoiceScanTest extends TestCase
     use DatabaseTransactions;
 
     protected User $admin;
+
     protected User $director;
+
     protected User $warehouse;
+
     protected User $teacher;
 
     protected function setUp(): void
@@ -23,25 +26,25 @@ class InvoiceScanTest extends TestCase
         parent::setUp();
 
         $this->admin = User::factory()->create([
-            'email' => 'admin_inv_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_inv_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]);
 
         $this->director = User::factory()->create([
-            'email' => 'dir_inv_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_inv_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'wh_inv_' . uniqid() . '@inacap.cl',
+            'email' => 'wh_inv_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'teach_inv_' . uniqid() . '@inacap.cl',
+            'email' => 'teach_inv_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -133,14 +136,14 @@ class InvoiceScanTest extends TestCase
         $productId = $response->json('data.id');
 
         // Test PATCH /api/products/{id}
-        $updateResponse = $this->patchJson('/api/products/' . $productId, [
+        $updateResponse = $this->patchJson('/api/products/'.$productId, [
             'name' => 'Generador de Señales Digital Modificado',
         ]);
         $updateResponse->assertStatus(200);
         $updateResponse->assertJsonFragment(['name' => 'Generador de Señales Digital Modificado']);
 
         // Test PATCH /api/products/{id}/status
-        $statusResponse = $this->patchJson('/api/products/' . $productId . '/status', [
+        $statusResponse = $this->patchJson('/api/products/'.$productId.'/status', [
             'is_active' => false,
         ]);
         $statusResponse->assertStatus(200);

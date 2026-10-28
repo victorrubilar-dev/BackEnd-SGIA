@@ -129,7 +129,7 @@ class ChangePasswordTest extends TestCase
         $this->assertEquals(3, $user->tokens()->count());
 
         // Make request with token1 as current bearer token
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token1->plainTextToken)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token1->plainTextToken)
             ->putJson('/api/password', [
                 'current_password' => 'InitialPassword123',
                 'password' => 'UpdatedSecurePassword456',
@@ -161,7 +161,7 @@ class ChangePasswordTest extends TestCase
 
         $token = $user->createToken('web');
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token->plainTextToken)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken)
             ->postJson('/api/change-password', [
                 'current_password' => 'InitialPassword123',
                 'password' => 'BrandNewPassword789',

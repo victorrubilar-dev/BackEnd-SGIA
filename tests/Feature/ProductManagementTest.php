@@ -14,7 +14,9 @@ class ProductManagementTest extends TestCase
     use DatabaseTransactions;
 
     protected User $warehouse;
+
     protected User $teacher;
+
     protected Supplier $supplier;
 
     protected function setUp(): void
@@ -22,13 +24,13 @@ class ProductManagementTest extends TestCase
         parent::setUp();
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'profe_' . uniqid() . '@inacap.cl',
+            'email' => 'profe_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -87,12 +89,12 @@ class ProductManagementTest extends TestCase
 
         $product = Product::factory()->create();
 
-        $responseUpdate = $this->patchJson('/api/products/' . $product->id, [
+        $responseUpdate = $this->patchJson('/api/products/'.$product->id, [
             'name' => 'Nombre Modificado',
         ]);
         $responseUpdate->assertStatus(403);
 
-        $responseStatus = $this->patchJson('/api/products/' . $product->id . '/status', [
+        $responseStatus = $this->patchJson('/api/products/'.$product->id.'/status', [
             'is_active' => false,
         ]);
         $responseStatus->assertStatus(403);
@@ -106,7 +108,7 @@ class ProductManagementTest extends TestCase
             'barcode' => 'SGIA-98765432',
         ]);
 
-        $response = $this->getJson('/api/products/' . $product->id . '/barcode');
+        $response = $this->getJson('/api/products/'.$product->id.'/barcode');
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
@@ -165,7 +167,7 @@ class ProductManagementTest extends TestCase
             'is_active' => true,
         ]);
 
-        $updateResponse = $this->patchJson('/api/products/' . $product->id, [
+        $updateResponse = $this->patchJson('/api/products/'.$product->id, [
             'name' => 'Osciloscopio Actualizado',
             'quantity' => 12,
         ]);
@@ -174,7 +176,7 @@ class ProductManagementTest extends TestCase
         $this->assertEquals('Osciloscopio Actualizado', $updateResponse->json('data.name'));
         $this->assertEquals(12, $updateResponse->json('data.quantity'));
 
-        $statusResponse = $this->patchJson('/api/products/' . $product->id . '/status', [
+        $statusResponse = $this->patchJson('/api/products/'.$product->id.'/status', [
             'is_active' => false,
         ]);
 

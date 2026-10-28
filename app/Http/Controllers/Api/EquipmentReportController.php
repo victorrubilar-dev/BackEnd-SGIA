@@ -44,7 +44,7 @@ class EquipmentReportController extends Controller
 
         if ($request->query('format') === 'pdf') {
             $reports = $query->limit(500)->get();
-            $filename = 'informes-' . ($product->barcode ?: 'equipo-' . $product->id) . '.pdf';
+            $filename = 'informes-'.($product->barcode ?: 'equipo-'.$product->id).'.pdf';
 
             return $pdfService->download($pdfService->reportsList($product, $reports), $filename);
         }

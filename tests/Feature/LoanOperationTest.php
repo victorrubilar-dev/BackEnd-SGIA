@@ -29,19 +29,19 @@ class LoanOperationTest extends TestCase
         parent::setUp();
 
         $this->teacher = User::factory()->create([
-            'email' => 'docente_ops_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_ops_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_ops_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_ops_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->admin = User::factory()->create([
-            'email' => 'admin_ops_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_ops_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]);
@@ -276,7 +276,7 @@ class LoanOperationTest extends TestCase
 
         // El director no opera préstamos según el catálogo
         Sanctum::actingAs(User::factory()->create([
-            'email' => 'dir_ops_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_ops_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]));

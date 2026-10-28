@@ -14,9 +14,7 @@ class CheckStockAlertJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public Product $product)
-    {
-    }
+    public function __construct(public Product $product) {}
 
     public function handle(StockAlertService $alertService): void
     {

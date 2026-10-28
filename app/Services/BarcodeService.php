@@ -27,7 +27,7 @@ class BarcodeService
      */
     public function generateSvg(string $code): string
     {
-        $generator = new BarcodeGeneratorSVG();
+        $generator = new BarcodeGeneratorSVG;
 
         return $generator->getBarcode($code, $generator::TYPE_CODE_128);
     }
@@ -37,7 +37,7 @@ class BarcodeService
      */
     public function generateHtml(string $code): string
     {
-        $generator = new BarcodeGeneratorHTML();
+        $generator = new BarcodeGeneratorHTML;
 
         return $generator->getBarcode($code, $generator::TYPE_CODE_128);
     }
@@ -48,14 +48,14 @@ class BarcodeService
     public function generateBarcodeImageUri(string $code): string
     {
         if (extension_loaded('gd') || extension_loaded('imagick')) {
-            $generator = new BarcodeGeneratorPNG();
+            $generator = new BarcodeGeneratorPNG;
             $barcodeData = $generator->getBarcode($code, $generator::TYPE_CODE_128);
 
-            return 'data:image/png;base64,' . base64_encode($barcodeData);
+            return 'data:image/png;base64,'.base64_encode($barcodeData);
         }
 
         $svg = $this->generateSvg($code);
 
-        return 'data:image/svg+xml;utf8,' . rawurlencode($svg);
+        return 'data:image/svg+xml;utf8,'.rawurlencode($svg);
     }
 }

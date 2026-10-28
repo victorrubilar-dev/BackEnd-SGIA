@@ -13,7 +13,9 @@ namespace App\Services;
 class PurchaseStateMachine
 {
     public const STATUS_PENDING = 'pendiente';
+
     public const STATUS_IN_TRANSIT = 'en_camino';
+
     public const STATUS_COMPLETED = 'completa';
 
     /**

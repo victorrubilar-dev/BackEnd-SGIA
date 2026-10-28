@@ -10,9 +10,7 @@ use Illuminate\Support\Facades\Gate;
 
 class DashboardController extends Controller
 {
-    public function __construct(private readonly DashboardService $dashboard)
-    {
-    }
+    public function __construct(private readonly DashboardService $dashboard) {}
 
     /**
      * REQ-14: Productos más solicitados (FU-06).

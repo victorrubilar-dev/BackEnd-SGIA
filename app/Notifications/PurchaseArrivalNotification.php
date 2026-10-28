@@ -15,9 +15,7 @@ class PurchaseArrivalNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public Purchase $purchase)
-    {
-    }
+    public function __construct(public Purchase $purchase) {}
 
     /**
      * Get the notification's delivery channels.
@@ -44,7 +42,7 @@ class PurchaseArrivalNotification extends Notification implements ShouldQueue
             'status' => $this->purchase->status,
             'total' => $this->purchase->total,
             'message' => "La orden de compra {$this->purchase->code} fue marcada como completa. "
-                . 'Pendiente el ingreso físico del material a stock.',
+                .'Pendiente el ingreso físico del material a stock.',
         ];
     }
 }

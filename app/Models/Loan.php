@@ -14,11 +14,15 @@ class Loan extends Model
     use HasFactory;
 
     public const STATUS_PENDING = LoanStateMachine::STATUS_PENDING;
+
     public const STATUS_IN_PROGRESS = LoanStateMachine::STATUS_IN_PROGRESS;
+
     public const STATUS_PROCESSED = LoanStateMachine::STATUS_PROCESSED;
+
     public const STATUS_REJECTED = LoanStateMachine::STATUS_REJECTED;
 
     public const TYPE_REMOTE = 'remoto';
+
     public const TYPE_DIRECT = 'presencial';
 
     public const STATUSES = [
@@ -104,7 +108,7 @@ class Loan extends Model
         $prefix = $type === self::TYPE_DIRECT ? 'PRE' : 'REM';
 
         do {
-            $code = $prefix . '-' . date('Y') . '-' . strtoupper(Str::random(6));
+            $code = $prefix.'-'.date('Y').'-'.strtoupper(Str::random(6));
         } while (static::where('code', $code)->exists());
 
         return $code;

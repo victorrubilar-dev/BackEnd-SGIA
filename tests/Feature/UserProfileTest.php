@@ -22,7 +22,7 @@ class UserProfileTest extends TestCase
 
         $token = $user->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/me');
 
         $response->assertStatus(200);
@@ -70,7 +70,7 @@ class UserProfileTest extends TestCase
 
         $token = $user->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/user');
 
         $response->assertStatus(200);

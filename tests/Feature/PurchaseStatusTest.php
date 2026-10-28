@@ -28,19 +28,19 @@ class PurchaseStatusTest extends TestCase
         parent::setUp();
 
         $this->director = User::factory()->create([
-            'email' => 'dir_compra_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_compra_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_compra_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_compra_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'docente_compra_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_compra_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -163,7 +163,7 @@ class PurchaseStatusTest extends TestCase
             'unit_price' => 250,
         ]);
 
-        $response = $this->getJson('/api/purchases/' . $purchase->id);
+        $response = $this->getJson('/api/purchases/'.$purchase->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.id', $purchase->id);
@@ -178,7 +178,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_PENDING]);
 
-        $response = $this->patchJson('/api/purchases/' . $purchase->id . '/status', [
+        $response = $this->patchJson('/api/purchases/'.$purchase->id.'/status', [
             'status' => Purchase::STATUS_IN_TRANSIT,
         ]);
 
@@ -194,7 +194,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_PENDING]);
 
-        $response = $this->patchJson('/api/purchases/' . $purchase->id . '/status', [
+        $response = $this->patchJson('/api/purchases/'.$purchase->id.'/status', [
             'status' => Purchase::STATUS_COMPLETED,
         ]);
 
@@ -211,7 +211,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_COMPLETED]);
 
-        $response = $this->patchJson('/api/purchases/' . $purchase->id . '/status', [
+        $response = $this->patchJson('/api/purchases/'.$purchase->id.'/status', [
             'estado' => Purchase::STATUS_PENDING,
         ]);
 
@@ -225,7 +225,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase();
 
-        $response = $this->patchJson('/api/purchases/' . $purchase->id . '/status', [
+        $response = $this->patchJson('/api/purchases/'.$purchase->id.'/status', [
             'status' => 'perdida',
         ]);
 
@@ -242,7 +242,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_IN_TRANSIT]);
 
-        $response = $this->post('/api/purchases/' . $purchase->id . '/arrival-scan', [
+        $response = $this->post('/api/purchases/'.$purchase->id.'/arrival-scan', [
             'document' => UploadedFile::fake()->create('guia-despacho.pdf', 50, 'application/pdf'),
             'guide_number' => 'GD-778899',
         ]);
@@ -268,7 +268,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_PENDING]);
 
-        $response = $this->postJson('/api/purchases/' . $purchase->id . '/arrival-scan', [
+        $response = $this->postJson('/api/purchases/'.$purchase->id.'/arrival-scan', [
             'guide_number' => 'GD-112233',
             'invoice_number' => 'FAC-445566',
         ]);
@@ -288,7 +288,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_COMPLETED]);
 
-        $response = $this->postJson('/api/purchases/' . $purchase->id . '/arrival-scan', [
+        $response = $this->postJson('/api/purchases/'.$purchase->id.'/arrival-scan', [
             'guide_number' => 'GD-999999',
         ]);
 
@@ -304,7 +304,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_IN_TRANSIT]);
 
-        $response = $this->postJson('/api/purchases/' . $purchase->id . '/arrival-scan', []);
+        $response = $this->postJson('/api/purchases/'.$purchase->id.'/arrival-scan', []);
 
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('document');
@@ -318,7 +318,7 @@ class PurchaseStatusTest extends TestCase
 
         $purchase = $this->makePurchase(['status' => Purchase::STATUS_IN_TRANSIT]);
 
-        $this->postJson('/api/purchases/' . $purchase->id . '/arrival-scan', [
+        $this->postJson('/api/purchases/'.$purchase->id.'/arrival-scan', [
             'guide_number' => 'GD-123123',
         ])->assertStatus(403);
     }

@@ -21,9 +21,9 @@ class ProductFactory extends Factory
         $cajon = Cajon::factory()->create(['location_id' => $location->id]);
 
         return [
-            'name' => 'Producto ' . fake()->unique()->words(2, true),
+            'name' => 'Producto '.fake()->unique()->words(2, true),
             'description' => fake()->paragraph(),
-            'barcode' => 'SGIA-' . fake()->unique()->numerify('##########'),
+            'barcode' => 'SGIA-'.fake()->unique()->numerify('##########'),
             'quantity' => fake()->numberBetween(10, 100),
             'stock_minimo' => 5,
             'supplier_id' => Supplier::factory(),

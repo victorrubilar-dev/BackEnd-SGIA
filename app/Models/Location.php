@@ -12,8 +12,11 @@ class Location extends Model
     use HasFactory;
 
     public const TIPO_SALA = 'sala';
+
     public const TIPO_PANOL = 'panol';
+
     public const TIPO_TALLER = 'taller';
+
     public const TIPO_BODEGA = 'bodega';
 
     public const TIPOS = [

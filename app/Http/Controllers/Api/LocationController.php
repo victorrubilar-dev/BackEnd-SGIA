@@ -25,11 +25,11 @@ class LocationController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = '%' . $request->string('search') . '%';
+            $search = '%'.$request->string('search').'%';
             $query->where(function ($q) use ($search) {
                 $q->where('nombre', 'ilike', $search)
-                  ->orWhere('sala', 'ilike', $search)
-                  ->orWhere('descripcion', 'ilike', $search);
+                    ->orWhere('sala', 'ilike', $search)
+                    ->orWhere('descripcion', 'ilike', $search);
             });
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Purchase;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ScanArrivalRequest extends FormRequest

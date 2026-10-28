@@ -19,7 +19,7 @@ class EquipmentController extends Controller
     {
         Gate::authorize('view', $product);
 
-        $filename = 'ficha-tecnica-' . ($product->barcode ?: 'equipo-' . $product->id) . '.pdf';
+        $filename = 'ficha-tecnica-'.($product->barcode ?: 'equipo-'.$product->id).'.pdf';
 
         return $pdfService->download($pdfService->technicalSheet($product), $filename);
     }

@@ -22,8 +22,8 @@ class InvalidLoanStatusTransition extends RuntimeException
             $message !== ''
                 ? $message
                 : "Transición de estado no permitida: no se puede pasar de \"{$from}\" a \"{$to}\". "
-                    . 'Estados permitidos desde "' . $from . '": '
-                    . ($allowed === [] ? 'ninguno (estado final).' : implode(', ', $allowed) . '.')
+                    .'Estados permitidos desde "'.$from.'": '
+                    .($allowed === [] ? 'ninguno (estado final).' : implode(', ', $allowed).'.')
         );
     }
 }

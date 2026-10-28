@@ -14,13 +14,13 @@ class LocationFactory extends Factory
 
     public function definition(): array
     {
-        $nombre = 'Sala-' . fake()->unique()->numberBetween(100, 999);
+        $nombre = 'Sala-'.fake()->unique()->numberBetween(100, 999);
 
         return [
             'nombre' => $nombre,
             'tipo' => fake()->randomElement(['sala', 'panol', 'taller']),
             'sala' => $nombre,
-            'cajon' => 'Cajon-' . fake()->numberBetween(1, 50),
+            'cajon' => 'Cajon-'.fake()->numberBetween(1, 50),
             'descripcion' => fake()->sentence(),
         ];
     }

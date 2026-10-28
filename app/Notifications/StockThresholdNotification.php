@@ -5,16 +5,13 @@ namespace App\Notifications;
 use App\Models\StockAlert;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class StockThresholdNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    public function __construct(public StockAlert $alert)
-    {
-    }
+    public function __construct(public StockAlert $alert) {}
 
     /**
      * Get the notification's delivery channels.

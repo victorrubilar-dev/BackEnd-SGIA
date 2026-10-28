@@ -3,7 +3,6 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -19,8 +18,11 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     public const ROLE_ADMIN = 'AD-01';
+
     public const ROLE_DIRECTOR = 'DIR-01';
+
     public const ROLE_WAREHOUSE = 'PAN-01';
+
     public const ROLE_TEACHER = 'PRO-01';
 
     public const ROLES = [

@@ -17,16 +17,13 @@ use Illuminate\Validation\ValidationException;
  */
 class QuotationService
 {
-    public function __construct(private QuotationEmailService $emailService)
-    {
-    }
+    public function __construct(private QuotationEmailService $emailService) {}
 
     /**
      * Crea la cotización con sus ítems y proveedores contactados, y envía la
      * solicitud por correo a cada proveedor.
      *
      * @param  array<string, mixed>  $validated
-     *
      * @return array{quotation: Quotation, emails_sent: int}
      */
     public function create(array $validated, User $creator): array

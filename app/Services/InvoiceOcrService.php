@@ -29,7 +29,7 @@ class InvoiceOcrService
             $supplier = Supplier::where('name', 'ilike', $supplierName)->first();
 
             return [
-                'invoice_number' => $decoded['invoice_number'] ?? 'FAC-' . date('Ymd') . '-001',
+                'invoice_number' => $decoded['invoice_number'] ?? 'FAC-'.date('Ymd').'-001',
                 'supplier_name' => $supplierName,
                 'supplier_id' => $supplier?->id,
                 'items' => array_map(fn ($item) => [
@@ -61,7 +61,7 @@ class InvoiceOcrService
         ];
 
         return [
-            'invoice_number' => 'FAC-' . strtoupper(substr(md5($filename), 0, 8)),
+            'invoice_number' => 'FAC-'.strtoupper(substr(md5($filename), 0, 8)),
             'supplier_name' => $supplierName,
             'supplier_id' => $supplier?->id,
             'items' => $defaultItems,

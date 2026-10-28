@@ -111,7 +111,7 @@ class LoanController extends Controller
         $room = $request->input('sala') ?? $request->input('room');
 
         if ($room !== null && $room !== '') {
-            $query->where('room', 'ilike', '%' . $room . '%');
+            $query->where('room', 'ilike', '%'.$room.'%');
         }
 
         $teacher = $request->input('profesor')
@@ -119,7 +119,7 @@ class LoanController extends Controller
             ?? $request->input('borrower');
 
         if ($teacher !== null && $teacher !== '') {
-            $like = '%' . $teacher . '%';
+            $like = '%'.$teacher.'%';
             $query->where(function ($q) use ($like) {
                 $q->where('borrower_name', 'ilike', $like)
                     ->orWhereHas('requester', fn ($qq) => $qq->where('name', 'ilike', $like));
@@ -135,7 +135,7 @@ class LoanController extends Controller
             $product = $request->input('insumo') ?? $request->input('product');
 
             if ($product !== null && $product !== '') {
-                $like = '%' . $product . '%';
+                $like = '%'.$product.'%';
                 $query->whereHas('items', function ($q) use ($like) {
                     $q->where('name', 'ilike', $like)
                         ->orWhereHas('product', fn ($qq) => $qq->where('name', 'ilike', $like));
@@ -144,7 +144,7 @@ class LoanController extends Controller
         }
 
         if ($request->filled('search')) {
-            $like = '%' . $request->string('search') . '%';
+            $like = '%'.$request->string('search').'%';
             $query->where(fn ($q) => $q->where('code', 'ilike', $like)
                 ->orWhere('subject', 'ilike', $like));
         }

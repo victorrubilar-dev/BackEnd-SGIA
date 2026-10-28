@@ -15,7 +15,7 @@ class AuthTest extends TestCase
     public function test_login_success_for_web_client(): void
     {
         $user = User::factory()->create([
-            'email' => 'docente_web_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_web_'.uniqid().'@inacap.cl',
             'password' => Hash::make('DocentePassword123'),
             'role' => 'PRO-01',
             'area' => 'Informática',
@@ -54,7 +54,7 @@ class AuthTest extends TestCase
     public function test_login_success_for_mobile_client(): void
     {
         $user = User::factory()->create([
-            'email' => 'docente_mob_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_mob_'.uniqid().'@inacap.cl',
             'password' => Hash::make('DocentePassword123'),
             'role' => 'PRO-01',
             'is_active' => true,
@@ -76,7 +76,7 @@ class AuthTest extends TestCase
     public function test_login_fails_with_invalid_credentials(): void
     {
         $user = User::factory()->create([
-            'email' => 'docente_err_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_err_'.uniqid().'@inacap.cl',
             'password' => Hash::make('CorrectPassword123'),
             'is_active' => true,
         ]);
@@ -96,7 +96,7 @@ class AuthTest extends TestCase
     public function test_login_fails_for_inactive_user(): void
     {
         $user = User::factory()->create([
-            'email' => 'inactive_usr_' . uniqid() . '@inacap.cl',
+            'email' => 'inactive_usr_'.uniqid().'@inacap.cl',
             'password' => Hash::make('DocentePassword123'),
             'is_active' => false,
         ]);
@@ -116,13 +116,13 @@ class AuthTest extends TestCase
     public function test_ensure_user_is_active_middleware_blocks_inactive_user(): void
     {
         $user = User::factory()->create([
-            'email' => 'blocked_tok_' . uniqid() . '@inacap.cl',
+            'email' => 'blocked_tok_'.uniqid().'@inacap.cl',
             'is_active' => false,
         ]);
 
         $token = $user->createToken('web')->plainTextToken;
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)
             ->getJson('/api/me');
 
         $response->assertStatus(403);
@@ -131,7 +131,7 @@ class AuthTest extends TestCase
     public function test_logout_deletes_current_token(): void
     {
         $user = User::factory()->create([
-            'email' => 'logout_tst_' . uniqid() . '@inacap.cl',
+            'email' => 'logout_tst_'.uniqid().'@inacap.cl',
             'is_active' => true,
         ]);
 
@@ -140,7 +140,7 @@ class AuthTest extends TestCase
 
         $this->assertEquals(2, $user->tokens()->count());
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token1->plainTextToken)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token1->plainTextToken)
             ->postJson('/api/logout');
 
         $response->assertStatus(200);
@@ -157,7 +157,7 @@ class AuthTest extends TestCase
     public function test_list_and_revoke_tokens_by_device(): void
     {
         $user = User::factory()->create([
-            'email' => 'devices_tst_' . uniqid() . '@inacap.cl',
+            'email' => 'devices_tst_'.uniqid().'@inacap.cl',
             'is_active' => true,
         ]);
 
@@ -165,7 +165,7 @@ class AuthTest extends TestCase
         $tokenB = $user->createToken('mobile_pixel');
 
         // List tokens
-        $response = $this->withHeader('Authorization', 'Bearer ' . $tokenA->plainTextToken)
+        $response = $this->withHeader('Authorization', 'Bearer '.$tokenA->plainTextToken)
             ->getJson('/api/tokens');
 
         $response->assertStatus(200);
@@ -174,8 +174,8 @@ class AuthTest extends TestCase
         $response->assertJsonFragment(['device_name' => 'mobile_pixel']);
 
         // Revoke tokenB by id
-        $deleteResponse = $this->withHeader('Authorization', 'Bearer ' . $tokenA->plainTextToken)
-            ->deleteJson('/api/tokens/' . $tokenB->accessToken->id);
+        $deleteResponse = $this->withHeader('Authorization', 'Bearer '.$tokenA->plainTextToken)
+            ->deleteJson('/api/tokens/'.$tokenB->accessToken->id);
 
         $deleteResponse->assertStatus(200);
         $deleteResponse->assertJson([
@@ -190,7 +190,7 @@ class AuthTest extends TestCase
     {
         $user = User::factory()->create([
             'name' => 'Profesor Carlos',
-            'email' => 'carlos_' . uniqid() . '@inacap.cl',
+            'email' => 'carlos_'.uniqid().'@inacap.cl',
             'role' => 'PRO-01',
             'area' => 'Electricidad',
             'is_active' => true,

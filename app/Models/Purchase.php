@@ -14,7 +14,9 @@ class Purchase extends Model
     use HasFactory;
 
     public const STATUS_PENDING = PurchaseStateMachine::STATUS_PENDING;
+
     public const STATUS_IN_TRANSIT = PurchaseStateMachine::STATUS_IN_TRANSIT;
+
     public const STATUS_COMPLETED = PurchaseStateMachine::STATUS_COMPLETED;
 
     public const STATUSES = [
@@ -82,7 +84,7 @@ class Purchase extends Model
     public static function generateUniqueCode(): string
     {
         do {
-            $code = 'OC-' . date('Y') . '-' . strtoupper(Str::random(6));
+            $code = 'OC-'.date('Y').'-'.strtoupper(Str::random(6));
         } while (static::where('code', $code)->exists());
 
         return $code;

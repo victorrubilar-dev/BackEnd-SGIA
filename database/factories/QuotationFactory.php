@@ -16,7 +16,7 @@ class QuotationFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => 'COT-' . fake()->unique()->numberBetween(202600000, 202699999),
+            'code' => 'COT-'.fake()->unique()->numberBetween(202600000, 202699999),
             'created_by' => User::factory(),
             'status' => Quotation::STATUS_PENDING,
             'notes' => fake()->sentence(),

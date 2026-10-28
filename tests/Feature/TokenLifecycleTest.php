@@ -79,7 +79,7 @@ class TokenLifecycleTest extends TestCase
 
         $this->assertCount(3, $user->tokens);
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token1)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token1)
             ->postJson('/api/tokens/revoke-others');
 
         $response->assertStatus(200);
@@ -109,7 +109,7 @@ class TokenLifecycleTest extends TestCase
 
         $this->assertCount(2, $user->tokens);
 
-        $response = $this->withHeader('Authorization', 'Bearer ' . $token1)
+        $response = $this->withHeader('Authorization', 'Bearer '.$token1)
             ->postJson('/api/logout-all');
 
         $response->assertStatus(200);

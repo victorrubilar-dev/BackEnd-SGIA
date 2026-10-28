@@ -26,25 +26,25 @@ class SupplierManagementTest extends TestCase
         parent::setUp();
 
         $this->director = User::factory()->create([
-            'email' => 'dir_prov_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_prov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_prov_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_prov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'docente_prov_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_prov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
 
         $this->admin = User::factory()->create([
-            'email' => 'admin_prov_' . uniqid() . '@inacap.cl',
+            'email' => 'admin_prov_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]);
@@ -136,7 +136,7 @@ class SupplierManagementTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $response = $this->getJson('/api/suppliers/' . $supplier->id);
+        $response = $this->getJson('/api/suppliers/'.$supplier->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.name', $supplier->name);
@@ -149,7 +149,7 @@ class SupplierManagementTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $response = $this->putJson('/api/suppliers/' . $supplier->id, [
+        $response = $this->putJson('/api/suppliers/'.$supplier->id, [
             'name' => 'ElectroChile Renombrada',
             'email' => 'nuevo@electrochile.cl',
         ]);
@@ -166,12 +166,12 @@ class SupplierManagementTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $this->patchJson('/api/suppliers/' . $supplier->id . '/status', ['is_active' => false])
+        $this->patchJson('/api/suppliers/'.$supplier->id.'/status', ['is_active' => false])
             ->assertStatus(200);
 
         $this->assertFalse($supplier->fresh()->is_active);
 
-        $this->patchJson('/api/suppliers/' . $supplier->id . '/status', ['is_active' => true])
+        $this->patchJson('/api/suppliers/'.$supplier->id.'/status', ['is_active' => true])
             ->assertStatus(200);
 
         $this->assertTrue($supplier->fresh()->is_active);
@@ -183,7 +183,7 @@ class SupplierManagementTest extends TestCase
 
         Sanctum::actingAs($this->admin);
 
-        $response = $this->deleteJson('/api/suppliers/' . $supplier->id);
+        $response = $this->deleteJson('/api/suppliers/'.$supplier->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseMissing('suppliers', ['id' => $supplier->id]);
@@ -196,7 +196,7 @@ class SupplierManagementTest extends TestCase
 
         Sanctum::actingAs($this->admin);
 
-        $response = $this->deleteJson('/api/suppliers/' . $supplier->id);
+        $response = $this->deleteJson('/api/suppliers/'.$supplier->id);
 
         $response->assertStatus(200);
         $this->assertDatabaseHas('suppliers', ['id' => $supplier->id, 'is_active' => false]);

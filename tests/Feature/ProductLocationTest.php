@@ -21,7 +21,7 @@ class ProductLocationTest extends TestCase
         parent::setUp();
 
         $this->warehouse = User::factory()->create([
-            'email' => 'panol_loc_' . uniqid() . '@inacap.cl',
+            'email' => 'panol_loc_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
             'is_active' => true,
         ]);
@@ -84,7 +84,7 @@ class ProductLocationTest extends TestCase
             'cajon_id' => $cajon->id,
         ]);
 
-        $response = $this->getJson('/api/products/' . $product->id . '/location');
+        $response = $this->getJson('/api/products/'.$product->id.'/location');
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -107,7 +107,7 @@ class ProductLocationTest extends TestCase
 
         $product = Product::factory()->create();
 
-        $response = $this->patchJson('/api/products/' . $product->id . '/location', [
+        $response = $this->patchJson('/api/products/'.$product->id.'/location', [
             'sala' => 'Sala-Nueva-4',
             'cajon' => 'Cajon-12',
             'descripcion' => 'Nueva ubicación',

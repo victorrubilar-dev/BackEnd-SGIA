@@ -17,7 +17,7 @@ class PurchaseFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => 'OC-' . fake()->unique()->numberBetween(202600000, 202699999),
+            'code' => 'OC-'.fake()->unique()->numberBetween(202600000, 202699999),
             'supplier_id' => Supplier::factory(),
             'created_by' => User::factory(),
             'status' => Purchase::STATUS_PENDING,

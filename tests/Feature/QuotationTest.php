@@ -32,13 +32,13 @@ class QuotationTest extends TestCase
         parent::setUp();
 
         $this->director = User::factory()->create([
-            'email' => 'dir_cot_' . uniqid() . '@inacap.cl',
+            'email' => 'dir_cot_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
         $this->teacher = User::factory()->create([
-            'email' => 'docente_cot_' . uniqid() . '@inacap.cl',
+            'email' => 'docente_cot_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_TEACHER,
             'is_active' => true,
         ]);
@@ -185,7 +185,7 @@ class QuotationTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $response = $this->getJson('/api/quotations/' . $quotation->id);
+        $response = $this->getJson('/api/quotations/'.$quotation->id);
 
         $response->assertStatus(200);
         $response->assertJsonPath('data.status', Quotation::STATUS_PENDING);
@@ -203,23 +203,23 @@ class QuotationTest extends TestCase
         Sanctum::actingAs($this->director);
 
         // pendiente -> convertida no está permitido
-        $this->patchJson('/api/quotations/' . $quotation->id . '/status', ['status' => Quotation::STATUS_CONVERTED])
+        $this->patchJson('/api/quotations/'.$quotation->id.'/status', ['status' => Quotation::STATUS_CONVERTED])
             ->assertStatus(422);
 
         $this->assertEquals(Quotation::STATUS_PENDING, $quotation->fresh()->status);
 
         // pendiente -> aceptada
-        $this->patchJson('/api/quotations/' . $quotation->id . '/status', ['estado' => Quotation::STATUS_ACCEPTED])
+        $this->patchJson('/api/quotations/'.$quotation->id.'/status', ['estado' => Quotation::STATUS_ACCEPTED])
             ->assertStatus(200)
             ->assertJsonPath('quotation.status', Quotation::STATUS_ACCEPTED);
 
         // aceptada -> convertida
-        $this->patchJson('/api/quotations/' . $quotation->id . '/status', ['status' => Quotation::STATUS_CONVERTED])
+        $this->patchJson('/api/quotations/'.$quotation->id.'/status', ['status' => Quotation::STATUS_CONVERTED])
             ->assertStatus(200)
             ->assertJsonPath('quotation.status', Quotation::STATUS_CONVERTED);
 
         // convertida es estado final
-        $this->patchJson('/api/quotations/' . $quotation->id . '/status', ['status' => Quotation::STATUS_PENDING])
+        $this->patchJson('/api/quotations/'.$quotation->id.'/status', ['status' => Quotation::STATUS_PENDING])
             ->assertStatus(422);
     }
 
@@ -233,7 +233,7 @@ class QuotationTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $response = $this->patchJson('/api/quotations/' . $quotation->id . '/responses', [
+        $response = $this->patchJson('/api/quotations/'.$quotation->id.'/responses', [
             'supplier_id' => $this->suppliers[0]->id,
             'status' => QuotationSupplier::STATUS_ACCEPTED,
             'offer_total' => 480000,
@@ -263,7 +263,7 @@ class QuotationTest extends TestCase
         Sanctum::actingAs($this->director);
 
         foreach ($this->suppliers as $index => $supplier) {
-            $this->patchJson('/api/quotations/' . $quotation->id . '/responses', [
+            $this->patchJson('/api/quotations/'.$quotation->id.'/responses', [
                 'supplier_id' => $supplier->id,
                 'status' => QuotationSupplier::STATUS_REJECTED,
             ])->assertStatus(201);
@@ -279,7 +279,7 @@ class QuotationTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $response = $this->patchJson('/api/quotations/' . $quotation->id . '/responses', [
+        $response = $this->patchJson('/api/quotations/'.$quotation->id.'/responses', [
             'supplier_id' => $this->suppliers[1]->id,
             'status' => QuotationSupplier::STATUS_ACCEPTED,
         ]);

@@ -14,7 +14,9 @@ class QuotationSupplier extends Model
     use HasFactory;
 
     public const STATUS_PENDING = 'pendiente';
+
     public const STATUS_ACCEPTED = 'aceptada';
+
     public const STATUS_REJECTED = 'rechazada';
 
     public const STATUSES = [

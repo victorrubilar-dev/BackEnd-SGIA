@@ -35,9 +35,9 @@ class AuthController extends Controller
         }
 
         $email = Str::transliterate(Str::lower($validated['email']));
-        $throttleKey = $email . '|' . $request->ip();
-        RateLimiter::clear('login:' . $throttleKey);
-        RateLimiter::clear(md5('login' . $throttleKey));
+        $throttleKey = $email.'|'.$request->ip();
+        RateLimiter::clear('login:'.$throttleKey);
+        RateLimiter::clear(md5('login'.$throttleKey));
 
         $expiresAt = match ($validated['device_name']) {
             'mobile' => now()->addDays(60),

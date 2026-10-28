@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Quotation;
 use App\Models\QuotationSupplier;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
