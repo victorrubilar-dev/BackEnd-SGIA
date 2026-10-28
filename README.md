@@ -6,7 +6,7 @@ Este repositorio contiene **solo el backend** (capa de lógica de negocio). El p
 
 ## Requisitos
 
-- PHP 8.4+ con extensiones `pgsql`, `dom`, `openssl`
+- PHP 8.3+ con extensiones `pgsql`, `dom`, `openssl`
 - Composer
 - Docker (para el contenedor de PostgreSQL en desarrollo)
 - PostgreSQL 16
@@ -60,15 +60,9 @@ curl -X DELETE http://localhost:8000/api/tokens/{tokenId} -H "Authorization: Bea
 
 Duración de tokens por dispositivo: **mobile** 60 días, **web** 8 horas (configurable en `SANCTUM_EXPIRATION` / `config/sanctum.php`).
 
-## Rutas principales
+## Rutas
 
-| Método | URI | Acceso | Descripción |
-|--------|-----|--------|-------------|
-| POST | `/api/login` | público | Autenticación, emite token Bearer |
-| POST | `/api/logout` | `auth:sanctum` | Revoca el token actual |
-| GET | `/api/user` | `auth:sanctum` | Datos del usuario autenticado |
-| GET | `/api/tokens` | `auth:sanctum` | Tokens activos del usuario |
-| DELETE | `/api/tokens/{id}` | `auth:sanctum` | Revoca un token propio |
+Catálogo completo con roles y parámetros en `ENDPOINTS.md`; fuente de verdad: `php artisan route:list --path=api`.
 
 ## Estructura del modelo de datos (núcleo)
 
@@ -85,4 +79,4 @@ Duración de tokens por dispositivo: **mobile** 60 días, **web** 8 horas (confi
 
 ## Referencia del proyecto
 
-Ver `AGENTS.md` para el contexto de negocio, roles, módulos funcionales (FU-01 a FU-06) y desglose de tareas por requisito (REQ-01 a REQ-14).
+Ver `CLAUDE.md` para arquitectura, roles y convenciones, `TASKS/` para el desglose por requisito (REQ-01 a REQ-14) y `TASKS/rework.md` para las correcciones pendientes.

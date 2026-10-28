@@ -1,47 +1,61 @@
-<laravel-boost-guidelines>
-# Laravel Application
+# SGIA Backend
 
-This repository contains a Laravel application. Complete the following setup before working on the user's request.
+API REST (Laravel 13, PHP ^8.3) del *Sistema de Gestión de Inventario y Activos* para el Área de Informática y Ciberseguridad, INACAP Sede Temuco. Solo backend: el panel web (React/Vite) y la app móvil (React Native/Expo) viven en otro repositorio y consumen esta API en JSON.
 
-## Prerequisites
+Stack: Laravel + Sanctum (tokens Bearer), PostgreSQL 16 (Docker), DomPDF (PDFs), picqer/php-barcode-generator, PHPUnit 12, Pint.
 
-Verify that PHP and Composer are available:
-
-```sh
-php -v
-composer -V
-```
-
-If either command is unavailable, detect the user's operating system and install the prerequisites with the appropriate command:
-
-macOS:
+## Comandos
 
 ```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.5)"
+docker compose up -d db                 # PostgreSQL (db sgia / sgia_testing, user sgia)
+php artisan migrate --seed              # admin@sgia.cl + ubicaciones de prueba
+php artisan serve                       # http://localhost:8000/api
+php artisan test                        # requiere la BD sgia_testing arriba
+php artisan test --filter=NombreTest
+vendor/bin/pint --dirty                 # formatear solo lo que tocaste
 ```
 
-Windows PowerShell:
+Antes de dar una tarea por terminada: `php artisan test` en verde y `pint --dirty` sin cambios pendientes.
 
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force; [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; iex ((New-Object System.Net.WebClient).DownloadString('https://php.new/install/windows/8.5'))
-```
+## Roles (`App\Models\User::ROLE_*`)
 
-Linux:
+| Código | Rol | Puede |
+|---|---|---|
+| `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
+| `DIR-01` | Director de Carrera | Facturas, cotizaciones, compras, dashboards |
+| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos, informes |
+| `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 
-```sh
-/bin/bash -c "$(curl -fsSL https://php.new/install/linux/8.5)"
-```
+Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` (grueso) y Policies en `app/Policies` (por recurso). `EnsureUserIsActive` (`active`) bloquea tokens de usuarios desactivados.
 
-After installation, ask the user to restart their terminal. If the agent needs the restarted shell to continue, ask the user to reopen their terminal and rerun their original prompt.
+## Arquitectura
 
-## Agent Setup
+- `routes/api.php`: todas las rutas bajo `auth:sanctum` + `active`; cada grupo comentado con su REQ. Las rutas estáticas (`/loans/pending`) van antes de las `{loan}`.
+- `app/Http/Controllers/Api`: delgados; validan con un FormRequest (`app/Http/Requests`), delegan en un Service y responden con un Resource (`app/Http/Resources`).
+- `app/Services`: lógica de negocio. Los flujos con estado usan una máquina de estados (`LoanStateMachine`, `PurchaseStateMachine`, `QuotationStateMachine`) que lanza `app/Exceptions/Invalid*StatusTransition`.
+- Stock: `StockAlertService` / `CheckStockAlertJob` generan alertas al llegar a `stock_minimo + 5` y a `stock_minimo`.
+- Vistas Blade solo para PDFs (`resources/views/equipment`) y el correo de cotización.
+- Tests de integración en `tests/Feature` (uno por módulo, contra PostgreSQL real, `RefreshDatabase`).
 
-Install Laravel Boost from the application root before making application changes:
+## Convenciones
 
-```sh
-composer require laravel/boost --dev
-php artisan boost:install
-```
+- Código en inglés; textos al usuario (mensajes de error, validación) en español. `APP_LOCALE=es`.
+- Auditoría en entidades de dominio: `created_by` / `updated_by`.
+- Toda ruta nueva: middleware de rol, FormRequest, Resource y un test Feature (caso feliz, 403 por rol, 422 por validación).
+- No crear alias de rutas nuevos (hoy existen `/me`+`/user`, `/password`+`/change-password`; ver `TASKS/rework.md`).
+- No tocar `vendor/`, `storage/` ni `bootstrap/cache/` a mano.
+- Pint define el estilo; no mezclar reformateos masivos con cambios funcionales.
 
-Boost replaces these bootstrap instructions with guidelines tailored to the application. After installation, read `AGENTS.md` again and continue with the user's original request using the generated guidelines.
-</laravel-boost-guidelines>
+## Documentación del proyecto
+
+- `ENDPOINTS.md`: catálogo de endpoints. Actualizarlo en el mismo cambio que modifique una ruta.
+- `TASKS/*.md`: requisitos (REQ-xx) por módulo con checkboxes. Marcar `[x]` solo cuando la tarea está hecha **y** tiene test.
+- `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
+- `README.md`: puesta en marcha para humanos.
+
+## Estado conocido (leer antes de confiar en el código)
+
+- `InvoiceOcrService` es un **stub**: devuelve datos fijos; no hay OCR real.
+- Las notificaciones solo usan el canal `broadcast`; no hay correo ni push real para alertas.
+- `TASKS/Dashboards.md` pide GraphQL (`/api/metrics`); lo implementado es REST (`/api/dashboard/*`).
+- `vendor/` está versionado en git por error (ver rework, fase 0).
