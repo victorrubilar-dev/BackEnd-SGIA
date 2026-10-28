@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateLocationEntityRequest;
 use App\Http\Resources\LocationResource;
 use App\Models\Panol;
 use App\Models\Sala;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -103,7 +104,22 @@ class LocationController extends Controller
             return response()->json(['message' => 'No tienes permisos para eliminar ubicaciones.'], 403);
         }
 
-        $location->delete();
+        $estantesCount = $location->estantes()->count();
+        if ($estantesCount > 0) {
+            return response()->json([
+                'message' => "No es posible eliminar la sala \"{$location->nombre_codigo}\" porque tiene {$estantesCount} estante(s) o cajón(es) asociado(s). Debes reubicar o eliminar primero los estantes.",
+                'error' => 'No se puede eliminar una sala con estantes asociados.',
+                'estantes_count' => $estantesCount,
+            ], 422);
+        }
+
+        try {
+            $location->delete();
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'No es posible eliminar la sala porque tiene registros relacionados en el sistema.',
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Ubicación eliminada exitosamente.',

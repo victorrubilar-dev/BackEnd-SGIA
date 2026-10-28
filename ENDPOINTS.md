@@ -66,7 +66,8 @@
 | `POST` | `/api/cajones` | `AD-01`, `DIR-01`, `PAN-01` | Crea un nuevo cajón dentro de una ubicación.<br>**Body:** `location_id`, `codigo`, `descripcion`. Valida código único por ubicación y registra `created_by` / `updated_by`. | ✅ Implementado |
 | `GET` | `/api/cajones/{id}` | Todos (`auth`) | Detalle del cajón con su ubicación padre y total de productos almacenados. | ✅ Implementado |
 | `PUT / PATCH` | `/api/cajones/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza código, descripción o mueve el cajón de ubicación. Actualiza `updated_by`. | ✅ Implementado |
-| `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón. | ✅ Implementado |
+| `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón/estante individual. Valida que no tenga equipos asociados (responde `422` si tiene equipos vinculados). | ✅ Implementado |
+| `POST / DELETE` | `/api/cajones/bulk-delete`<br>`/api/estantes/bulk-delete` | `AD-01`, `DIR-01` | **Borrado masivo de estantes/cajones:**<br>Elimina múltiples estantes en una sola llamada desde el front-end.<br>**Body:** `ids` (o alias `estante_ids`, `cajon_ids`: array con al menos 1 ID numérico), `partial` (bool opcional, default `false`), `ignore_conflicts` (bool opcional).<br>- Si hay estantes con equipos y `partial = false`, responde `422` con array de `blocked_estantes` y `blocked_ids`.<br>- Si `partial = true`, elimina los disponibles y reporta los bloqueados con status `200`. | ✅ Implementado |
 
 ---
 
@@ -373,6 +374,64 @@
 | `location_id` | Body | `integer` | **Sí** | ID existente de la sala/ubicación padre. | `2` |
 | `codigo` | Body | `string` | **Sí** | Código identificador (único dentro de la sala), max 50. | `"CAJON-A1"` |
 | `descripcion` | Body | `string` | No | Detalles del contenedor, max 500 caracteres. | `"Cajonera plástica para componentes SMD"` |
+
+---
+
+#### `POST / DELETE /api/cajones/bulk-delete` (y `/api/estantes/bulk-delete`) — Borrado Masivo de Estantes / Cajones
+- **Content-Type:** `application/json`
+- **Autenticación:** `Bearer Token` (`AD-01`, `DIR-01`).
+- **Descripción:** Permite eliminar múltiples estantes o cajones seleccionados en el front-end en una sola operación atómica o condicional.
+
+| Campo | Ubicación | Tipo | Obligatorio | Reglas / Restricciones | Ejemplo |
+|---|---|---|:---:|---|---|
+| `ids` *(o `estante_ids` / `cajon_ids`)* | Body | `array` | **Sí** | Array de IDs de estantes existentes a eliminar (`min:1`). | `[12, 15, 18]` |
+| `partial` *(o `ignore_conflicts`)* | Body | `boolean` | No | Si es `true`, elimina los estantes sin equipos asociados y reporta los que no se pudieron eliminar. Si es `false` (default), aborta y retorna error 422 si al menos uno contiene equipos. | `false` |
+
+**Respuesta Exitosa (200 OK):**
+```json
+{
+  "message": "2 estante(s) eliminado(s) exitosamente.",
+  "deleted_ids": [12, 15],
+  "deleted_count": 2
+}
+```
+
+**Respuesta con Conflicto / Bloqueo (422 Unprocessable Content - Modo Estricto):**
+```json
+{
+  "message": "No es posible eliminar los estantes seleccionados porque algunos tienen equipos asignados (Estante A1). Debes reubicar o eliminar los equipos primero.",
+  "error": "Existen estantes con equipos asociados.",
+  "blocked_ids": [18],
+  "blocked_estantes": [
+    {
+      "id": 18,
+      "nombre": "Estante A1",
+      "codigo_barras": "CAJON-A1",
+      "equipos_count": 4
+    }
+  ],
+  "deletable_ids": [12, 15]
+}
+```
+
+**Respuesta Parcial (200 OK con `partial: true`):**
+```json
+{
+  "message": "2 estante(s) eliminado(s) exitosamente.",
+  "deleted_ids": [12, 15],
+  "deleted_count": 2,
+  "partial": true,
+  "blocked_ids": [18],
+  "blocked_estantes": [
+    {
+      "id": 18,
+      "nombre": "Estante A1",
+      "codigo_barras": "CAJON-A1",
+      "equipos_count": 4
+    }
+  ]
+}
+```
 
 ---
 

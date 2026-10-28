@@ -13,6 +13,8 @@
 - [x] Entidad `Cajón` perteneciente a una `Ubicación` (`location_id`, código único por ubicación, descripción, auditoría `created_by`, `updated_by`).
 - [x] Producto asociado a un `Cajón` (`cajon_id`), derivando su ubicación física a través de este compartimiento.
 - [x] CRUD de ubicaciones (`/api/locations`) y cajones (`/api/cajones`) accesible para roles `AD-01`, `DIR-01` y `PAN-01`.
+- [x] Borrado individual de estantes/cajones con protección de integridad referencial (HTTP 422 si posee equipos vinculados).
+- [x] Borrado masivo de estantes/cajones (`POST|DELETE /api/cajones/bulk-delete`, `/api/estantes/bulk-delete`) para soporte de selección múltiple en el frontend, con validación de conflictos (HTTP 422 con detalle de `blocked_estantes`) y soporte para eliminación parcial condicional (`partial: true`).
 - [x] Endpoint `GET /api/products/{id}/location` y `PATCH /api/products/{id}/location` para consultar y actualizar el cajón/ubicación física.
 - [x] Filtros en `GET /api/products` por `cajon_id`, `location_id`, `sala` y `cajon`.
 - [x] Seeder con ubicaciones y cajones precargados para pruebas.
