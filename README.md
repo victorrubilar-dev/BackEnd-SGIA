@@ -31,7 +31,9 @@ php artisan migrate --seed
 php artisan serve        # http://localhost:8000
 ```
 
-El contenedor expone PostgreSQL en `127.0.0.1:5432`, base `sgia`, usuario/contraseña `sgia`/`sgia_secret` (ver `docker-compose.yml`).
+La contraseña del administrador sembrado se define con `SEED_ADMIN_PASSWORD` (por defecto `Admin1234!` solo fuera de producción; en producción el seeder no crea nada sin ella).
+
+El contenedor expone PostgreSQL en `127.0.0.1:5432`, base `sgia`, usuario y contraseña tomados de `DB_USERNAME` / `DB_PASSWORD` en `.env` (ver `docker-compose.yml`).
 
 ## Autenticación
 
@@ -43,7 +45,7 @@ Flujo básico:
 # Login (device_name: web | mobile)
 curl -X POST http://localhost:8000/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"admin@sgia.cl","password":"Secret-1234","device_name":"web"}'
+  -d '{"email":"admin@sgia.cl","password":"Admin1234!","device_name":"web"}'
 
 # Uso del token
 curl http://localhost:8000/api/user \

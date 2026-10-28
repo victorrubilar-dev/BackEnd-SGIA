@@ -15,16 +15,30 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $password = config('sgia.seed_admin_password')
+            ?? (app()->isProduction() ? null : 'Admin1234!');
+
+        if ($password === null) {
+            $this->command?->warn('Producción: define SEED_ADMIN_PASSWORD para crear el administrador inicial.');
+
+            return;
+        }
+
         $admin = User::updateOrCreate(
             ['email' => 'admin@sgia.cl'],
             [
                 'name' => 'Administrador SGIA',
-                'password' => Hash::make('Admin1234!'),
+                'password' => Hash::make($password),
                 'role' => User::ROLE_ADMIN,
                 'area' => 'Informática',
                 'is_active' => true,
             ]
         );
+
+        // Datos de demostración: nunca en producción.
+        if (app()->isProduction()) {
+            return;
+        }
 
         // Crear ubicaciones base (Salas y Pañoles)
         $panolCentral = Location::firstOrCreate(

@@ -20,7 +20,7 @@ return [
     'allowed_methods' => ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
 
     'allowed_origins' => array_values(array_filter(
-        array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:8081,http://localhost:19006')))
+        array_map('trim', explode(',', env('CORS_ALLOWED_ORIGINS', '')))
     )),
 
     'allowed_origins_patterns' => [],

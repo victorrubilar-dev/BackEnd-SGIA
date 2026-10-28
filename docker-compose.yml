@@ -5,14 +5,14 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: sgia
-      POSTGRES_USER: sgia
-      POSTGRES_PASSWORD: sgia_secret
+      POSTGRES_USER: ${DB_USERNAME:-sgia}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Define DB_PASSWORD en .env}
     ports:
       - "5432:5432"
     volumes:
       - sgia_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sgia -d sgia"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d sgia"]
       interval: 5s
       timeout: 5s
       retries: 5
