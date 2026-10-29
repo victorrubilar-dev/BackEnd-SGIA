@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\InvoiceScanController;
@@ -21,6 +22,8 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:lo
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/password', [AuthController::class, 'changePassword'])->middleware('throttle:sensitive');
+    Route::post('/devices', [DeviceTokenController::class, 'store']);
+    Route::delete('/devices/{id}', [DeviceTokenController::class, 'destroy']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/logout-all', [AuthController::class, 'logoutAll']);
     Route::get('/tokens', [AuthController::class, 'tokens']);

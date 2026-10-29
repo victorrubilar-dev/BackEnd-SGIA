@@ -38,6 +38,8 @@
 | `GET` | `/api/me` | Todos (`auth`) | Retorna el recurso del usuario autenticado (`UserResource`) con rol, área, estado y último login. | ✅ Implementado |
 | `PUT` | `/api/password` | Todos (`auth`) | Cambio de contraseña del usuario autenticado. Valida contraseña actual, complejidad mínima (8 caracteres, letras y números) y revoca automáticamente las demás sesiones remotas.<br>**Body:** `current_password`, `password`, `password_confirmation`. | ✅ Implementado |
 | `POST` | `/api/logout` | Todos (`auth`) | Cierra la sesión activa revocando el Bearer token actual. | ✅ Implementado |
+| `POST` | `/api/devices` | Todos (`auth`) | Registra el token de push de Expo del dispositivo del usuario (si ya existía, pasa a este usuario).<br>**Body:** `token` (`ExponentPushToken[...]`), `platform` (`ios` \| `android`, opcional). Responde `201` con `id`. | ✅ Implementado |
+| `DELETE` | `/api/devices/{id}` | Todos (`auth`) | Elimina un token propio (llamar al cerrar sesión). `204`; `404` si no es suyo. | ✅ Implementado |
 | `POST` | `/api/logout-all` | Todos (`auth`) | Revoca todos los tokens activos del usuario autenticado. | ✅ Implementado |
 | `GET` | `/api/tokens` | Todos (`auth`) | Lista todos los tokens y dispositivos activos del usuario autenticado con fecha de creación y expiración. | ✅ Implementado |
 | `DELETE` | `/api/tokens/{tokenId}` | Todos (`auth`) | Revoca un token o dispositivo específico por ID. | ✅ Implementado |

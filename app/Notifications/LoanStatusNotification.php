@@ -3,8 +3,10 @@
 namespace App\Notifications;
 
 use App\Models\Loan;
+use App\Notifications\Channels\ExpoPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
@@ -24,8 +26,26 @@ class LoanStatusNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // En producción se añade 'fcm' / push móvil y mail. En desarrollo/testing broadcast.
-        return ['broadcast'];
+        return ['broadcast', 'mail', ExpoPushChannel::class];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject("Préstamo {$this->loan->code}")
+            ->line($this->message);
+    }
+
+    /**
+     * @return array{title: string, body: string, data: array<string, mixed>}
+     */
+    public function toExpo(object $notifiable): array
+    {
+        return [
+            'title' => "Préstamo {$this->loan->code}",
+            'body' => $this->message,
+            'data' => ['type' => 'loan_status', 'loan_id' => $this->loan->id, 'status' => $this->loan->status],
+        ];
     }
 
     /**

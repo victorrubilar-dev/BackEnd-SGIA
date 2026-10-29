@@ -29,6 +29,7 @@ php artisan migrate --seed
 
 # 5. Iniciar el servidor
 php artisan serve        # http://localhost:8000
+php artisan queue:work   # notificaciones (correo/push) cuando QUEUE_CONNECTION=database
 ```
 
 La contraseña del administrador sembrado se define con `SEED_ADMIN_PASSWORD` (por defecto `Admin1234!` solo fuera de producción; en producción el seeder no crea nada sin ella).

@@ -3,8 +3,10 @@
 namespace App\Notifications;
 
 use App\Models\StockAlert;
+use App\Notifications\Channels\ExpoPushChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class StockThresholdNotification extends Notification implements ShouldQueue
@@ -20,8 +22,29 @@ class StockThresholdNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        // En producción se añade 'fcm' / push móvil y mail. En testing/desarrollo registramos el canal estándar.
-        return ['broadcast'];
+        return ['broadcast', 'mail', ExpoPushChannel::class];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $label = $this->alert->alert_type === StockAlert::TYPE_CRITICAL ? 'Stock crítico' : 'Stock bajo';
+
+        return (new MailMessage)
+            ->subject("{$label}: {$this->alert->product?->name}")
+            ->line($this->alert->message)
+            ->line("Stock actual: {$this->alert->current_stock} (mínimo {$this->alert->stock_minimo}).");
+    }
+
+    /**
+     * @return array{title: string, body: string, data: array<string, mixed>}
+     */
+    public function toExpo(object $notifiable): array
+    {
+        return [
+            'title' => $this->alert->alert_type === StockAlert::TYPE_CRITICAL ? 'Stock crítico' : 'Stock bajo',
+            'body' => $this->alert->message,
+            'data' => ['type' => 'stock_alert', 'alert_id' => $this->alert->id, 'product_id' => $this->alert->product_id],
+        ];
     }
 
     /**

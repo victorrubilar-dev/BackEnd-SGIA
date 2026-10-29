@@ -28,6 +28,12 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'expo' => [
+        'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
+        // Opcional: solo si la cuenta de Expo exige Enhanced Push Security.
+        'access_token' => env('EXPO_ACCESS_TOKEN'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

@@ -54,8 +54,14 @@ Las fecha-hora llegan en ISO 8601 UTC; mostrarlas en `America/Santiago`. Las fec
 ### B3. Eliminaciones responden 204 — Informativo (hecho)
 Todos los `DELETE` (ubicaciones, cajones, productos, usuarios, proveedores y `/tokens/{id}`) responden 204 sin cuerpo. El frontend ya lo tolera. Excepción: `DELETE /api/suppliers/{id}` con productos asociados responde 200 con el proveedor desactivado.
 
-### B4. Notificaciones — Informativo (fase 5)
-Las alertas hoy solo se emiten por el canal `broadcast`; el correo y el push móvil no existen. El móvil debe definir con el backend el proveedor de push (FCM o Expo) para poder registrar el token del dispositivo. Pendiente: endpoint de registro de token.
+### B4. Notificaciones push (Expo) — Pronto (hecho en el backend)
+El backend ya envía push con la API de Expo y también correo. Para recibirlas la app móvil debe:
+1. Pedir permiso y obtener el `ExpoPushToken` (`expo-notifications`; en SDK recientes requiere `projectId`).
+2. Tras el login, `POST /api/devices` con `{ "token": "ExponentPushToken[...]", "platform": "ios" | "android" }`. Guardar el `id` de la respuesta.
+3. Al cerrar sesión, `DELETE /api/devices/{id}` (204).
+4. Renovar el registro si cambia el token; es idempotente.
+
+Qué llega: alertas de stock a `AD-01`, `DIR-01`, `PAN-01` (`data.type = "stock_alert"`, con `alert_id` y `product_id`) y cambios de estado de préstamos al docente (`data.type = "loan_status"`, con `loan_id` y `status`). Usar `data` para navegar a la pantalla correspondiente. Los tokens inválidos se borran solos cuando Expo informa `DeviceNotRegistered`.
 
 ### B5. Escaneo de facturas — Informativo (fase 5)
 `POST /api/invoices/scan` hoy devuelve datos fijos (no hay OCR real). El cliente no debe asumir que el borrador es fiel a la factura: la pantalla de confirmación debe permitir editar todos los campos. También dejará de aceptar `.json`.
