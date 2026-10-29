@@ -83,7 +83,7 @@ El tipo `equipo.ts` incluye `en_reparacion` y `dado_de_baja` en el campo `estado
 - Adjunto: pdf, jpg, jpeg, png o webp, máximo 10 MB.
 
 ### C5. Alertas de stock: destinatarios — Informativo
-Hoy se notifica a `AD-01` y `PAN-01` (el documento original decía `DIR-01` y `PAN-01`). Decisión pendiente en el backend (fase 5).
+Decidido: se notifica a `AD-01`, `DIR-01` y `PAN-01` (ya implementado). Quien tenga la campana o el push debe esperar alertas también para el Director.
 
 ---
 

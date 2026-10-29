@@ -55,11 +55,13 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 5 — Funcionalidad simulada o incompleta
 
+**Decisiones tomadas:** (1) dashboards en **GraphQL** (`/api/metrics`), como pide el requisito y como ya está construida la UI; (2) push móvil con **Expo**; (3) la alerta de stock llega a `AD-01`, `DIR-01` y `PAN-01` (hecho). Pendiente decidir: proveedor de OCR.
+
 Esto es lo que más se aleja de lo que dicen los checkboxes.
 
 - [ ] **OCR de facturas (REQ-03):** `InvoiceOcrService` devuelve productos fijos ("Osciloscopio…", "ElectroChile S.A.") salvo que el archivo sea un JSON de prueba. Integrar un proveedor real (decisión del equipo: servicio externo vs. Tesseract) detrás de una interfaz y dejar el stub solo para tests.
-- [ ] **Notificaciones (REQ-06, REQ-10):** `StockThresholdNotification` usa solo `broadcast`. Añadir `mail` y definir el canal push móvil (FCM/Expo); persistir en `database` para el panel web.
-- [ ] **Dashboards (REQ-14):** el requisito pide GraphQL en `/api/metrics`, con KPIs (activos disponibles/en préstamo/en taller/baja, préstamos del día, tasa de atrasos, alertas sin resolver, rotación) y filtro por período. Hoy hay 5 endpoints REST sin KPIs, sin filtro de semestre y sin concepto de atraso/devolución. El frontend tiene la pantalla hecha para GraphQL (`/api/metrics`, forma `MetricResult`, mockeada) y servicios REST sin usar que envían `since` (el backend lo ignora). Decidir con el equipo: GraphQL (coincide con el requisito y la UI, pero agrega una dependencia) o REST (hay que reescribir la pantalla y corregir el requisito). En cualquier caso, implementar el filtro de período.
+- [ ] **Notificaciones (REQ-06, REQ-10):** `StockThresholdNotification` usa solo `broadcast`. Añadir `mail`; push móvil con **Expo** (tabla `device_tokens`, endpoint para registrar/borrar el token del dispositivo y canal de notificación que use la API de Expo Push); persistir en `database` para el panel web. El móvil debe pedir permisos y enviar su `ExpoPushToken` tras el login.
+- [ ] **Dashboards (REQ-14):** el requisito pide GraphQL en `/api/metrics`, con KPIs (activos disponibles/en préstamo/en taller/baja, préstamos del día, tasa de atrasos, alertas sin resolver, rotación) y filtro por período. Hoy hay 5 endpoints REST sin KPIs, sin filtro de semestre y sin concepto de atraso/devolución. El frontend tiene la pantalla hecha para GraphQL (`/api/metrics`, forma `MetricResult`, mockeada) y servicios REST sin usar que envían `since` (el backend lo ignora). **Decidido: GraphQL.** Elegir librería (p. ej. `nuwave/lighthouse` o `rebing/graphql-laravel`), exponer un único endpoint autenticado `/api/metrics` restringido a `DIR-01` y `AD-01`, reproducir la forma `MetricResult` del frontend y soportar rango de período (semestre, año, personalizado). Reutilizar `DashboardService`. Los endpoints REST `/api/dashboard/*` se mantienen hasta que el frontend migre y luego se retiran.
 - [ ] **Devoluciones y atrasos de préstamos:** el frontend ya llama a `POST /api/loans/checkin` (payload: `loan_id`, `general_notes`, `items[]` con `product_id`, `item_id`, `condition`, `damaged`), a `DELETE /api/loans/requests/{id}` y a la exportación; ninguna existe. Definir además un nombre único para la fecha de devolución (el cliente lee `fechaDevolucion`, `return_date` o `returned_at`) y normalizar `condition`. No existe fecha de vencimiento; el KPI de tasa de atrasos y "devoluciones" del rol PAN-01 dependen de esto.
 - [ ] **Estado "en taller" / "dado de baja"** de activos: no está modelado en `products`.
 - [ ] **Cotizaciones:** el envío de correo a ≥3 proveedores usa `Mail`; verificar con cola real (`QUEUE_CONNECTION` es `sync` en tests) y manejo de reintentos/fallos por proveedor.
@@ -79,5 +81,5 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 1. Fase 0 y 1 primero y en commits separados (limpian el diff para todo lo demás).
 2. Fase 2 antes de tocar funcionalidad, para saber qué es requisito real.
 3. Fases 3 y 4 en paralelo; la 4 requiere coordinar con el frontend.
-4. Fase 5 depende de decisiones del equipo (OCR, push, GraphQL vs. REST): resolver esas tres antes de planificar.
+4. Fase 5: ya están decididos GraphQL, Expo y destinatarios de la alerta; falta elegir el OCR.
 5. Fase 6 se va haciendo con cada fase, no al final.

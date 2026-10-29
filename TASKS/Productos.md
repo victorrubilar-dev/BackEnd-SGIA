@@ -21,6 +21,6 @@
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.
 - [x] La alerta se dispara al llegar a `stock_minimo + 5` y al llegar a `stock_minimo`; se resuelve al recuperar stock.
-- [x] Destinatarios: usuarios activos `AD-01` y `PAN-01`.
+- [x] Destinatarios: usuarios activos `AD-01`, `DIR-01` y `PAN-01`.
 - [x] Registro de la alerta en BD y `GET /api/alerts/critical-stock` para el panel.
 - [ ] Envío por correo y push móvil: hoy la notificación solo usa el canal `broadcast` (ver `rework.md`, fase 5).

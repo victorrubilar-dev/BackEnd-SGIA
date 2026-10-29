@@ -21,6 +21,8 @@ class StockAlertTest extends TestCase
 
     protected User $warehouse;
 
+    protected User $director;
+
     protected User $teacher;
 
     protected function setUp(): void
@@ -36,6 +38,12 @@ class StockAlertTest extends TestCase
         $this->warehouse = User::factory()->create([
             'email' => 'wh_alert_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_WAREHOUSE,
+            'is_active' => true,
+        ]);
+
+        $this->director = User::factory()->create([
+            'email' => 'dir_alert_'.uniqid().'@inacap.cl',
+            'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 
@@ -70,7 +78,7 @@ class StockAlertTest extends TestCase
         ]);
 
         Notification::assertSentTo(
-            [$this->admin, $this->warehouse],
+            [$this->admin, $this->director, $this->warehouse],
             StockThresholdNotification::class
         );
 
@@ -104,7 +112,7 @@ class StockAlertTest extends TestCase
         ]);
 
         Notification::assertSentTo(
-            [$this->admin, $this->warehouse],
+            [$this->admin, $this->director, $this->warehouse],
             StockThresholdNotification::class
         );
     }
