@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Services\DashboardService;
+use App\Support\DashboardPeriod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -21,7 +22,7 @@ class DashboardController extends Controller
     {
         Gate::authorize('viewDashboard');
 
-        return $this->respond($this->dashboard->topProducts($this->limit($request)));
+        return $this->respond($this->dashboard->topProducts($this->limit($request), $this->period($request)));
     }
 
     /**
@@ -33,7 +34,7 @@ class DashboardController extends Controller
     {
         Gate::authorize('viewDashboard');
 
-        return $this->respond($this->dashboard->topSupplies($this->limit($request)));
+        return $this->respond($this->dashboard->topSupplies($this->limit($request), $this->period($request)));
     }
 
     /**
@@ -41,11 +42,11 @@ class DashboardController extends Controller
      *
      * GET /api/dashboard/careers-distribution
      */
-    public function careersDistribution(): JsonResponse
+    public function careersDistribution(Request $request): JsonResponse
     {
         Gate::authorize('viewDashboard');
 
-        return $this->respond($this->dashboard->careersDistribution());
+        return $this->respond($this->dashboard->careersDistribution($this->period($request)));
     }
 
     /**
@@ -57,7 +58,7 @@ class DashboardController extends Controller
     {
         Gate::authorize('viewDashboard');
 
-        return $this->respond($this->dashboard->leastDemanded($this->limit($request)));
+        return $this->respond($this->dashboard->leastDemanded($this->limit($request), $this->period($request)));
     }
 
     /**
@@ -69,7 +70,52 @@ class DashboardController extends Controller
     {
         Gate::authorize('viewDashboard');
 
-        return $this->respond($this->dashboard->topTeachers($this->limit($request)));
+        return $this->respond($this->dashboard->topTeachers($this->limit($request), $this->period($request)));
+    }
+
+    /**
+     * REQ-14: KPIs ejecutivos (FU-06). Período por defecto: últimos 30 días.
+     *
+     * GET /api/dashboard/kpis
+     */
+    public function kpis(Request $request): JsonResponse
+    {
+        Gate::authorize('viewDashboard');
+
+        $period = $this->period($request) ?? DashboardPeriod::resolve('LAST_30_DAYS');
+
+        return response()->json(['data' => $this->dashboard->kpis($period), 'generated_at' => now()->toIso8601String()]);
+    }
+
+    /**
+     * REQ-14: Préstamos por docente y asignatura (FU-06).
+     *
+     * GET /api/dashboard/loans-by-teacher
+     */
+    public function loansByTeacher(Request $request): JsonResponse
+    {
+        Gate::authorize('viewDashboard');
+
+        return $this->respond($this->dashboard->loansByTeacher($this->limit($request), $this->period($request)));
+    }
+
+    /**
+     * Período opcional: `period`, `from`/`to` o `since` (alias de `from`).
+     * Sin ninguno, los rankings cubren todo el historial.
+     */
+    private function period(Request $request): ?DashboardPeriod
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'since' => ['nullable', 'date'],
+        ]);
+
+        return DashboardPeriod::resolve(
+            $request->input('period'),
+            $request->input('from', $request->input('since')),
+            $request->input('to')
+        );
     }
 
     /**

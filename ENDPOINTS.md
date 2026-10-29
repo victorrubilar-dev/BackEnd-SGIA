@@ -214,15 +214,17 @@
 
 ### 14. Dashboards de Demanda (`FU-06` / `REQ-14`)
 
-Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10) salvo `careers-distribution`.
+Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `careers-distribution` ni a `kpis`) y un período opcional: `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`, `YEAR`, un semestre `2026-1` / `2026-2` o un año `2026`) o `from` / `to` (`since` es alias de `from`). Se aplica a la fecha del préstamo (`loan_date`). Sin período, los rankings cubren todo el historial; `kpis` usa los últimos 30 días.
 
 | Método | Endpoint | Descripción | Estado |
 |---|---|---|:---:|
+| `GET` | `/api/dashboard/kpis` | Tarjetas ejecutivas: `assets` (`available`, `on_loan`, `in_repair`, `written_off`), `loans_today`, `active_loans`, `overdue_loans`, `overdue_rate` (%), `unresolved_alerts`, `critical_alerts`, `units_lent` y `rotation_rate` (% = unidades entregadas en el período ÷ (disponible + prestado)). | ✅ Implementado |
 | `GET` | `/api/dashboard/top-products` | Productos/equipos más solicitados. | ✅ Implementado |
 | `GET` | `/api/dashboard/top-supplies` | Insumos fungibles más solicitados. | ✅ Implementado |
 | `GET` | `/api/dashboard/careers-distribution` | Distribución de uso por carrera/área. | ✅ Implementado |
 | `GET` | `/api/dashboard/least-demanded` | Equipos con menor demanda (inventario ocioso). | ✅ Implementado |
 | `GET` | `/api/dashboard/top-teachers` | Docentes con más solicitudes. | ✅ Implementado |
+| `GET` | `/api/dashboard/loans-by-teacher` | Préstamos y unidades por docente y asignatura. | ✅ Implementado |
 
 ---
 
@@ -233,8 +235,6 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10) salvo `careers-
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01`, `AD-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/incident-reports` | `DIR-01`, `PAN-01`, `AD-01` | Listado global de novedades con filtros (hoy solo por equipo). | REQ-13 |
 | `PATCH` | `/api/incident-reports/{id}/status` | `PAN-01`, `DIR-01` | Estado de atención (`en_revision`, `en_reparacion`, `reparado`, `dado_de_baja`). | REQ-13 |
-| `GET` | `/api/dashboard/stats` | `DIR-01`, `AD-01` | KPIs: activos por estado, préstamos activos y atrasados, alertas, rotación. | REQ-14 |
-| `GET` | `/api/dashboard/loans-by-teacher` | `DIR-01`, `AD-01` | Préstamos por docente y asignatura. | REQ-14 |
 
 ---
 

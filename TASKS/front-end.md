@@ -70,10 +70,10 @@ Qué llega: alertas de stock a `AD-01`, `DIR-01`, `PAN-01` (`data.type = "stock_
 
 ## C. Requisitos que no coinciden con lo implementado
 
-### C1. Dashboards: GraphQL mockeado frente a REST sin KPIs — Pronto
-- La pantalla web usa GraphQL contra `/api/metrics`, pero está mockeada (`executeMetricsGraphQL` devuelve `{}` y los datos salen de `mock-metrics.json`). Trae KPIs (`useExecutiveKpis`, por defecto `LAST_30_DAYS`), constructor de gráficos y selector de rango. La forma de datos es `MetricResult` (`features/dashboard/types/metrics.ts`).
-- Existen servicios REST para `/dashboard/*` que la página no usa. Envían `limit` y `since`; **el backend ignora `since`** (solo implementa `limit`).
-- El backend REST no tiene KPIs ni filtro de período. Decisión abierta: ver `rework.md`, fase 5. Mientras tanto la pantalla seguirá con datos de ejemplo.
+### C1. Dashboards: KPIs y período listos en REST; GraphQL pendiente — Pronto
+- Ya existen en REST (`DIR-01`, `AD-01`): `GET /api/dashboard/kpis` y los rankings (`top-products`, `top-supplies`, `careers-distribution`, `least-demanded`, `top-teachers`, `loans-by-teacher`). Todos aceptan el período: `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`, `YEAR`, `2026-1`, `2026-2`, `2026`) o `from`/`to`. `since` ahora sí se respeta.
+- Respuesta de `kpis`: `{ data: { period, assets: { available, on_loan, in_repair, written_off }, loans_today, active_loans, overdue_loans, overdue_rate, unresolved_alerts, critical_alerts, units_lent, rotation_rate }, generated_at }`.
+- Decidido: la pantalla irá por GraphQL en `/api/metrics`. **Falta que el frontend entregue su contrato** (ver sección G) para construir el esquema.
 
 ### C2. Préstamos: devolución, cancelación, exportación y vencimiento — Pronto (hecho en el backend)
 Ya existen, con el contrato que el cliente esperaba:
@@ -120,10 +120,20 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 1. Adjuntos: no usa URL directa (A1). 2. Alertas: web con `AD`/`DIR`/`PAN` (A2). 3. Alias: ya usa los canónicos (B1). 4. Errores: lee `message` y `errors` (B2). 5. `DELETE`: tolera 204 (B3). 6. Dashboards: GraphQL mockeado (C1). 7. Push: no existe (B4). 8. Préstamos: ver C2. 9. Estado: ver C3. 10. Novedades: ver C4. 11. Polling: ninguno. 12. 403: no cierra sesión (A4b). 13. Fotos: el móvil no sube todavía.
 
+## G. Lo que necesito del frontend para el GraphQL
+
+Pegar tal cual desde el repositorio del frontend:
+1. Los documentos de consulta GraphQL que se envían a `/api/metrics` (en `features/dashboard`, el constructor de gráficos, `useExecutiveKpis`).
+2. El tipo `MetricResult` (`features/dashboard/types/metrics.ts`) y cualquier tipo relacionado (filtros, rangos, dimensiones).
+3. El `mock-metrics.json` completo (la forma exacta que esperan los gráficos).
+4. Cómo se envía el rango (`LAST_30_DAYS`, semestre, etc.): nombres y valores de los argumentos.
+
 ## F. Pendiente en el frontend (resumen)
 
 - `http.ts`: cerrar sesión con `403` + `code: "account_inactive"` (A4b).
 - Eliminar `revokeAllTokens` o apuntarlo a `/logout-all` (B1).
 - Ocultar checkin, cancelación y exportación de préstamos mientras el backend no los tenga (C2).
 - Tratar el filtro "De Baja" como no soportado por el backend (C3).
-- Dashboards: seguir con datos de ejemplo hasta cerrar la decisión (C1).
+- Dashboards: entregar el contrato GraphQL (sección G); mientras tanto pueden probar los endpoints REST.
+- Push: registrar y borrar el token de Expo (B4).
+- Préstamos: usar `checkin`, cancelación, exportación y los campos nuevos (C2); producto: `estado` y `PATCH /products/{id}/condition` (C3).

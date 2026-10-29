@@ -136,6 +136,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/dashboard/careers-distribution', [DashboardController::class, 'careersDistribution']);
         Route::get('/dashboard/least-demanded', [DashboardController::class, 'leastDemanded']);
         Route::get('/dashboard/top-teachers', [DashboardController::class, 'topTeachers']);
+        Route::get('/dashboard/loans-by-teacher', [DashboardController::class, 'loansByTeacher']);
+        Route::get('/dashboard/kpis', [DashboardController::class, 'kpis']);
     });
 
     // REQ-12: Fichas técnicas de equipos (FU-05)
