@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\BulkDeleteCajonRequest;
 use App\Http\Requests\StoreCajonRequest;
 use App\Http\Requests\UpdateCajonRequest;
 use App\Http\Resources\CajonResource;
@@ -86,8 +87,60 @@ class CajonController extends Controller
             return response()->json(['message' => 'No tienes permisos para eliminar cajones.'], 403);
         }
 
+        $products = $cajon->products()->count();
+        if ($products > 0) {
+            return response()->json([
+                'message' => "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$products} producto(s) asignado(s). Reubícalos primero.",
+                'products_count' => $products,
+            ], 422);
+        }
+
         $cajon->delete();
 
         return response()->noContent();
+    }
+
+    /**
+     * Borrado masivo. Los cajones con productos no se borran: sin `partial`
+     * se rechaza todo (422); con `partial: true` se borran los libres y se
+     * informan los bloqueados.
+     */
+    public function bulkDestroy(BulkDeleteCajonRequest $request): JsonResponse
+    {
+        $ids = array_values(array_unique($request->validated('ids')));
+
+        $blocked = Cajon::whereIn('id', $ids)->withCount('products')->has('products')->get();
+        $blockedIds = $blocked->pluck('id')->all();
+        $deletableIds = array_values(array_diff($ids, $blockedIds));
+        $detail = $blocked->map(fn (Cajon $c) => ['id' => $c->id, 'codigo' => $c->codigo, 'products_count' => $c->products_count]);
+
+        if ($blockedIds !== [] && ! $request->boolean('partial')) {
+            return response()->json([
+                'message' => 'No es posible eliminar los cajones seleccionados porque algunos tienen productos asignados ('.$blocked->pluck('codigo')->join(', ').').',
+                'blocked_ids' => $blockedIds,
+                'blocked_cajones' => $detail,
+                'deletable_ids' => $deletableIds,
+            ], 422);
+        }
+
+        if ($deletableIds === []) {
+            return response()->json([
+                'message' => 'No se eliminó ningún cajón: todos los seleccionados tienen productos asignados.',
+                'blocked_ids' => $blockedIds,
+                'blocked_cajones' => $detail,
+                'deleted_count' => 0,
+            ], 422);
+        }
+
+        $deleted = Cajon::whereIn('id', $deletableIds)->delete();
+
+        return response()->json([
+            'message' => "{$deleted} cajón(es) eliminado(s).",
+            'deleted_ids' => $deletableIds,
+            'deleted_count' => $deleted,
+            'partial' => $blockedIds !== [],
+            'blocked_ids' => $blockedIds,
+            'blocked_cajones' => $detail,
+        ]);
     }
 }

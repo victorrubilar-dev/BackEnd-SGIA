@@ -54,6 +54,9 @@ Las fecha-hora llegan en ISO 8601 UTC; mostrarlas en `America/Santiago`. Las fec
 ### B3. Eliminaciones responden 204 — Informativo (hecho)
 Todos los `DELETE` (ubicaciones, cajones, productos, usuarios, proveedores y `/tokens/{id}`) responden 204 sin cuerpo. El frontend ya lo tolera. Excepción: `DELETE /api/suppliers/{id}` con productos asociados responde 200 con el proveedor desactivado.
 
+### B3b. Cajones: borrar con productos y borrado masivo — Pronto (hecho en el backend)
+`DELETE /api/cajones/{id}` ahora responde `422` (con `products_count`) si el cajón tiene productos; antes los dejaba sin ubicación. Nuevo `POST /api/cajones/bulk-delete` con `{ids: [..], partial?: bool}`; la respuesta `422` trae `blocked_cajones` (`id`, `codigo`, `products_count`) y `deletable_ids`. Una sola ruta: no existen los alias `/estantes/*` ni `DELETE` con cuerpo.
+
 ### B4. Notificaciones push (Expo) — Pronto (hecho en el backend)
 El backend ya envía push con la API de Expo y también correo. Para recibirlas la app móvil debe:
 1. Pedir permiso y obtener el `ExpoPushToken` (`expo-notifications`; en SDK recientes requiere `projectId`).

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Cajon;
 use App\Models\Location;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
@@ -168,5 +169,48 @@ class LocationAndCajonCrudTest extends TestCase
         $resCajon->assertStatus(200);
         $this->assertEquals('Cajon-Renovado', $cajon->fresh()->codigo);
         $this->assertEquals($this->warehouse->id, $cajon->fresh()->updated_by);
+    }
+
+    public function test_cajon_with_products_cannot_be_deleted(): void
+    {
+        Sanctum::actingAs($this->admin);
+        $cajon = Cajon::factory()->create();
+        Product::factory()->create(['cajon_id' => $cajon->id]);
+
+        $this->deleteJson('/api/cajones/'.$cajon->id)->assertStatus(422)->assertJsonPath('products_count', 1);
+        $this->assertDatabaseHas('cajones', ['id' => $cajon->id]);
+    }
+
+    public function test_bulk_delete_rejects_blocked_cajones_unless_partial(): void
+    {
+        Sanctum::actingAs($this->admin);
+        [$free, $busy] = [Cajon::factory()->create(), Cajon::factory()->create()];
+        Product::factory()->create(['cajon_id' => $busy->id]);
+
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => [$free->id, $busy->id]])
+            ->assertStatus(422)
+            ->assertJsonPath('blocked_ids', [$busy->id])
+            ->assertJsonPath('deletable_ids', [$free->id]);
+        $this->assertDatabaseHas('cajones', ['id' => $free->id]);
+
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => [$free->id, $busy->id], 'partial' => true])
+            ->assertOk()
+            ->assertJsonPath('deleted_count', 1)
+            ->assertJsonPath('partial', true);
+        $this->assertDatabaseMissing('cajones', ['id' => $free->id]);
+        $this->assertDatabaseHas('cajones', ['id' => $busy->id]);
+    }
+
+    public function test_bulk_delete_validates_and_is_restricted_by_role(): void
+    {
+        Sanctum::actingAs($this->admin);
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => []])->assertStatus(422);
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => [999999]])->assertStatus(422);
+
+        $cajon = Cajon::factory()->create();
+        Sanctum::actingAs($this->warehouse);
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => [$cajon->id]])->assertStatus(403);
+        Sanctum::actingAs($this->teacher);
+        $this->postJson('/api/cajones/bulk-delete', ['ids' => [$cajon->id]])->assertStatus(403);
     }
 }

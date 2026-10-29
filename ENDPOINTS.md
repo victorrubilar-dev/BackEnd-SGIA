@@ -75,7 +75,8 @@
 | `POST` | `/api/cajones` | `AD-01`, `DIR-01`, `PAN-01` | Crea un nuevo cajón dentro de una ubicación.<br>**Body:** `location_id`, `codigo`, `descripcion`. Valida código único por ubicación y registra `created_by` / `updated_by`. | ✅ Implementado |
 | `GET` | `/api/cajones/{id}` | Todos (`auth`) | Detalle del cajón con su ubicación padre y total de productos almacenados. | ✅ Implementado |
 | `PUT / PATCH` | `/api/cajones/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza código, descripción o mueve el cajón de ubicación. Actualiza `updated_by`. | ✅ Implementado |
-| `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón. | ✅ Implementado |
+| `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón. `422` con `products_count` si tiene productos asignados. | ✅ Implementado |
+| `POST` | `/api/cajones/bulk-delete` | `AD-01`, `DIR-01` | Borrado masivo.<br>**Body:** `ids` (array), `partial` (opcional). Sin `partial`, si alguno tiene productos responde `422` con `blocked_ids`, `blocked_cajones` y `deletable_ids` y no borra nada. Con `partial: true` borra los libres (`deleted_ids`, `deleted_count`) e informa los bloqueados. | ✅ Implementado |
 
 ---
 
