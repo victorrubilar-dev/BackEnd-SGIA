@@ -8,6 +8,8 @@ use App\Models\LoanItem;
 use App\Models\Product;
 use App\Models\User;
 use App\Notifications\LoanStatusNotification;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -289,5 +291,81 @@ class LoanService
         }
 
         return $loan;
+    }
+
+    /**
+     * Filtros del historial de préstamos (REQ-11): estado, tipo, sala,
+     * profesor, insumo y búsqueda libre. Acepta los alias en español e inglés.
+     *
+     * @throws ValidationException si `estado` o `tipo` no son válidos
+     */
+    public function applyHistoryFilters(Builder $query, Request $request): Builder
+    {
+        $status = $request->input('estado', $request->input('status'));
+
+        if ($status !== null && ! LoanStateMachine::isValidStatus((string) $status)) {
+            throw ValidationException::withMessages([
+                'estado' => 'El estado debe ser: pendiente, en_proceso, procesado o rechazado.',
+            ]);
+        }
+
+        if ($status !== null) {
+            $query->where('status', $status);
+        }
+
+        $type = $request->input('tipo', $request->input('type'));
+
+        if ($type !== null && ! in_array($type, [Loan::TYPE_REMOTE, Loan::TYPE_DIRECT], true)) {
+            throw ValidationException::withMessages([
+                'tipo' => 'El tipo debe ser: remoto o presencial.',
+            ]);
+        }
+
+        if ($type !== null) {
+            $query->where('type', $type);
+        }
+
+        $room = $request->input('sala') ?? $request->input('room');
+
+        if ($room !== null && $room !== '') {
+            $query->where('room', 'ilike', '%'.$room.'%');
+        }
+
+        $teacher = $request->input('profesor')
+            ?? $request->input('teacher')
+            ?? $request->input('borrower');
+
+        if ($teacher !== null && $teacher !== '') {
+            $like = '%'.$teacher.'%';
+            $query->where(function ($q) use ($like) {
+                $q->where('borrower_name', 'ilike', $like)
+                    ->orWhereHas('requester', fn ($qq) => $qq->where('name', 'ilike', $like));
+            });
+        }
+
+        if ($request->filled('product_id')) {
+            $query->whereHas(
+                'items',
+                fn ($q) => $q->where('product_id', $request->integer('product_id'))
+            );
+        } else {
+            $product = $request->input('insumo') ?? $request->input('product');
+
+            if ($product !== null && $product !== '') {
+                $like = '%'.$product.'%';
+                $query->whereHas('items', function ($q) use ($like) {
+                    $q->where('name', 'ilike', $like)
+                        ->orWhereHas('product', fn ($qq) => $qq->where('name', 'ilike', $like));
+                });
+            }
+        }
+
+        if ($request->filled('search')) {
+            $like = '%'.$request->string('search').'%';
+            $query->where(fn ($q) => $q->where('code', 'ilike', $like)
+                ->orWhere('subject', 'ilike', $like));
+        }
+
+        return $query;
     }
 }

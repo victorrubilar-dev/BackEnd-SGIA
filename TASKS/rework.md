@@ -46,12 +46,12 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 ## Fase 4 — API consistente
 
 - [x] Aliases duplicados (el frontend ya usa los canónicos, sin riesgo de ruptura): `/me` + `/user`, `/password` + `/change-password`, `/logout-all` + `/tokens/revoke-all`. Canónicos: `/me`, `/password`, `/logout-all`. Retirar `/user`, `/change-password` y `/tokens/revoke-all`, y actualizar los tests y `ENDPOINTS.md`.
-- [ ] Unificar el formato de error (`message` + `errors`) y de paginación en todos los controladores. El frontend solo lee `message` y `errors`; `alert` y `purchase` son claves extra sin uso.
+- [x] Unificar el formato de error (`message` + `errors`) y de paginación en todos los controladores. El frontend solo lee `message` y `errors`; `alert` y `purchase` son claves extra sin uso. Hecho: 401, 403 y 404 en español y sin exponer clases internas (`ErrorFormatTest`); paginación con `perPage()` en el controlador base.
 - [x] Eliminaciones a 204 (el frontend ya lo tolera) y tests actualizados.
-- [ ] Controladores gruesos (`ProductController` 340 líneas, `LoanController` 283, `PurchaseController` 268): mover la lógica restante a Services.
-- [ ] Los filtros de listados están implementados a mano en cada controlador; extraer un patrón común si se repite más de dos veces.
-- [ ] Índices en BD para los filtros usados (`loans.estado`, `purchases.status`, `products.area`/`cajon_id`); revisar N+1 con `Model::preventLazyLoading()` en entornos no productivos.
-- [ ] Revisar zona horaria: `APP_TIMEZONE=UTC` en testing; definir la de producción (America/Santiago) y cómo se serializan las fechas.
+- [x] Controladores gruesos (`ProductController` 340 líneas, `LoanController` 283, `PurchaseController` 268): lógica movida a `ProductService` (filtros y resolución de ubicación), `LoanService` (filtros del historial) y `PurchaseService` (creación y filtros). Los controladores quedaron en 181-223 líneas.
+- [x] Los filtros de listados están implementados a mano en cada controlador; los de productos, préstamos y compras (los largos) pasaron a sus Services; el resto tiene 1-3 filtros simples y se dejó. El cálculo de `per_page` estaba repetido 12 veces y ahora es `Controller::perPage()`.
+- [x] Índices en BD para los filtros usados (`loans.estado`, `purchases.status`, `products.area`/`cajon_id`); migración `2026_10_28_000000_add_foreign_key_indexes` (claves foráneas; `status`, `type`, `area` y `loan_date` ya estaban indexados) y `Model::preventLazyLoading()` fuera de producción, con `ListQueryPerformanceTest`.
+- [x] Revisar zona horaria: `APP_TIMEZONE=UTC` en testing; decisión: la API y la BD quedan en UTC (cambiarla desplazaría los datos guardados); las fechas-hora salen en ISO 8601 y los clientes las muestran en America/Santiago. Documentado en `ENDPOINTS.md`.
 
 ## Fase 5 — Funcionalidad simulada o incompleta
 

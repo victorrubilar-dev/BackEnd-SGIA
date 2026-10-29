@@ -29,7 +29,7 @@ class StockAlertController extends Controller
             $query->where('is_resolved', false);
         }
 
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        $perPage = $this->perPage($request);
         $alerts = $query->orderByDesc('created_at')->paginate($perPage);
 
         return StockAlertResource::collection($alerts);

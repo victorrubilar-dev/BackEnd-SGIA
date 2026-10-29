@@ -51,7 +51,7 @@ class EquipmentReportController extends Controller
             return $pdfService->download($pdfService->reportsList($product, $reports), $filename);
         }
 
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        $perPage = $this->perPage($request);
 
         return IncidentReportResource::collection($query->paginate($perPage));
     }

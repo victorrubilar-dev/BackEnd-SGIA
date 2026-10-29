@@ -34,7 +34,7 @@ class CajonController extends Controller
             });
         }
 
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        $perPage = $this->perPage($request);
         $cajones = $query->orderBy('codigo')->paginate($perPage);
 
         return CajonResource::collection($cajones);

@@ -34,7 +34,7 @@ class LocationController extends Controller
             });
         }
 
-        $perPage = max(1, min(100, $request->integer('per_page', 15)));
+        $perPage = $this->perPage($request);
         $locations = $query->orderBy('nombre')->paginate($perPage);
 
         return LocationResource::collection($locations);

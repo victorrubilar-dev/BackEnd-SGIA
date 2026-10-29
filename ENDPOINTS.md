@@ -9,6 +9,12 @@
 
 ## Convenciones y Roles de Usuario
 
+> **Fechas:** los campos de fecha-hora se devuelven en ISO 8601 con zona (UTC, p. ej. `2026-10-28T15:30:00+00:00`); el cliente debe mostrarlas en `America/Santiago`. Los campos solo-fecha (p. ej. `loan_date`) vienen como `YYYY-MM-DD`.
+>
+> **Errores:** siempre `{"message": "..."}` en español; los de validación (422) añaden `errors` (campo → lista de mensajes). 404 es `Recurso no encontrado.` y 401 es `No autenticado.`.
+>
+> **Listados:** paginados con `per_page` (1-100, 15 por defecto) y la estructura `data`, `links`, `meta`.
+
 > Las eliminaciones (`DELETE`) responden `204 No Content` sin cuerpo. La excepción es `DELETE /api/suppliers/{id}` cuando el proveedor tiene productos: se desactiva y responde `200` con el proveedor.
 
 > Límite `throttle:sensitive` (10 solicitudes por minuto por usuario) en cambio de contraseña, escaneo de facturas, escaneo de llegada e informes de novedades; `429` al superarlo.

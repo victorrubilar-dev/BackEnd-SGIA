@@ -17,6 +17,7 @@ use App\Policies\QuotationPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
@@ -38,6 +39,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Lanza excepción ante N+1 fuera de producción para detectarlos en desarrollo y tests.
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Product::class, ProductPolicy::class);
         Gate::policy(Purchase::class, PurchasePolicy::class);
