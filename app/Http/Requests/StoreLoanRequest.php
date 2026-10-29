@@ -36,6 +36,7 @@ class StoreLoanRequest extends FormRequest
             'subject' => ['required', 'string', 'max:100'],
             'room' => ['required', 'string', 'max:100'],
             'loan_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:loan_date'],
             'time_block' => ['nullable', 'string', 'max:50'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];

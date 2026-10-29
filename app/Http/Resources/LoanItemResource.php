@@ -29,6 +29,9 @@ class LoanItemResource extends JsonResource
             'product' => new ProductResource($this->whenLoaded('product')),
             'name' => $this->name,
             'quantity' => (int) $this->quantity,
+            'is_returned' => $this->returned_at !== null,
+            'returned_at' => $this->returned_at?->toIso8601String(),
+            'return_condition' => $this->return_condition,
             // Disponible y ubicación física se incluyen cuando se precarga el
             // producto (pañol: GET /api/loans/pending, REQ-10).
             'available_stock' => $product !== null ? (int) $product->quantity : null,

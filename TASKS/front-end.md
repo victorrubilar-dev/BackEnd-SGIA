@@ -69,16 +69,18 @@ Las alertas hoy solo se emiten por el canal `broadcast`; el correo y el push mó
 - Existen servicios REST para `/dashboard/*` que la página no usa. Envían `limit` y `since`; **el backend ignora `since`** (solo implementa `limit`).
 - El backend REST no tiene KPIs ni filtro de período. Decisión abierta: ver `rework.md`, fase 5. Mientras tanto la pantalla seguirá con datos de ejemplo.
 
-### C2. Préstamos: devolución, cancelación y exportación — Pronto
-El cliente ya tiene estas llamadas y el backend no las tiene, así que hoy fallan con 404:
-- `POST /api/loans/checkin` (web, mostrador). Payload del cliente: `loan_id`, `general_notes`, `items[]` con `product_id`, `item_id`, `condition` (`bueno`, `regular`, `dañado`, `optimo`, `extraviado`) y `damaged`.
-- `DELETE /api/loans/requests/{id}` (móvil, cancelar solicitud).
-- Exportación de préstamos (web, historial).
-- Para fechas lee `fechaDevolucion`, `return_date` o `returned_at`; no lee `due_at`. El backend definirá el nombre canónico y se avisará.
-Ocultar o deshabilitar esas acciones hasta que existan.
+### C2. Préstamos: devolución, cancelación, exportación y vencimiento — Pronto (hecho en el backend)
+Ya existen, con el contrato que el cliente esperaba:
+- `POST /api/loans/checkin` (`PAN-01`, `AD-01`). Body: `loan_id`, `general_notes`, `items[]` con `item_id` o `product_id`, `condition` (`bueno`, `optimo`, `regular`, `dañado`, `extraviado`) y `damaged`. Admite devolución parcial (solo algunos ítems). Respuesta: `{ message, data: <préstamo> }`.
+- `DELETE /api/loans/requests/{id}` (`PRO-01`): 204; 403 si no es suyo; 422 si ya no está pendiente.
+- `GET /api/loans/export?format=csv|pdf&from=&to=` + filtros del historial. Es una descarga: usar `getBlob()`. `csv` abre en Excel.
+- Nombres canónicos de fechas del préstamo: `due_date` (vencimiento, `YYYY-MM-DD`), `returned_at` (ISO 8601; `null` mientras falten ítems) y `loan_date`. Dejar de leer `fechaDevolucion` y `return_date`.
+- Campos nuevos: préstamo `is_returned`, `is_overdue`, `return_notes`, `returned_by`; ítem `is_returned`, `returned_at`, `return_condition` (`bueno`, `regular`, `danado`, `extraviado`).
+- Filtros nuevos de `GET /api/loans`: `atrasado=1` y `devuelto=0|1`.
+- `due_date` es opcional al crear (`POST /loans/requests` y `/loans/checkout`); si falta, vale `loan_date`.
 
-### C3. Estado del activo — Informativo
-El tipo `equipo.ts` incluye `en_reparacion` y `dado_de_baja` en el campo `estado`, y la web filtra "De Baja". El backend no tiene ese campo (solo `is_active`), así que ese filtro no tiene datos reales. No hay pantalla para "en taller".
+### C3. Estado del activo — Pronto (hecho en el backend)
+Los productos traen `quantity_in_repair`, `quantity_written_off` y `estado` (`disponible`, `en_reparacion`, `dado_de_baja` o `sin_stock`). Ojo: el tipo del cliente no conoce `sin_stock` (producto activo con 0 unidades disponibles). `quantity` sigue siendo solo lo disponible; lo que está prestado no se cuenta ahí. Para mover unidades: `PATCH /api/products/{id}/condition` (`send_to_repair`, `repaired`, `write_off` con `source`).
 
 ### C4. Informes de novedades — Informativo
 - Existen servicios y hooks en el cliente (`useIncidentReports`, `useUpdateIncidentReportStatus`, `useCreateNovedad`) pero ninguna pantalla los usa; REQ-13 está sin empezar en el frontend.

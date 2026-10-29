@@ -5,17 +5,21 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\InvalidLoanStatusTransition;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\RejectLoanRequest;
+use App\Http\Requests\StoreLoanCheckinRequest;
 use App\Http\Requests\StoreLoanCheckoutRequest;
 use App\Http\Requests\StoreLoanRequest;
 use App\Http\Resources\LoanResource;
 use App\Models\Loan;
+use App\Services\EquipmentPdfService;
 use App\Services\LoanService;
 use App\Services\LoanStateMachine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class LoanController extends Controller
 {
@@ -216,5 +220,101 @@ class LoanController extends Controller
             'attempted_status' => $e->to,
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
         ], 422);
+    }
+
+    /**
+     * Registra la devolución de ítems de un préstamo entregado (REQ-10).
+     *
+     * POST /api/loans/checkin
+     */
+    public function checkin(StoreLoanCheckinRequest $request, LoanService $loanService): JsonResponse
+    {
+        $loan = $loanService->checkin($request->validated(), $request->user());
+
+        $message = $loan->returned_at !== null
+            ? "Préstamo {$loan->code} devuelto por completo."
+            : "Devolución parcial registrada en el préstamo {$loan->code}.";
+
+        return response()->json([
+            'message' => $message,
+            'data' => (new LoanResource($loan))->resolve(),
+        ]);
+    }
+
+    /**
+     * El docente cancela una solicitud propia que sigue pendiente (REQ-09).
+     *
+     * DELETE /api/loans/requests/{loan}
+     */
+    public function cancel(Loan $loan, LoanService $loanService): Response
+    {
+        Gate::authorize('cancel', $loan);
+
+        $loanService->cancelRequest($loan);
+
+        return response()->noContent();
+    }
+
+    /**
+     * Exporta el historial de préstamos en CSV (abre en Excel) o PDF.
+     *
+     * GET /api/loans/export?format=csv|pdf&from=YYYY-MM-DD&to=YYYY-MM-DD
+     * más los mismos filtros de GET /api/loans.
+     */
+    public function export(Request $request, LoanService $loanService, EquipmentPdfService $pdfService): SymfonyResponse
+    {
+        Gate::authorize('viewAny', Loan::class);
+
+        $validated = $request->validate([
+            'format' => ['nullable', 'in:csv,pdf,excel'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ]);
+
+        $query = Loan::with(['items', 'requester'])->orderBy('loan_date')->orderBy('id');
+        $loanService->applyHistoryFilters($query, $request);
+
+        if (! empty($validated['from'])) {
+            $query->whereDate('loan_date', '>=', $validated['from']);
+        }
+
+        if (! empty($validated['to'])) {
+            $query->whereDate('loan_date', '<=', $validated['to']);
+        }
+
+        // Tope de seguridad: un export no debe cargar la tabla completa en memoria.
+        $loans = $query->limit(5000)->get();
+        $stamp = now()->format('Ymd-His');
+
+        if (($validated['format'] ?? 'csv') === 'pdf') {
+            return $pdfService->download(
+                $pdfService->loansReport($loans, $validated['from'] ?? null, $validated['to'] ?? null),
+                "prestamos-{$stamp}.pdf"
+            );
+        }
+
+        return response()->streamDownload(function () use ($loans) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel lea UTF-8
+            fputcsv($out, ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems']);
+
+            foreach ($loans as $loan) {
+                fputcsv($out, [
+                    $loan->code,
+                    $loan->type,
+                    $loan->status,
+                    $loan->borrower_name ?? $loan->requester?->name,
+                    $loan->subject,
+                    $loan->room,
+                    $loan->loan_date?->toDateString(),
+                    ($loan->due_date ?? $loan->loan_date)?->toDateString(),
+                    $loan->returned_at?->toDateTimeString(),
+                    $loan->isOverdue() ? 'sí' : 'no',
+                    $loan->items->map(fn ($i) => "{$i->name} x{$i->quantity}")->implode('; '),
+                ]);
+            }
+
+            fclose($out);
+        }, "prestamos-{$stamp}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 }

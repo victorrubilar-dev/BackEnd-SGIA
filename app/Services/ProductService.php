@@ -4,11 +4,16 @@ namespace App\Services;
 
 use App\Models\Cajon;
 use App\Models\Location;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProductService
 {
+    public function __construct(private readonly StockAlertService $stockAlerts) {}
+
     /**
      * Aplica los filtros del listado de productos (búsqueda, área, estado,
      * proveedor, ubicación y stock crítico).
@@ -119,5 +124,47 @@ class ProductService
         );
 
         return [$location, $cajon];
+    }
+
+    /**
+     * Mueve unidades entre disponible, taller y baja.
+     *
+     * - send_to_repair: stock -> taller
+     * - repaired: taller -> stock
+     * - write_off: stock|taller -> baja (según `source`)
+     *
+     * @throws ValidationException si no hay unidades suficientes en el origen
+     */
+    public function changeCondition(Product $product, string $action, int $quantity, ?string $source, ?int $userId): Product
+    {
+        return DB::transaction(function () use ($product, $action, $quantity, $source, $userId) {
+            $product = Product::whereKey($product->id)->lockForUpdate()->firstOrFail();
+
+            $from = match ($action) {
+                'send_to_repair' => 'quantity',
+                'repaired' => 'quantity_in_repair',
+                default => $source === 'repair' ? 'quantity_in_repair' : 'quantity',
+            };
+            $to = match ($action) {
+                'send_to_repair' => 'quantity_in_repair',
+                'repaired' => 'quantity',
+                default => 'quantity_written_off',
+            };
+
+            if ($product->{$from} < $quantity) {
+                throw ValidationException::withMessages([
+                    'quantity' => "Solo hay {$product->{$from}} unidad(es) disponibles en el origen.",
+                ]);
+            }
+
+            $product->{$from} -= $quantity;
+            $product->{$to} += $quantity;
+            $product->updated_by = $userId;
+            $product->save();
+
+            $this->stockAlerts->checkStock($product);
+
+            return $product;
+        });
     }
 }

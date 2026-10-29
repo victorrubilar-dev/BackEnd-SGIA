@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\IncidentReport;
+use App\Models\Loan;
 use App\Models\Product;
 use Dompdf\Dompdf;
 use Dompdf\Options;
@@ -49,6 +50,20 @@ class EquipmentPdfService
         return $this->render(view('equipment.reports', [
             'product' => $product,
             'reports' => $reports,
+        ]));
+    }
+
+    /**
+     * Historial de préstamos en PDF (A4), con el rango de fechas filtrado.
+     *
+     * @param  Collection<int, Loan>  $loans
+     */
+    public function loansReport(Collection $loans, ?string $from, ?string $to): string
+    {
+        return $this->render(view('loans.report', [
+            'loans' => $loans,
+            'from' => $from,
+            'to' => $to,
         ]));
     }
 

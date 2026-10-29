@@ -16,6 +16,8 @@ class Product extends Model
         'description',
         'barcode',
         'quantity',
+        'quantity_in_repair',
+        'quantity_written_off',
         'stock_minimo',
         'supplier_id',
         'cajon_id',
@@ -31,6 +33,8 @@ class Product extends Model
     {
         return [
             'quantity' => 'integer',
+            'quantity_in_repair' => 'integer',
+            'quantity_written_off' => 'integer',
             'stock_minimo' => 'integer',
             'is_active' => 'boolean',
         ];
@@ -77,6 +81,23 @@ class Product extends Model
     public function isWarningStock(): bool
     {
         return $this->quantity <= ($this->stock_minimo + 5) && $this->quantity > $this->stock_minimo;
+    }
+
+    /**
+     * Estado operativo resumido: disponible | en_reparacion | dado_de_baja | sin_stock.
+     */
+    public function operationalStatus(): string
+    {
+        if (! $this->is_active) {
+            return 'dado_de_baja';
+        }
+
+        return match (true) {
+            $this->quantity > 0 => 'disponible',
+            $this->quantity_in_repair > 0 => 'en_reparacion',
+            $this->quantity_written_off > 0 => 'dado_de_baja',
+            default => 'sin_stock',
+        };
     }
 
     public function isCriticalStock(): bool

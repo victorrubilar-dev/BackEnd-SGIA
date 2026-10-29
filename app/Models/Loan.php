@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\LoanStateMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -41,6 +42,10 @@ class Loan extends Model
         'subject',
         'room',
         'loan_date',
+        'due_date',
+        'returned_at',
+        'returned_by',
+        'return_notes',
         'time_block',
         'status',
         'rejection_reason',
@@ -55,6 +60,8 @@ class Loan extends Model
     {
         return [
             'loan_date' => 'date',
+            'due_date' => 'date',
+            'returned_at' => 'datetime',
             'approved_at' => 'datetime',
             'processed_at' => 'datetime',
         ];
@@ -78,6 +85,31 @@ class Loan extends Model
     public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
+    }
+
+    public function returner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'returned_by');
+    }
+
+    /**
+     * Entregado y con ítems aún sin devolver, pasada la fecha comprometida.
+     */
+    public function isOverdue(): bool
+    {
+        $due = $this->due_date ?? $this->loan_date;
+
+        return $this->isProcessed()
+            && $this->returned_at === null
+            && $due !== null
+            && $due->lt(today());
+    }
+
+    public function scopeOverdue(Builder $query): Builder
+    {
+        return $query->where('status', self::STATUS_PROCESSED)
+            ->whereNull('returned_at')
+            ->whereRaw('coalesce(due_date, loan_date) < ?', [today()->toDateString()]);
     }
 
     public function isPending(): bool

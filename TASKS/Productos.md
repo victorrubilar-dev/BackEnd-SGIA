@@ -24,3 +24,7 @@
 - [x] Destinatarios: usuarios activos `AD-01`, `DIR-01` y `PAN-01`.
 - [x] Registro de la alerta en BD y `GET /api/alerts/critical-stock` para el panel.
 - [ ] Envío por correo y push móvil: hoy la notificación solo usa el canal `broadcast` (ver `rework.md`, fase 5).
+
+### Estado operativo del stock (FU-05)
+- [x] Contadores `quantity_in_repair` y `quantity_written_off` por producto, y `estado` resumido (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`).
+- [x] `PATCH /api/products/{id}/condition`: enviar a taller, reintegrar y dar de baja unidades.

@@ -86,6 +86,7 @@
 | `GET` | `/api/products/{id}` | Todos (`auth`) | Detalle de un producto con sus relaciones. | ✅ Implementado |
 | `PUT / PATCH` | `/api/products/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edición de producto. Al modificar stock o stock mínimo, evalúa y dispara alertas de stock automáticamente. | ✅ Implementado |
 | `DELETE` | `/api/products/{id}` | `AD-01`, `DIR-01` | Eliminación de producto de inventario. | ✅ Implementado |
+| `PATCH` | `/api/products/{id}/condition` | `AD-01`, `DIR-01`, `PAN-01` | Mueve unidades entre disponible, taller y baja.<br>**Body:** `action` (`send_to_repair`, `repaired`, `write_off`), `quantity`, `source` (`stock` \| `repair`, obligatorio en `write_off`). `422` si no hay unidades suficientes en el origen. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Activa o desactiva un producto del inventario.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
 | `GET` | `/api/products/{id}/location` | Todos (`auth`) | Obtiene la sala, cajón y descripción de ubicación física de un producto. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/location` | `AD-01`, `DIR-01`, `PAN-01` | Asigna o actualiza la ubicación física.<br>**Body:** `location_id` o combinación de `sala` y `cajon` con `descripcion` opcional. | ✅ Implementado |
@@ -162,7 +163,7 @@
 | `POST` | `/api/loans/requests` | `PRO-01` | Solicita préstamo remoto de insumos/equipos para clases. Genera código único (`REM-<año>-XXXXXX`) y responde **"Solicitud enviada correctamente."** junto al registro creado (claves `data` y `loan`) en estado `pendiente`. Valida que cada producto exista, esté activo y tenga stock suficiente.<br>**Body:** `items` (array con `product_id` y `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block` (opcional), `notes` (opcional). | ✅ Implementado |
 | `GET` | `/api/loans/requests` | `PRO-01` | Listado paginado de las solicitudes **propias** del docente autenticado.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `per_page` (1-100). | ✅ Implementado |
 | `GET` | `/api/loans/my-requests` | `PRO-01` | Alias idéntico de `GET /api/loans/requests` (referencia del catálogo original). | ✅ Implementado |
-| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancelación de solicitud mientras permanezca en estado `pendiente`. | ⏳ Pendiente |
+| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancela (elimina) una solicitud **propia** en estado `pendiente`. `204` sin cuerpo; `403` si es ajena; `422` si ya no está pendiente. | ✅ Implementado |
 
 ---
 
@@ -175,7 +176,7 @@
 | `POST` | `/api/loans/{id}/reject` | `PAN-01`, `AD-01` | Rechaza la solicitud con **motivo obligatorio** y **notifica al solicitante**. No descuenta stock.<br>**Body:** `rejection_reason` (alias `motivo`, mínimo 5 caracteres). | ✅ Implementado |
 | `POST` | `/api/loans/checkout` | `PAN-01`, `AD-01` | Registra un **préstamo presencial directo**: crea el préstamo `procesado` con código (`PRE-<año>-XXXXXX`), descuenta stock atómicamente y guarda profesor/estudiante, ítems, asignatura, sala y fecha.<br>**Body:** `borrower_name` (alias `solicitante`), `borrower_document` (alias `credencial`, opcional), `items` (`product_id` + `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block`, `notes` opcionales. | ✅ Implementado |
 | `POST` | `/api/loans/{id}/deliver` | `PAN-01`, `AD-01` | Confirma la entrega material al docente (`en_proceso` → `procesado`), registra `processed_by` / `processed_at` y notifica al solicitante. **Nuevo respecto del catálogo original**, necesario para cerrar el ciclo del préstamo remoto. | ✅ Implementado |
-| `POST` | `/api/loans/checkin` | `PAN-01` | Devolución de préstamo mediante escaneo de ítems. Reintegra stock o marca ítem en reparación si se reporta daño. | ⏳ Pendiente |
+| `POST` | `/api/loans/checkin` | `PAN-01`, `AD-01` | Registra la devolución de ítems de un préstamo `procesado`; admite devoluciones parciales.<br>**Body:** `loan_id`, `general_notes` (opcional), `items[]` con `item_id` o `product_id`, `condition` (`bueno`, `optimo`, `regular`, `dañado`, `extraviado`) y `damaged` (bool; fuerza `dañado` si el estado era bueno).<br>`bueno`/`regular` reintegran stock; `dañado` suma a `quantity_in_repair`; `extraviado` a `quantity_written_off`. Cuando todos los ítems volvieron, el préstamo trae `returned_at`. | ✅ Implementado |
 
 ---
 
@@ -185,9 +186,9 @@
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/loans` | `PAN-01`, `DIR-01`, `AD-01` | Historial de préstamos con ítems (stock disponible y ubicación) y solicitante.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `insumo` (alias `product` o `product_id`: nombre/código del producto en los ítems), `profesor` (alias `teacher` / `borrower`: nombre del docente o de quien retira), `sala` (alias `room`), `tipo` (alias `type`: `remoto` \| `presencial`), `search` (código o asignatura), `per_page` (1-100). `estado` o `tipo` inválidos responden `422`. | ✅ Implementado |
+| `GET` | `/api/loans` | `PAN-01`, `DIR-01`, `AD-01` | Historial de préstamos con ítems (stock disponible y ubicación) y solicitante.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `insumo` (alias `product` o `product_id`: nombre/código del producto en los ítems), `profesor` (alias `teacher` / `borrower`: nombre del docente o de quien retira), `sala` (alias `room`), `tipo` (alias `type`: `remoto` \| `presencial`), `search` (código o asignatura), `atrasado` (alias `overdue`: solo entregados, no devueltos y vencidos), `devuelto` (alias `returned`), `per_page` (1-100). `estado` o `tipo` inválidos responden `422`. | ✅ Implementado |
 | `GET` | `/api/loans/{id}` | `PAN-01`, `DIR-01`, `AD-01` | Detalle de un préstamo: ítems con producto y ubicación física, solicitante, quién aprobó y quién entregó, motivo de rechazo y `allowed_transitions`. | ✅ Implementado |
-| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exportación de préstamos en formato PDF o Excel por rango de fechas. | ⏳ Pendiente |
+| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exporta el historial en `format=csv` (por defecto, abre en Excel; `excel` es alias) o `format=pdf`. Acepta `from`, `to` (fecha del préstamo) y los mismos filtros de `GET /api/loans`. Máximo 5.000 filas. | ✅ Implementado |
 
 ---
 
@@ -232,9 +233,6 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10) salvo `careers-
 | `PATCH` | `/api/incident-reports/{id}/status` | `PAN-01`, `DIR-01` | Estado de atención (`en_revision`, `en_reparacion`, `reparado`, `dado_de_baja`). | REQ-13 |
 | `GET` | `/api/dashboard/stats` | `DIR-01`, `AD-01` | KPIs: activos por estado, préstamos activos y atrasados, alertas, rotación. | REQ-14 |
 | `GET` | `/api/dashboard/loans-by-teacher` | `DIR-01`, `AD-01` | Préstamos por docente y asignatura. | REQ-14 |
-| `POST` | `/api/loans/checkin` | `PAN-01` | Devolución (ver sección 10). | REQ-10 |
-| `DELETE` | `/api/loans/requests/{id}` | `PRO-01` | Cancelar solicitud pendiente (ver sección 9). | REQ-09 |
-| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01`, `AD-01` | Exportar préstamos en PDF/Excel (ver sección 11). | REQ-11 |
 
 ---
 

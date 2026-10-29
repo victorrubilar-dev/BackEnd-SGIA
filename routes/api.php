@@ -85,12 +85,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/loans/requests', [LoanController::class, 'store']);
         Route::get('/loans/requests', [LoanController::class, 'myRequests']);
         Route::get('/loans/my-requests', [LoanController::class, 'myRequests']);
+        Route::delete('/loans/requests/{loan}', [LoanController::class, 'cancel']);
     });
 
     // REQ-10: Procesamiento de préstamos presenciales/remotos (FU-04, pañol)
     Route::middleware('role:PAN-01,AD-01')->group(function () {
         Route::get('/loans/pending', [LoanController::class, 'pending']);
         Route::post('/loans/checkout', [LoanController::class, 'storeCheckout']);
+        Route::post('/loans/checkin', [LoanController::class, 'checkin']);
         Route::post('/loans/{loan}/approve', [LoanController::class, 'approve']);
         Route::post('/loans/{loan}/reject', [LoanController::class, 'reject']);
         Route::post('/loans/{loan}/deliver', [LoanController::class, 'deliver']);
@@ -100,6 +102,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // Va después de las rutas estáticas (/loans/requests, /loans/pending,
     // /loans/checkout) para que no las capture {loan}.
     Route::middleware('role:PAN-01,DIR-01,AD-01')->group(function () {
+        Route::get('/loans/export', [LoanController::class, 'export']);
         Route::get('/loans', [LoanController::class, 'index']);
         Route::get('/loans/{loan}', [LoanController::class, 'show']);
     });
@@ -154,5 +157,6 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);
     Route::get('/products/{product}/barcode', [ProductController::class, 'barcode']);
     Route::patch('/products/{product}/status', [ProductController::class, 'updateStatus']);
+    Route::patch('/products/{product}/condition', [ProductController::class, 'updateCondition']);
     Route::apiResource('products', ProductController::class);
 });

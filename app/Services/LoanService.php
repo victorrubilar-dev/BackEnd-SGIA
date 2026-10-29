@@ -46,6 +46,7 @@ class LoanService
                 'subject' => $validated['subject'],
                 'room' => $validated['room'],
                 'loan_date' => $validated['loan_date'],
+                'due_date' => $validated['due_date'] ?? $validated['loan_date'],
                 'time_block' => $validated['time_block'] ?? null,
                 'status' => LoanStateMachine::STATUS_PENDING,
                 'notes' => $validated['notes'] ?? null,
@@ -152,6 +153,7 @@ class LoanService
                 'subject' => $validated['subject'],
                 'room' => $validated['room'],
                 'loan_date' => $validated['loan_date'],
+                'due_date' => $validated['due_date'] ?? $validated['loan_date'],
                 'time_block' => $validated['time_block'] ?? null,
                 'status' => LoanStateMachine::STATUS_PROCESSED,
                 'processed_by' => $operator->id,
@@ -294,6 +296,129 @@ class LoanService
     }
 
     /**
+     * Registra la devolución de uno o más ítems de un préstamo entregado.
+     *
+     * Por ítem: `bueno`/`regular` reintegran el stock; `danado` suma a
+     * `quantity_in_repair`; `extraviado` suma a `quantity_written_off`. Cuando
+     * todos los ítems fueron devueltos el préstamo queda con `returned_at`.
+     *
+     * @param  array<string, mixed>  $validated  datos validados por StoreLoanCheckinRequest
+     *
+     * @throws ValidationException
+     */
+    public function checkin(array $validated, User $operator): Loan
+    {
+        return DB::transaction(function () use ($validated, $operator) {
+            $loan = Loan::whereKey($validated['loan_id'])->lockForUpdate()->firstOrFail();
+            $loan->load('items');
+
+            if (! $loan->isProcessed()) {
+                throw ValidationException::withMessages([
+                    'loan_id' => 'Solo se pueden devolver préstamos entregados (estado procesado).',
+                ]);
+            }
+
+            $seen = [];
+
+            foreach ($validated['items'] as $index => $row) {
+                $item = isset($row['item_id'])
+                    ? $loan->items->firstWhere('id', (int) $row['item_id'])
+                    : $loan->items->firstWhere('product_id', (int) $row['product_id']);
+
+                if ($item === null) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}" => 'El ítem no pertenece a este préstamo.',
+                    ]);
+                }
+
+                if ($item->returned_at !== null || in_array($item->id, $seen, true)) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}" => "El ítem \"{$item->name}\" ya fue devuelto.",
+                    ]);
+                }
+
+                $seen[] = $item->id;
+                $condition = $this->normalizeCondition($row['condition'], (bool) ($row['damaged'] ?? false));
+
+                $this->restoreItem($item, $condition);
+
+                $item->forceFill(['returned_at' => now(), 'return_condition' => $condition])->save();
+            }
+
+            $attributes = [];
+
+            if (! empty($validated['general_notes'])) {
+                $attributes['return_notes'] = $validated['general_notes'];
+            }
+
+            if ($loan->items()->whereNull('returned_at')->doesntExist()) {
+                $attributes += ['returned_at' => now(), 'returned_by' => $operator->id];
+            }
+
+            $loan->forceFill($attributes)->save();
+
+            return $loan->load('items');
+        });
+    }
+
+    /**
+     * Cancela (elimina) una solicitud remota que sigue pendiente. No tocó stock.
+     *
+     * @throws ValidationException
+     */
+    public function cancelRequest(Loan $loan): void
+    {
+        if (! $loan->isPending()) {
+            throw ValidationException::withMessages([
+                'loan' => 'Solo se pueden cancelar solicitudes en estado pendiente.',
+            ]);
+        }
+
+        $loan->delete();
+    }
+
+    private function normalizeCondition(string $condition, bool $damaged): string
+    {
+        $normalized = match (mb_strtolower($condition)) {
+            'optimo', 'bueno' => LoanItem::CONDITION_GOOD,
+            'regular' => LoanItem::CONDITION_REGULAR,
+            'dañado', 'danado' => LoanItem::CONDITION_DAMAGED,
+            default => LoanItem::CONDITION_LOST,
+        };
+
+        $usable = [LoanItem::CONDITION_GOOD, LoanItem::CONDITION_REGULAR];
+
+        return $damaged && in_array($normalized, $usable, true) ? LoanItem::CONDITION_DAMAGED : $normalized;
+    }
+
+    /**
+     * Devuelve el ítem al inventario según su condición.
+     */
+    private function restoreItem(LoanItem $item, string $condition): void
+    {
+        if ($item->product_id === null) {
+            return;
+        }
+
+        $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
+
+        if ($product === null) {
+            return;
+        }
+
+        match ($condition) {
+            LoanItem::CONDITION_DAMAGED => $product->quantity_in_repair += $item->quantity,
+            LoanItem::CONDITION_LOST => $product->quantity_written_off += $item->quantity,
+            default => $product->quantity += $item->quantity,
+        };
+
+        $product->save();
+
+        // Al reintegrarse stock se resuelven las alertas que ya no aplican.
+        $this->stockAlertService->checkStock($product);
+    }
+
+    /**
      * Filtros del historial de préstamos (REQ-11): estado, tipo, sala,
      * profesor, insumo y búsqueda libre. Acepta los alias en español e inglés.
      *
@@ -329,6 +454,15 @@ class LoanService
 
         if ($room !== null && $room !== '') {
             $query->where('room', 'ilike', '%'.$room.'%');
+        }
+
+        if ($request->boolean('atrasado', $request->boolean('overdue'))) {
+            $query->overdue();
+        }
+
+        if ($request->filled('devuelto') || $request->filled('returned')) {
+            $returned = $request->boolean('devuelto', $request->boolean('returned'));
+            $returned ? $query->whereNotNull('returned_at') : $query->whereNull('returned_at');
         }
 
         $teacher = $request->input('profesor')

@@ -13,3 +13,11 @@
 ### REQ-11 — Historial y listado de préstamos (FU-04, PAN-01, DIR-01 y AD-01)
 - [x] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
 - [x] Diferenciar en la respuesta préstamos `procesados` vs `en_proceso` (campo de estado explícito para que el cliente aplique el estilo visual).
+
+### Devoluciones y vencimiento (FU-04, PAN-01 y AD-01)
+- [x] `due_date` por préstamo (por defecto, el día del préstamo; no puede ser anterior a `loan_date`).
+- [x] `POST /api/loans/checkin`: devolución total o parcial por ítem, con condición `bueno`/`regular` (reintegra stock), `dañado` (a taller) o `extraviado` (a baja).
+- [x] Campos `due_date`, `returned_at`, `is_returned` e `is_overdue` en el préstamo y filtros `atrasado` / `devuelto` en `GET /api/loans`.
+- [x] `DELETE /api/loans/requests/{id}`: el docente cancela su solicitud mientras está pendiente.
+- [x] `GET /api/loans/export`: historial en CSV (Excel) o PDF por rango de fechas.
+- [ ] Notificar al docente cuando su préstamo vence o está atrasado (sin implementar).

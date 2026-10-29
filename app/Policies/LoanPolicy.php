@@ -79,6 +79,22 @@ class LoanPolicy
         return $this->operates($user);
     }
 
+    /**
+     * Registrar la devolución de un préstamo entregado (pañol y administrador).
+     */
+    public function checkin(User $user): bool
+    {
+        return $this->operates($user);
+    }
+
+    /**
+     * El docente solo cancela solicitudes propias que siguen pendientes de revisión.
+     */
+    public function cancel(User $user, Loan $loan): bool
+    {
+        return $this->viewOwnRequests($user, $loan);
+    }
+
     public function checkout(User $user): bool
     {
         return $this->operates($user);

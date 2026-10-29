@@ -40,7 +40,7 @@ class RouteProtectionTest extends TestCase
             'api/equipment/{product}/technical-sheet', 'api/equipment/{product}/reports',
             'api/incident-reports/{incidentReport}/attachment',
             'api/products', 'api/products/{product}', 'api/products/{product}/location',
-            'api/products/{product}/barcode', 'api/products/{product}/status',
+            'api/products/{product}/barcode', 'api/products/{product}/status', 'api/products/{product}/condition',
         ];
 
         $unprotected = [];

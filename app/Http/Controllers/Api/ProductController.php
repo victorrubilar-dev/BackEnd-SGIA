@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateLocationRequest;
+use App\Http\Requests\UpdateProductConditionRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Http\Requests\UpdateProductStatusRequest;
 use App\Http\Resources\CajonResource;
@@ -134,6 +135,27 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Estado de producto actualizado exitosamente.',
+            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location'])),
+        ]);
+    }
+
+    /**
+     * Mueve unidades entre disponible, taller y baja (FU-05).
+     *
+     * PATCH /api/products/{id}/condition
+     */
+    public function updateCondition(UpdateProductConditionRequest $request, Product $product, ProductService $products): JsonResponse
+    {
+        $product = $products->changeCondition(
+            $product,
+            $request->input('action'),
+            $request->integer('quantity'),
+            $request->input('source'),
+            $request->user()?->id
+        );
+
+        return response()->json([
+            'message' => 'Estado del stock actualizado.',
             'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location'])),
         ]);
     }
