@@ -8,18 +8,17 @@ Prioridad: **Urgente** = el cliente se rompe o queda con una falla de seguridad 
 
 ## A. Cambios ya hechos en el backend
 
-### A1. Adjuntos y documentos ahora son privados — Urgente
-Los archivos subidos (adjunto de informes de novedades y documento de llegada de compras) ya no son públicos. Si el cliente los mostraba con una URL directa (`<img src>`, `<a href>`, `Linking.openURL`), ahora responden **401**.
+### A1. Adjuntos y documentos ahora son privados — Informativo
+Los archivos subidos (adjunto de informes de novedades y documento de llegada de compras) ya no son públicos. Respuesta del frontend: hoy ninguna pantalla los muestra (`attachment_url` solo existe como tipo en `packages/types/src/equipo.ts`; `arrival_document` no aparece), y las descargas que sí hace (ficha técnica, reportes, exportación) usan `getBlob()` con el token. **No hay impacto actual.**
 
-- Informe de novedades: el campo `attachment_url` apunta a `GET /api/incident-reports/{id}/attachment`. Roles: `AD-01`, `DIR-01`, `PAN-01`.
-- Compra: la respuesta incluye `arrival_document_url` → `GET /api/purchases/{id}/arrival-document`. Roles: `AD-01`, `DIR-01`, `PAN-01`.
-- Hay que pedirlos con el header `Authorization: Bearer <token>` y mostrar el resultado como blob (web: `URL.createObjectURL`; móvil: descargar a caché con el header y abrir el archivo local).
-- Responden **403** para otros roles (incluido el docente que subió el informe) y **404** si el registro no tiene archivo. No mostrar el botón de descarga en esos casos.
+Para cuando se implementen:
+- Informe de novedades: `attachment_url` → `GET /api/incident-reports/{id}/attachment`. Roles: `AD-01`, `DIR-01`, `PAN-01`.
+- Compra: `arrival_document_url` → `GET /api/purchases/{id}/arrival-document`. Roles: `AD-01`, `DIR-01`, `PAN-01`.
+- Usar siempre `getBlob()`; un `<img src>` o `<a href>` recibirá 401. Responden 403 a otros roles y 404 si no hay archivo.
 
-### A2. Alertas de stock restringidas por rol — Urgente
-- `GET /api/alerts/critical-stock`: `AD-01`, `DIR-01`, `PAN-01`.
-- `PATCH /api/alerts/{id}/resolve`: solo `AD-01`, `PAN-01`. El Director puede ver pero no resolver.
-- El docente (`PRO-01`) recibe **403** en ambos: no llamar a estos endpoints ni mostrar el contador de alertas para ese rol. Antes funcionaban para cualquier usuario autenticado.
+### A2. Alertas de stock restringidas por rol — Pronto
+- `GET /api/alerts/critical-stock` y `PATCH /api/alerts/{id}/resolve`: `AD-01`, `DIR-01`, `PAN-01`. Coincide con los roles que ya entran a `/alertas` en la web, así que **no requiere cambios**.
+- El docente (`PRO-01`) recibe **403**. La web no lo deja entrar y el móvil no llama a esos endpoints, pero la campana (`NotificationBell`) se muestra a cualquier rol web: si algún día entra otro rol, ocultarla o filtrarla por rol.
 
 ### A3. Límite de solicitudes en endpoints sensibles — Pronto
 Máximo **10 por minuto por usuario** en: `PUT /api/password` (y `POST /api/change-password`), `POST /api/invoices/scan` (y `/products/scan-invoice`), `POST /api/purchases/{id}/arrival-scan`, `POST /api/equipment/{id}/reports`.
@@ -31,6 +30,9 @@ Máximo **10 por minuto por usuario** en: `PUT /api/password` (y `POST /api/chan
 ### A4. CORS sin valores por defecto — Informativo
 El backend ya no permite ningún origen si no se configura `CORS_ALLOWED_ORIGINS`. Para producción hay que entregar al equipo de infraestructura el dominio exacto del panel web. La app móvil nativa no usa CORS; sí Expo en modo web (`http://localhost:8081`, `:19006`).
 
+### A4b. Cuenta desactivada: nuevo campo `code` — Pronto
+La respuesta 403 de una cuenta desactivada (en el login y con un token ya emitido) ahora incluye `"code": "account_inactive"`. Hoy el cliente solo cierra sesión con 401 y muestra el 403 como "Error 403". Cambio sugerido en `http.ts` (compartido por web y móvil): si el 403 trae `code === "account_inactive"`, borrar el token y volver al login. Un 403 sin ese código sigue siendo "sin permisos".
+
 ### A5. Contraseña del administrador sembrado — Informativo
 En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la define `SEED_ADMIN_PASSWORD`. Quitar cualquier credencial fija que haya en el cliente o en sus pruebas e2e.
 
@@ -40,14 +42,14 @@ En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la def
 
 Avisar al frontend **antes** de aplicarlos; ninguno está hecho todavía.
 
-### B1. Retiro de rutas duplicadas — Pronto (fase 4)
-Hoy existen alias: `/me` y `/user`, `/password` y `/change-password`, `/logout-all` y `/tokens/revoke-all`. Se definirá uno canónico y se retirarán los otros. **Propuesta:** `/me`, `/password`, `/logout-all`. El cliente debería usar ya esas tres.
+### B1. Retiro de rutas duplicadas — Informativo (fase 4)
+Respuesta del frontend: ya usa `/me`, `/password` y `/logout-all`. Se pueden retirar `/user`, `/change-password` y `/tokens/revoke-all` sin cambios en el cliente (`revokeAllTokens` existe en el cliente pero ninguna pantalla lo llama; eliminarlo o apuntarlo a `/logout-all`).
 
-### B2. Formato único de error — Pronto (fase 4)
-Se unificará a `{ "message": "...", "errors": { "campo": ["..."] } }`. Hoy algunos endpoints devuelven formas distintas (por ejemplo `alert` en la resolución de alertas y `purchase` en el escaneo de llegada, en vez de `data`). El cliente debe centralizar el manejo de errores en un solo interceptor y leer `message` y `errors`, sin depender de campos por endpoint.
+### B2. Formato de error — Informativo
+El cliente lee `message` y `errors` (objeto de arrays) y no usa `error`, `alert` ni `purchase`. No requiere cambios.
 
-### B3. Eliminaciones: 200 o 204 — Informativo (decisión pendiente)
-Hoy `DELETE` responde **200 con `{ "message": ... }`**; el requisito NF-03 pedía 204. Si se cambia a 204 (sin cuerpo), un cliente que haga `response.json()` fallará. Hacer el cliente tolerante a ambos.
+### B3. Eliminaciones a 204 — Informativo
+`request()` devuelve `undefined` en 204 y los 7 usos de `del<void>` no esperan cuerpo. El backend puede pasar a 204 sin romper el cliente.
 
 ### B4. Notificaciones — Informativo (fase 5)
 Las alertas hoy solo se emiten por el canal `broadcast`; el correo y el push móvil no existen. El móvil debe definir con el backend el proveedor de push (FCM o Expo) para poder registrar el token del dispositivo. Pendiente: endpoint de registro de token.
@@ -59,26 +61,29 @@ Las alertas hoy solo se emiten por el canal `broadcast`; el correo y el push mó
 
 ## C. Requisitos que no coinciden con lo implementado
 
-### C1. Dashboards: faltan KPIs y filtro por período — Pronto
-El requisito pide tarjetas de resumen (activos disponibles / en préstamo / en taller / de baja, préstamos del día, tasa de atrasos, alertas sin resolver, rotación mensual) y un selector de período (semestre, año, rango).
+### C1. Dashboards: GraphQL mockeado frente a REST sin KPIs — Pronto
+- La pantalla web usa GraphQL contra `/api/metrics`, pero está mockeada (`executeMetricsGraphQL` devuelve `{}` y los datos salen de `mock-metrics.json`). Trae KPIs (`useExecutiveKpis`, por defecto `LAST_30_DAYS`), constructor de gráficos y selector de rango. La forma de datos es `MetricResult` (`features/dashboard/types/metrics.ts`).
+- Existen servicios REST para `/dashboard/*` que la página no usa. Envían `limit` y `since`; **el backend ignora `since`** (solo implementa `limit`).
+- El backend REST no tiene KPIs ni filtro de período. Decisión abierta: ver `rework.md`, fase 5. Mientras tanto la pantalla seguirá con datos de ejemplo.
 
-- **Existen** (REST, `DIR-01` y `AD-01`, parámetro `limit` 1-50): `top-products`, `top-supplies`, `careers-distribution`, `least-demanded`, `top-teachers`.
-- **No existen**: los KPIs ni el filtro de período. No construir esas tarjetas con datos calculados en el cliente.
-- **Decisión abierta:** el requisito original decía GraphQL en `/api/metrics`; el backend usa REST (`/api/dashboard/*`). Mientras no se decida, usar REST.
-
-### C2. Préstamos: no hay devolución ni atrasos — Pronto
-No existen el flujo de devolución (`POST /api/loans/checkin`), la cancelación de una solicitud (`DELETE /api/loans/requests/{id}`) ni la exportación (`GET /api/loans/export`). Tampoco hay fecha de vencimiento, así que no se puede mostrar "atrasado". Ocultar esas opciones en la interfaz hasta que existan.
+### C2. Préstamos: devolución, cancelación y exportación — Pronto
+El cliente ya tiene estas llamadas y el backend no las tiene, así que hoy fallan con 404:
+- `POST /api/loans/checkin` (web, mostrador). Payload del cliente: `loan_id`, `general_notes`, `items[]` con `product_id`, `item_id`, `condition` (`bueno`, `regular`, `dañado`, `optimo`, `extraviado`) y `damaged`.
+- `DELETE /api/loans/requests/{id}` (móvil, cancelar solicitud).
+- Exportación de préstamos (web, historial).
+- Para fechas lee `fechaDevolucion`, `return_date` o `returned_at`; no lee `due_at`. El backend definirá el nombre canónico y se avisará.
+Ocultar o deshabilitar esas acciones hasta que existan.
 
 ### C3. Estado del activo — Informativo
-No hay estados "en taller" ni "dado de baja" en los productos. La ficha técnica y el filtro por estado deben limitarse a `is_active`.
+El tipo `equipo.ts` incluye `en_reparacion` y `dado_de_baja` en el campo `estado`, y la web filtra "De Baja". El backend no tiene ese campo (solo `is_active`), así que ese filtro no tiene datos reales. No hay pantalla para "en taller".
 
 ### C4. Informes de novedades — Informativo
-- Se crean con `POST /api/equipment/{id}/reports` (`multipart/form-data`; campos `description` o `title`, `severity`, `attachment`). Roles: `PRO-01` y `PAN-01`.
-- Solo se pueden listar **por equipo** (`GET /api/equipment/{id}/reports`, roles `AD-01`, `DIR-01`, `PAN-01`). No existe listado global ni cambio de estado del informe; esas pantallas no tienen endpoint todavía.
-- Adjunto: pdf, jpg, jpeg, png o webp, máximo 10 MB. Validar tipo y tamaño en el cliente antes de subir para evitar un 422.
+- Existen servicios y hooks en el cliente (`useIncidentReports`, `useUpdateIncidentReportStatus`, `useCreateNovedad`) pero ninguna pantalla los usa; REQ-13 está sin empezar en el frontend.
+- El backend solo tiene `POST /api/equipment/{id}/reports` (`multipart/form-data`; `description` o `title`, `severity`, `attachment`; roles `PRO-01`, `PAN-01`) y el listado por equipo (`GET /api/equipment/{id}/reports`; `AD-01`, `DIR-01`, `PAN-01`). **No existen** `GET /api/incident-reports` ni el cambio de estado que esos hooks esperan.
+- Adjunto: pdf, jpg, jpeg, png o webp, máximo 10 MB.
 
 ### C5. Alertas de stock: destinatarios — Informativo
-Hoy se notifica a `AD-01` y `PAN-01` (el documento original decía `DIR-01` y `PAN-01`). Si el Director debe recibir la notificación, avisar para cambiarlo en el backend.
+Hoy se notifica a `AD-01` y `PAN-01` (el documento original decía `DIR-01` y `PAN-01`). Decisión pendiente en el backend (fase 5).
 
 ---
 
@@ -93,17 +98,21 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
    - 401: borrar el token y volver al login (los tokens web duran 8 horas, los móviles 60 días).
    - 403: mostrar "sin permisos", no reintentar. Además, ocultar en la interfaz lo que el rol no puede usar.
    - 429: esperar `Retry-After`.
-5. **No consultar en bucle.** Para alertas y solicitudes pendientes, usar un intervalo mínimo de 30 segundos y solo con la pantalla visible. El backend aún no tiene tiempo real.
-6. **Cuenta desactivada.** Una cuenta desactivada recibe 403 con token válido: tratarlo como cierre de sesión forzado, no como error de permisos.
-7. **Subidas.** Enviar `multipart/form-data` y validar tamaño (10 MB) y tipo antes de subir; comprimir las fotos del móvil.
+5. **Polling.** Hoy el cliente no hace polling (la campana solo se actualiza al recargar o invalidar caché), y la especificación de REQ-09 pide refetch periódico. Si se añade: mínimo 30 segundos, solo con la pantalla visible, y nunca por usuario sin pausar en segundo plano. El backend aún no tiene tiempo real.
+6. **Cuenta desactivada.** Una cuenta desactivada recibe 403 con `code: "account_inactive"`: cerrar sesión (ver A4b), no mostrar "Error 403".
+7. **Subidas.** Enviar `multipart/form-data` y validar tamaño (10 MB) y tipo antes de subir. La web ya valida 10 MB en facturas; el móvil aún no sube fotos y, cuando lo haga, debe comprimirlas.
 8. **Códigos de rol.** Usar los códigos `AD-01`, `DIR-01`, `PAN-01`, `PRO-01` tal como los devuelve `/api/me`; no deducir permisos del nombre ni del área.
 
 ---
 
-## E. Pendiente de confirmar con el equipo de frontend
+## E. Preguntas ya respondidas por el frontend
 
-- ¿Los adjuntos se mostraban con URL directa hoy? (A1)
-- ¿Qué rutas alias usa el cliente actualmente? (B1)
-- ¿Qué formato de error espera el interceptor actual? (B2)
-- ¿Expo o FCM para el push móvil? (B4)
-- ¿GraphQL o REST para dashboards? (C1)
+1. Adjuntos: no usa URL directa (A1). 2. Alertas: web con `AD`/`DIR`/`PAN` (A2). 3. Alias: ya usa los canónicos (B1). 4. Errores: lee `message` y `errors` (B2). 5. `DELETE`: tolera 204 (B3). 6. Dashboards: GraphQL mockeado (C1). 7. Push: no existe (B4). 8. Préstamos: ver C2. 9. Estado: ver C3. 10. Novedades: ver C4. 11. Polling: ninguno. 12. 403: no cierra sesión (A4b). 13. Fotos: el móvil no sube todavía.
+
+## F. Pendiente en el frontend (resumen)
+
+- `http.ts`: cerrar sesión con `403` + `code: "account_inactive"` (A4b).
+- Eliminar `revokeAllTokens` o apuntarlo a `/logout-all` (B1).
+- Ocultar checkin, cancelación y exportación de préstamos mientras el backend no los tenga (C2).
+- Tratar el filtro "De Baja" como no soportado por el backend (C3).
+- Dashboards: seguir con datos de ejemplo hasta cerrar la decisión (C1).

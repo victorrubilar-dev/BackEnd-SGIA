@@ -231,7 +231,7 @@ class StockAlertTest extends TestCase
         $this->assertFalse($alert->fresh()->is_resolved);
     }
 
-    public function test_director_can_list_but_not_resolve_stock_alerts(): void
+    public function test_director_can_list_and_resolve_stock_alerts(): void
     {
         $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
         Sanctum::actingAs($director);
@@ -246,6 +246,7 @@ class StockAlertTest extends TestCase
         ]);
 
         $this->getJson('/api/alerts/critical-stock')->assertOk();
-        $this->patchJson('/api/alerts/'.$alert->id.'/resolve')->assertForbidden();
+        $this->patchJson('/api/alerts/'.$alert->id.'/resolve')->assertOk();
+        $this->assertTrue($alert->fresh()->is_resolved);
     }
 }

@@ -45,8 +45,9 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 4 — API consistente
 
-- [ ] Aliases duplicados: `/me` + `/user`, `/password` + `/change-password`, `/logout-all` + `/tokens/revoke-all`. Definir el canónico, marcar el resto como deprecado y retirarlo cuando el frontend migre (coordinar con `sgia-frontend`).
-- [ ] Unificar el formato de error (`message` + `errors`) y de paginación en todos los controladores.
+- [ ] Aliases duplicados (el frontend ya usa los canónicos, sin riesgo de ruptura): `/me` + `/user`, `/password` + `/change-password`, `/logout-all` + `/tokens/revoke-all`. Canónicos: `/me`, `/password`, `/logout-all`. Retirar `/user`, `/change-password` y `/tokens/revoke-all`, y actualizar los tests y `ENDPOINTS.md`.
+- [ ] Unificar el formato de error (`message` + `errors`) y de paginación en todos los controladores. El frontend solo lee `message` y `errors`; `alert` y `purchase` son claves extra sin uso.
+- [ ] Eliminaciones a 204 (el frontend ya lo tolera) y actualizar los tests.
 - [ ] Controladores gruesos (`ProductController` 340 líneas, `LoanController` 283, `PurchaseController` 268): mover la lógica restante a Services.
 - [ ] Los filtros de listados están implementados a mano en cada controlador; extraer un patrón común si se repite más de dos veces.
 - [ ] Índices en BD para los filtros usados (`loans.estado`, `purchases.status`, `products.area`/`cajon_id`); revisar N+1 con `Model::preventLazyLoading()` en entornos no productivos.
@@ -58,8 +59,8 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 
 - [ ] **OCR de facturas (REQ-03):** `InvoiceOcrService` devuelve productos fijos ("Osciloscopio…", "ElectroChile S.A.") salvo que el archivo sea un JSON de prueba. Integrar un proveedor real (decisión del equipo: servicio externo vs. Tesseract) detrás de una interfaz y dejar el stub solo para tests.
 - [ ] **Notificaciones (REQ-06, REQ-10):** `StockThresholdNotification` usa solo `broadcast`. Añadir `mail` y definir el canal push móvil (FCM/Expo); persistir en `database` para el panel web.
-- [ ] **Dashboards (REQ-14):** el requisito pide GraphQL en `/api/metrics`, con KPIs (activos disponibles/en préstamo/en taller/baja, préstamos del día, tasa de atrasos, alertas sin resolver, rotación) y filtro por período. Hoy hay 5 endpoints REST sin KPIs, sin filtro de semestre y sin concepto de atraso/devolución. Decidir con el equipo si se mantiene REST (y se corrige el requisito) o se implementa GraphQL.
-- [ ] **Devoluciones y atrasos de préstamos:** no existe flujo de devolución ni fecha de vencimiento; el KPI de tasa de atrasos y "devoluciones" del rol PAN-01 dependen de esto.
+- [ ] **Dashboards (REQ-14):** el requisito pide GraphQL en `/api/metrics`, con KPIs (activos disponibles/en préstamo/en taller/baja, préstamos del día, tasa de atrasos, alertas sin resolver, rotación) y filtro por período. Hoy hay 5 endpoints REST sin KPIs, sin filtro de semestre y sin concepto de atraso/devolución. El frontend tiene la pantalla hecha para GraphQL (`/api/metrics`, forma `MetricResult`, mockeada) y servicios REST sin usar que envían `since` (el backend lo ignora). Decidir con el equipo: GraphQL (coincide con el requisito y la UI, pero agrega una dependencia) o REST (hay que reescribir la pantalla y corregir el requisito). En cualquier caso, implementar el filtro de período.
+- [ ] **Devoluciones y atrasos de préstamos:** el frontend ya llama a `POST /api/loans/checkin` (payload: `loan_id`, `general_notes`, `items[]` con `product_id`, `item_id`, `condition`, `damaged`), a `DELETE /api/loans/requests/{id}` y a la exportación; ninguna existe. Definir además un nombre único para la fecha de devolución (el cliente lee `fechaDevolucion`, `return_date` o `returned_at`) y normalizar `condition`. No existe fecha de vencimiento; el KPI de tasa de atrasos y "devoluciones" del rol PAN-01 dependen de esto.
 - [ ] **Estado "en taller" / "dado de baja"** de activos: no está modelado en `products`.
 - [ ] **Cotizaciones:** el envío de correo a ≥3 proveedores usa `Mail`; verificar con cola real (`QUEUE_CONNECTION` es `sync` en tests) y manejo de reintentos/fallos por proveedor.
 

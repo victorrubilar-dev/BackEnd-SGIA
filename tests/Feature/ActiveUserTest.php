@@ -24,6 +24,7 @@ class ActiveUserTest extends TestCase
         ]);
 
         $response->assertStatus(403);
+        $response->assertJsonPath('code', 'account_inactive');
         $response->assertJson([
             'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
         ]);
@@ -76,6 +77,7 @@ class ActiveUserTest extends TestCase
             ->getJson('/api/user');
 
         $response->assertStatus(403);
+        $response->assertJsonPath('code', 'account_inactive');
         $response->assertJson([
             'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
         ]);

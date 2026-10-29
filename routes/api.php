@@ -44,7 +44,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // REQ-06: Alertas de stock crítico
     Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/alerts/critical-stock', [StockAlertController::class, 'index']);
-    Route::middleware('role:AD-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
 
     // REQ-08: Compras y órdenes de compra (FU-03)
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
