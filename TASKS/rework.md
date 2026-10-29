@@ -68,11 +68,12 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 
 ## Fase 6 — Pruebas
 
-- [ ] Hay un solo `tests/Unit/ExampleTest.php` y `ExampleTest` en Feature: borrarlos o reemplazarlos.
+- [x] Borrados los dos `ExampleTest`; `tests/Unit` ahora tiene pruebas reales.
 - [x] Verificación de cobertura de la fase 2: se añadieron `RouteProtectionTest`, `DatabaseSeederTest` y un test de auditoría de productos.
-- [ ] Tests unitarios para las máquinas de estado y `StockAlertService` (hoy solo se cubren vía HTTP).
-- [ ] Cobertura (`php artisan test --coverage`) con umbral mínimo en CI una vez definida la fase 1.
-- [ ] Tests de matriz de roles (ver fase 3) y de contrato de respuesta de los Resources.
+- [x] Tests unitarios de las tres máquinas de estado (`StateMachineTest`, mapa explícito de transiciones) y de `StockAlertService` (umbrales, duplicados, resolución y destinatarios).
+- [x] La CI corre `php artisan test --coverage --min=60` con PCOV. El umbral es conservador y no se midió localmente (no hay driver de cobertura en esta máquina): subirlo tras el primer run.
+- [x] Matriz de acceso (`RouteProtectionTest`) y contrato de respuesta de los 14 Resources (`ResourceContractTest`): si cambia una clave, el test falla y hay que actualizar `TASKS/front-end.md`.
+- [x] `TechnicalSheetTest` frágil: la regex que extrae los streams del PDF podía comerse un `0x0D` final de los datos comprimidos (1 de cada 256 PDFs). Reproducido con un stream forzado y corregido.
 
 ---
 

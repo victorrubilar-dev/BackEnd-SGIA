@@ -35,6 +35,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `app/Services`: lógica de negocio. Los flujos con estado usan una máquina de estados (`LoanStateMachine`, `PurchaseStateMachine`, `QuotationStateMachine`) que lanza `app/Exceptions/Invalid*StatusTransition`.
 - Stock: `StockAlertService` / `CheckStockAlertJob` generan alertas al llegar a `stock_minimo + 5` y a `stock_minimo`.
 - Vistas Blade solo para PDFs (`resources/views/equipment`) y el correo de cotización.
+- Tests unitarios en `tests/Unit` (máquinas de estado, `StockAlertService`). `ResourceContractTest` fija las claves de cada Resource: si lo tocas, actualiza `TASKS/front-end.md`.
 - Tests de integración en `tests/Feature` (uno por módulo, contra PostgreSQL real; casi todos con `DatabaseTransactions`).
 
 ## Convenciones

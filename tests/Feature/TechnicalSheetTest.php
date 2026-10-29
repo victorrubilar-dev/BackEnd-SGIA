@@ -52,10 +52,9 @@ class TechnicalSheetTest extends TestCase
         $text = '';
 
         foreach ($matches[1] ?? [] as $raw) {
-            $decoded = @gzuncompress($raw);
-            if ($decoded === false) {
-                $decoded = @gzdeflate($raw);
-            }
+            // La regex puede comerse un 0x0D final que es parte de los datos comprimidos
+            // (1 de cada 256 PDFs): se reintenta con ese byte repuesto.
+            $decoded = @gzuncompress($raw) ?: @gzuncompress($raw."\r");
             $text .= $decoded === false ? $raw : $decoded;
         }
 
