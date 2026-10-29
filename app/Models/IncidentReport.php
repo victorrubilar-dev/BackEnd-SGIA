@@ -41,6 +41,19 @@ class IncidentReport extends Model
         self::STATUS_DISCARDED,
     ];
 
+    /**
+     * Transiciones permitidas de atención; `reparado` y `dado_de_baja` son finales.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const TRANSITIONS = [
+        self::STATUS_REPORTED => [self::STATUS_IN_REVIEW, self::STATUS_IN_REPAIR, self::STATUS_DISCARDED],
+        self::STATUS_IN_REVIEW => [self::STATUS_IN_REPAIR, self::STATUS_REPAIRED, self::STATUS_DISCARDED],
+        self::STATUS_IN_REPAIR => [self::STATUS_REPAIRED, self::STATUS_DISCARDED],
+        self::STATUS_REPAIRED => [],
+        self::STATUS_DISCARDED => [],
+    ];
+
     public const SEVERITY_LABELS = [
         self::SEVERITY_LOW => 'Leve',
         self::SEVERITY_MEDIUM => 'Media',
@@ -58,6 +71,14 @@ class IncidentReport extends Model
         'attachment',
         'attachment_original_name',
     ];
+
+    /**
+     * @return array<int, string>
+     */
+    public function allowedTransitions(): array
+    {
+        return self::TRANSITIONS[$this->status] ?? [];
+    }
 
     public function product(): BelongsTo
     {

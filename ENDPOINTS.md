@@ -151,6 +151,7 @@
 | `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los 3+ proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `supplier_ids` (mínimo 3 proveedores distintos), `notes`, `expires_at`. | ✅ Implementado |
 | `GET` | `/api/quotations` | `AD-01`, `DIR-01` | Historial de cotizaciones emitidas con ítems y proveedores contactados.<br>**Query Params:** `status` (alias `estado`: `pendiente`, `aceptada`, `rechazada`, `convertida`), `search` (código), `per_page`. | ✅ Implementado |
 | `GET` | `/api/quotations/{id}` | `AD-01`, `DIR-01` | Detalle de la cotización: ítems, proveedores contactados con su respuesta (`status`, `offer_total`, `responded_at`), orden de compra generada y transiciones permitidas. | ✅ Implementado |
+| `POST` | `/api/quotations/{id}/resend` | `AD-01`, `DIR-01` | Reintenta el correo a los proveedores que no lo recibieron (sin correo o con error). Solo cotizaciones `pendiente`. Responde `emails_sent` y `emails_failed`. Cada proveedor contactado trae `email_sent_at` y `email_error`. | ✅ Implementado |
 | `PATCH` | `/api/quotations/{id}/status` | `AD-01`, `DIR-01` | Transición según la máquina de estados; `422` con los estados permitidos si es inválida.<br>**Body:** `status` (alias `estado`). | ✅ Implementado |
 | `PATCH` | `/api/quotations/{id}/responses` | `AD-01`, `DIR-01` | Registra la respuesta de un proveedor contactado. Al registrar una aceptación la cotización pasa a `aceptada`; si todos rechazan, a `rechazada`.<br>**Body:** `supplier_id`, `status` (`aceptada` \| `rechazada`), `offer_total`, `notes`. | ✅ Implementado |
 
@@ -208,6 +209,8 @@
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `POST` | `/api/equipment/{id}/reports` | `PRO-01`, `PAN-01` | Crea un informe de novedades asociado al equipo (`multipart/form-data`).<br>**Body:** `description` (obligatorio si no hay `title`), `title`, `severity` (`leve`, `media`, `critica`), `attachment` (opcional: pdf, jpg, png o webp, máx. 10 MB). | ✅ Implementado |
+| `GET` | `/api/incident-reports` | `AD-01`, `DIR-01`, `PAN-01` | Listado global de informes, paginado, con el equipo y el reportante.<br>**Query Params:** `severity`, `status`, `product_id`, `search` (código, título o descripción), `per_page`. | ✅ Implementado |
+| `PATCH` | `/api/incident-reports/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado de atención. Transiciones: `reportado` → `en_revision` \| `en_reparacion` \| `dado_de_baja`; `en_revision` → `en_reparacion` \| `reparado` \| `dado_de_baja`; `en_reparacion` → `reparado` \| `dado_de_baja`. `reparado` y `dado_de_baja` son finales. Cada informe trae `allowed_transitions`. `422` si la transición no es válida. | ✅ Implementado |
 | `GET` | `/api/incident-reports/{id}/attachment` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada del adjunto del informe (disco privado). Es la `attachment_url` que devuelve el informe. | ✅ Implementado |
 
 ---
@@ -233,11 +236,9 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `ca
 | Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01`, `AD-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
-| `GET` | `/api/incident-reports` | `DIR-01`, `PAN-01`, `AD-01` | Listado global de novedades con filtros (hoy solo por equipo). | REQ-13 |
-| `PATCH` | `/api/incident-reports/{id}/status` | `PAN-01`, `DIR-01` | Estado de atención (`en_revision`, `en_reparacion`, `reparado`, `dado_de_baja`). | REQ-13 |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (79 rutas, contando alias y las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (87 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreIncidentReportRequest;
+use App\Http\Requests\UpdateIncidentReportStatusRequest;
 use App\Http\Resources\IncidentReportResource;
 use App\Models\IncidentReport;
 use App\Models\Product;
@@ -124,5 +125,60 @@ class EquipmentReportController extends Controller
             $incidentReport->attachment,
             $incidentReport->attachment_original_name
         );
+    }
+
+    /**
+     * Listado global de informes de novedades.
+     *
+     * GET /api/incident-reports
+     * Query params: severity, status, product_id, search (código, título o descripción), per_page.
+     */
+    public function all(Request $request): AnonymousResourceCollection
+    {
+        Gate::authorize('viewAny', IncidentReport::class);
+
+        $query = IncidentReport::with(['reporter', 'product'])->latest();
+
+        foreach (['severity', 'status'] as $field) {
+            if ($request->filled($field)) {
+                $query->where($field, $request->string($field));
+            }
+        }
+
+        if ($request->filled('product_id')) {
+            $query->where('product_id', $request->integer('product_id'));
+        }
+
+        if ($request->filled('search')) {
+            $like = '%'.$request->string('search').'%';
+            $query->where(fn ($q) => $q->where('code', 'ilike', $like)
+                ->orWhere('title', 'ilike', $like)
+                ->orWhere('description', 'ilike', $like));
+        }
+
+        return IncidentReportResource::collection($query->paginate($this->perPage($request)));
+    }
+
+    /**
+     * Cambia el estado de atención del informe respetando las transiciones.
+     *
+     * PATCH /api/incident-reports/{id}/status
+     */
+    public function updateStatus(UpdateIncidentReportStatusRequest $request, IncidentReport $incidentReport): JsonResponse
+    {
+        $to = $request->validated('status');
+
+        if (! in_array($to, $incidentReport->allowedTransitions(), true)) {
+            throw ValidationException::withMessages([
+                'status' => "No se puede pasar de \"{$incidentReport->status}\" a \"{$to}\".",
+            ]);
+        }
+
+        $incidentReport->update(['status' => $to]);
+
+        return response()->json([
+            'message' => 'Estado del informe actualizado.',
+            'data' => (new IncidentReportResource($incidentReport->load(['reporter', 'product'])))->resolve(),
+        ]);
     }
 }

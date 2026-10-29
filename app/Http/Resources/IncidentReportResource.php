@@ -23,6 +23,8 @@ class IncidentReportResource extends JsonResource
             'severity' => $this->severity,
             'severity_label' => $this->severityLabel(),
             'status' => $this->status,
+            'allowed_transitions' => $this->allowedTransitions(),
+            'product' => new ProductResource($this->whenLoaded('product')),
             'attachment' => $this->attachment,
             'attachment_original_name' => $this->attachment_original_name,
             // Descarga autenticada: el adjunto vive en disco privado.

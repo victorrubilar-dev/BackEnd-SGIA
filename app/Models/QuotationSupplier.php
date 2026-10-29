@@ -32,12 +32,15 @@ class QuotationSupplier extends Model
         'offer_total',
         'notes',
         'responded_at',
+        'email_sent_at',
+        'email_error',
     ];
 
     protected function casts(): array
     {
         return [
             'offer_total' => 'float',
+            'email_sent_at' => 'datetime',
             'responded_at' => 'datetime',
         ];
     }

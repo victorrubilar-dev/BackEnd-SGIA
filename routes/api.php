@@ -78,6 +78,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/quotations', [QuotationController::class, 'index']);
         Route::post('/quotations', [QuotationController::class, 'store']);
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
+        Route::post('/quotations/{quotation}/resend', [QuotationController::class, 'resend']);
         Route::patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
         Route::patch('/quotations/{quotation}/responses', [QuotationController::class, 'storeResponse']);
     });
@@ -147,6 +148,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // /equipment/{id}/reports: informes de novedades asociados al equipo,
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
     Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
+    Route::get('/incident-reports', [EquipmentReportController::class, 'all']);
+    Route::patch('/incident-reports/{incidentReport}/status', [EquipmentReportController::class, 'updateStatus']);
     // Los adjuntos viven en disco privado: se descargan autenticados.
     Route::get('/incident-reports/{incidentReport}/attachment', [EquipmentReportController::class, 'attachment']);
 

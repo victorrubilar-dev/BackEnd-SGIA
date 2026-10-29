@@ -32,15 +32,17 @@ class QuotationEmailService
     }
 
     /**
-     * Envía la solicitud a todos los proveedores contactados por la cotización.
+     * Envía la solicitud a los proveedores contactados que aún no la reciben
+     * y deja registrado en cada uno si salió o por qué falló, de modo que se
+     * pueda reintentar solo con los pendientes.
      *
-     * @return int cantidad de correos efectivamente enviados
+     * @return int cantidad de correos efectivamente enviados en esta llamada
      */
     public function sendToContactedSuppliers(Quotation $quotation): int
     {
         $sent = 0;
 
-        $contacts = $quotation->suppliers()->with('supplier')->get();
+        $contacts = $quotation->suppliers()->whereNull('email_sent_at')->with('supplier')->get();
 
         foreach ($contacts as $contact) {
             if (! $contact->supplier) {
@@ -49,11 +51,15 @@ class QuotationEmailService
 
             try {
                 if ($this->sendRequest($quotation, $contact->supplier)) {
+                    $contact->forceFill(['email_sent_at' => now(), 'email_error' => null])->save();
                     $sent++;
+                } else {
+                    $contact->forceFill(['email_error' => 'El proveedor no tiene correo registrado.'])->save();
                 }
             } catch (Throwable $e) {
                 // Un proveedor con correo inválido no debe impedir el resto del envío.
                 report($e);
+                $contact->forceFill(['email_error' => mb_substr($e->getMessage(), 0, 250)])->save();
             }
         }
 

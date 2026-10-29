@@ -287,4 +287,50 @@ class QuotationTest extends TestCase
         $response->assertStatus(422);
         $response->assertJsonValidationErrors('supplier_id');
     }
+
+    public function test_failed_emails_are_recorded_and_can_be_resent(): void
+    {
+        Mail::fake();
+        Sanctum::actingAs($this->director);
+
+        $this->suppliers[1]->forceFill(['email' => null])->save();
+
+        $response = $this->postJson('/api/quotations', $this->validPayload())->assertCreated();
+
+        $response->assertJsonPath('emails_sent', 2)->assertJsonPath('emails_failed', 1);
+        Mail::assertSent(QuotationRequestMail::class, 2);
+
+        $failed = QuotationSupplier::where('supplier_id', $this->suppliers[1]->id)->firstOrFail();
+        $this->assertNull($failed->email_sent_at);
+        $this->assertSame('El proveedor no tiene correo registrado.', $failed->email_error);
+        $this->assertSame(2, QuotationSupplier::where('quotation_id', $failed->quotation_id)->whereNotNull('email_sent_at')->count());
+
+        // Se corrige el correo y se reintenta: solo sale el que faltaba.
+        $this->suppliers[1]->forceFill(['email' => 'nuevo@proveedor.cl'])->save();
+
+        $this->postJson("/api/quotations/{$failed->quotation_id}/resend")
+            ->assertOk()->assertJsonPath('emails_sent', 1)->assertJsonPath('emails_failed', 0);
+
+        Mail::assertSent(QuotationRequestMail::class, 3);
+        $this->assertNotNull($failed->fresh()->email_sent_at);
+        $this->assertNull($failed->fresh()->email_error);
+
+        // Un segundo reintento no vuelve a enviar a quien ya recibió el correo.
+        $this->postJson("/api/quotations/{$failed->quotation_id}/resend")->assertOk()->assertJsonPath('emails_sent', 0);
+        Mail::assertSent(QuotationRequestMail::class, 3);
+    }
+
+    public function test_resend_is_restricted_to_pending_quotations_and_authorized_roles(): void
+    {
+        Mail::fake();
+        Sanctum::actingAs($this->director);
+        $id = $this->postJson('/api/quotations', $this->validPayload())->json('quotation.data.id')
+            ?? Quotation::latest('id')->value('id');
+
+        Quotation::whereKey($id)->update(['status' => 'aceptada']);
+        $this->postJson("/api/quotations/{$id}/resend")->assertUnprocessable();
+
+        Sanctum::actingAs($this->teacher);
+        $this->postJson("/api/quotations/{$id}/resend")->assertForbidden();
+    }
 }

@@ -258,4 +258,39 @@ class IncidentReportTest extends TestCase
         Sanctum::actingAs($this->director);
         $this->getJson("/api/incident-reports/{$id}/attachment")->assertNotFound();
     }
+
+    public function test_global_list_filters_and_is_restricted_to_staff(): void
+    {
+        $critical = IncidentReport::factory()->create(['product_id' => $this->product->id, 'severity' => IncidentReport::SEVERITY_HIGH, 'title' => 'Pantalla rota global']);
+        IncidentReport::factory()->create(['severity' => IncidentReport::SEVERITY_LOW, 'title' => 'Otro asunto']);
+
+        Sanctum::actingAs($this->director);
+
+        $ids = collect($this->getJson('/api/incident-reports?severity=critica&search=global&per_page=100')->assertOk()->json('data'))->pluck('id');
+        $this->assertSame([$critical->id], $ids->all());
+
+        $this->getJson('/api/incident-reports?product_id='.$this->product->id)->assertOk()->assertJsonPath('data.0.product.id', $this->product->id);
+
+        Sanctum::actingAs($this->teacher);
+        $this->getJson('/api/incident-reports')->assertForbidden();
+    }
+
+    public function test_status_follows_allowed_transitions_and_roles(): void
+    {
+        $report = IncidentReport::factory()->create(['product_id' => $this->product->id, 'status' => IncidentReport::STATUS_REPORTED]);
+
+        Sanctum::actingAs($this->teacher);
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'en_revision'])->assertForbidden();
+
+        Sanctum::actingAs($this->director);
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'reparado'])->assertUnprocessable();
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'inventado'])->assertUnprocessable();
+
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'en_revision'])
+            ->assertOk()->assertJsonPath('data.status', 'en_revision');
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'reparado'])->assertOk();
+
+        // Estado final: no admite más cambios
+        $this->patchJson("/api/incident-reports/{$report->id}/status", ['status' => 'en_revision'])->assertUnprocessable();
+    }
 }

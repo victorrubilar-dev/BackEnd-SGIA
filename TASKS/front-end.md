@@ -88,10 +88,15 @@ Ya existen, con el contrato que el cliente esperaba:
 ### C3. Estado del activo — Pronto (hecho en el backend)
 Los productos traen `quantity_in_repair`, `quantity_written_off` y `estado` (`disponible`, `en_reparacion`, `dado_de_baja` o `sin_stock`). Ojo: el tipo del cliente no conoce `sin_stock` (producto activo con 0 unidades disponibles). `quantity` sigue siendo solo lo disponible; lo que está prestado no se cuenta ahí. Para mover unidades: `PATCH /api/products/{id}/condition` (`send_to_repair`, `repaired`, `write_off` con `source`).
 
-### C4. Informes de novedades — Informativo
-- Existen servicios y hooks en el cliente (`useIncidentReports`, `useUpdateIncidentReportStatus`, `useCreateNovedad`) pero ninguna pantalla los usa; REQ-13 está sin empezar en el frontend.
-- El backend solo tiene `POST /api/equipment/{id}/reports` (`multipart/form-data`; `description` o `title`, `severity`, `attachment`; roles `PRO-01`, `PAN-01`) y el listado por equipo (`GET /api/equipment/{id}/reports`; `AD-01`, `DIR-01`, `PAN-01`). **No existen** `GET /api/incident-reports` ni el cambio de estado que esos hooks esperan.
-- Adjunto: pdf, jpg, jpeg, png o webp, máximo 10 MB.
+### C4. Informes de novedades — Pronto (hecho en el backend)
+- `POST /api/equipment/{id}/reports` (`multipart/form-data`; `description` o `title`, `severity`, `attachment`; roles `PRO-01`, `PAN-01`).
+- `GET /api/incident-reports` (`AD-01`, `DIR-01`, `PAN-01`): listado global con `severity`, `status`, `product_id`, `search`, `per_page`. Cada informe trae `product` y `reporter`.
+- `PATCH /api/incident-reports/{id}/status` con `{ "status": "en_revision" | "en_reparacion" | "reparado" | "dado_de_baja" }`. Cada informe trae `allowed_transitions`: ofrecer solo esas opciones. 422 si la transición no es válida.
+- `GET /api/equipment/{id}/reports` sigue disponible para la hoja de vida de un equipo.
+- Adjunto: pdf, jpg, jpeg, png o webp, máximo 10 MB (ver A1 para descargarlo).
+
+### C4b. Cotizaciones: envío de correo — Informativo
+La respuesta de `POST /api/quotations` trae `emails_sent` y `emails_failed`; cada proveedor contactado trae `email_sent_at` y `email_error`. Si hay fallos, mostrar un aviso y ofrecer `POST /api/quotations/{id}/resend`, que reenvía solo a los que faltan (solo en cotizaciones `pendiente`).
 
 ### C5. Alertas de stock: destinatarios — Informativo
 Decidido: se notifica a `AD-01`, `DIR-01` y `PAN-01` (ya implementado). Quien tenga la campana o el push debe esperar alertas también para el Director.

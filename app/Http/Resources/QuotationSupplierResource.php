@@ -26,6 +26,8 @@ class QuotationSupplierResource extends JsonResource
             'offer_total' => $this->offer_total !== null ? (float) $this->offer_total : null,
             'notes' => $this->notes,
             'responded_at' => $this->responded_at?->toIso8601String(),
+            'email_sent_at' => $this->email_sent_at?->toIso8601String(),
+            'email_error' => $this->email_error,
             'contacted_at' => $this->created_at?->toIso8601String(),
         ];
     }

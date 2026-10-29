@@ -29,6 +29,14 @@ class IncidentReportPolicy
     }
 
     /**
+     * Cambiar el estado de atención de un informe (AD-01, DIR-01, PAN-01).
+     */
+    public function updateStatus(User $user, IncidentReport $incidentReport): bool
+    {
+        return $this->viewAny($user);
+    }
+
+    /**
      * Determine whether the user can register an incident report for an
      * equipment (PRO-01, PAN-01).
      */

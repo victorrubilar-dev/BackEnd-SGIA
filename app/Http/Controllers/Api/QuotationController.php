@@ -10,6 +10,7 @@ use App\Http\Requests\UpdateQuotationStatusRequest;
 use App\Http\Resources\QuotationResource;
 use App\Http\Resources\QuotationSupplierResource;
 use App\Models\Quotation;
+use App\Services\QuotationEmailService;
 use App\Services\QuotationService;
 use App\Services\QuotationStateMachine;
 use Illuminate\Http\JsonResponse;
@@ -61,11 +62,43 @@ class QuotationController extends Controller
     {
         $result = $quotationService->create($request->validated(), $request->user());
 
+        $total = $result['quotation']->suppliers->count();
+        $failed = $total - $result['emails_sent'];
+
         return response()->json([
-            'message' => 'Cotización creada y enviada a los proveedores contactados.',
+            'message' => $failed === 0
+                ? 'Cotización creada y enviada a los proveedores contactados.'
+                : "Cotización creada. Se envió a {$result['emails_sent']} de {$total} proveedores; revisa los que fallaron y reintenta.",
             'emails_sent' => $result['emails_sent'],
+            'emails_failed' => $failed,
             'quotation' => new QuotationResource($result['quotation']),
         ], 201);
+    }
+
+    /**
+     * Reintenta el envío del correo a los proveedores que no lo recibieron.
+     *
+     * POST /api/quotations/{id}/resend
+     */
+    public function resend(Quotation $quotation, QuotationEmailService $emailService): JsonResponse
+    {
+        Gate::authorize('view', $quotation);
+
+        if ($quotation->status !== Quotation::STATUS_PENDING) {
+            throw ValidationException::withMessages([
+                'status' => 'Solo se puede reenviar una cotización pendiente.',
+            ]);
+        }
+
+        $sent = $emailService->sendToContactedSuppliers($quotation);
+        $quotation->load(['items', 'suppliers.supplier']);
+
+        return response()->json([
+            'message' => $sent > 0 ? "Se reenviaron {$sent} correo(s)." : 'No había correos pendientes de envío o siguen fallando.',
+            'emails_sent' => $sent,
+            'emails_failed' => $quotation->suppliers->whereNull('email_sent_at')->count(),
+            'quotation' => new QuotationResource($quotation),
+        ]);
     }
 
     /**
