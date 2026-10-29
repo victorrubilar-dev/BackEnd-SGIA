@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\QuotationController;
@@ -139,6 +140,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/dashboard/top-teachers', [DashboardController::class, 'topTeachers']);
         Route::get('/dashboard/loans-by-teacher', [DashboardController::class, 'loansByTeacher']);
         Route::get('/dashboard/kpis', [DashboardController::class, 'kpis']);
+        Route::post('/metrics', MetricsController::class)->middleware('throttle:metrics');
     });
 
     // REQ-12: Fichas técnicas de equipos (FU-05)

@@ -1,0 +1,215 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\IncidentReport;
+use App\Models\Loan;
+use App\Models\LoanItem;
+use App\Models\Product;
+use App\Models\StockAlert;
+use App\Models\User;
+use App\Services\MetricsService;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Testing\TestResponse;
+use Laravel\Sanctum\Sanctum;
+use Tests\TestCase;
+
+class MetricsGraphQLTest extends TestCase
+{
+    use DatabaseTransactions;
+
+    /** Documentos tal como los envía packages/api-client/src/services/metrics.ts. */
+    private const KPIS = 'query GetExecutiveKpis($timeRange: TimeRange) { executiveKpis(timeRange: $timeRange) { activosDisponibles activosEnPrestamo activosEnTaller activosDeBaja prestamosActivosHoy tasaAtrasosPct alertasCriticasNoResueltas tasaRotacionMensualPct } }';
+
+    private const METRIC = 'query GetCustomMetric($input: MetricQueryInput!) { customMetric(input: $input) { entity metric timeRange chartType summary points { label value secondaryValue category } } }';
+
+    private User $director;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        Sanctum::actingAs($this->director);
+    }
+
+    private function gql(string $query, array $variables = []): TestResponse
+    {
+        return $this->postJson('/api/metrics', ['query' => $query, 'variables' => $variables]);
+    }
+
+    private function metric(array $input): TestResponse
+    {
+        return $this->gql(self::METRIC, ['input' => $input + ['timeRange' => 'LAST_30_DAYS', 'chartType' => 'BAR']]);
+    }
+
+    private function seedActivity(): Product
+    {
+        $teacher = User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true, 'area' => 'Ciberseguridad', 'name' => 'Profe Métrica']);
+        $product = Product::factory()->create(['area' => 'Redes', 'quantity' => 20, 'quantity_in_repair' => 2, 'quantity_written_off' => 1]);
+
+        $make = function (array $attrs, int $qty) use ($teacher, $product) {
+            $loan = Loan::factory()->processed()->create($attrs + ['requested_by' => $teacher->id, 'subject' => 'Redes I', 'loan_date' => today()->subDays(3)->toDateString(), 'due_date' => today()->subDays(2)->toDateString()]);
+            LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => $product->name, 'quantity' => $qty]);
+
+            return $loan;
+        };
+
+        $make(['returned_at' => today()->subDays(3)], 2);           // a tiempo
+        $make(['returned_at' => today()], 4);                       // devuelto tarde
+        $make([], 1);                                               // atrasado (vencido, sin devolver)
+        $make(['due_date' => today()->addDays(5)->toDateString()], 3); // activo
+
+        StockAlert::create(['product_id' => $product->id, 'alert_type' => 'critical', 'current_stock' => 1, 'stock_minimo' => 5, 'message' => 'x', 'is_resolved' => false]);
+        IncidentReport::factory()->create(['product_id' => $product->id, 'severity' => 'critica']);
+
+        return $product;
+    }
+
+    public function test_executive_kpis_use_the_frontend_document(): void
+    {
+        $this->seedActivity();
+
+        $data = $this->gql(self::KPIS, ['timeRange' => 'LAST_30_DAYS'])->assertOk()->assertJsonMissingPath('errors')->json('data.executiveKpis');
+
+        $this->assertSame(
+            ['activosDisponibles', 'activosEnPrestamo', 'activosEnTaller', 'activosDeBaja', 'prestamosActivosHoy', 'tasaAtrasosPct', 'alertasCriticasNoResueltas', 'tasaRotacionMensualPct'],
+            array_keys($data)
+        );
+        $this->assertGreaterThanOrEqual(4, $data['activosEnPrestamo']); // 1 atrasado + 3 activo = 4 unidades fuera
+        $this->assertGreaterThanOrEqual(1, $data['alertasCriticasNoResueltas']);
+        $this->assertIsNumeric($data['tasaAtrasosPct']);
+    }
+
+    public function test_kpis_default_to_last_30_days_and_reject_custom(): void
+    {
+        $this->gql('{ executiveKpis { activosDisponibles } }')->assertOk()->assertJsonMissingPath('errors');
+        $this->gql(self::KPIS, ['timeRange' => 'CUSTOM'])->assertOk()->assertJsonPath('errors.0.message', 'executiveKpis no admite CUSTOM; usa un período predefinido.');
+    }
+
+    public function test_every_entity_metric_and_groupby_combination_resolves(): void
+    {
+        $this->seedActivity();
+        $combos = 0;
+
+        foreach (MetricsService::GROUP_BY as $entity => $groups) {
+            foreach ([null, ...$groups] as $groupBy) {
+                foreach (['COUNT', 'TOTAL', 'AVERAGE', 'RATE'] as $metric) {
+                    $response = $this->metric(['entity' => $entity, 'metric' => $metric, 'groupBy' => $groupBy])->assertOk();
+
+                    $this->assertNull($response->json('errors'), "{$entity} {$metric} ".($groupBy ?? '-').': '.json_encode($response->json('errors')));
+                    $this->assertIsArray($response->json('data.customMetric.points'));
+                    $combos++;
+                }
+            }
+        }
+
+        $this->assertGreaterThan(80, $combos);
+    }
+
+    public function test_loans_by_teacher_counts_and_sums_units(): void
+    {
+        $this->seedActivity();
+
+        $count = $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'groupBy' => 'teacher'])->json('data.customMetric.points');
+        $this->assertEquals(4, collect($count)->firstWhere('label', 'Profe Métrica')['value']);
+
+        $total = collect($this->metric(['entity' => 'LOANS', 'metric' => 'TOTAL', 'groupBy' => 'teacher'])->json('data.customMetric.points'))->firstWhere('label', 'Profe Métrica');
+        $this->assertEquals(10, $total['value']);
+
+        $avg = collect($this->metric(['entity' => 'LOANS', 'metric' => 'AVERAGE', 'groupBy' => 'teacher'])->json('data.customMetric.points'))->firstWhere('label', 'Profe Métrica');
+        $this->assertEquals(2.5, $avg['value']);
+    }
+
+    public function test_loan_punctuality_rate_matches_the_donut_the_frontend_expects(): void
+    {
+        $this->seedActivity();
+
+        $points = collect($this->metric(['entity' => 'LOANS', 'metric' => 'RATE', 'chartType' => 'DOUGHNUT'])->json('data.customMetric.points'));
+
+        $this->assertSame(['Devuelto a tiempo', 'Activo', 'Atrasado'], $points->pluck('label')->all());
+        $this->assertEqualsWithDelta(100.0, $points->sum('value'), 0.3);
+        $this->assertGreaterThan(0, $points->firstWhere('label', 'Atrasado')['value']);
+    }
+
+    public function test_time_series_has_weekly_buckets_for_30_days_and_monthly_for_longer(): void
+    {
+        $this->seedActivity();
+
+        $weeks = $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'chartType' => 'LINE'])->json('data.customMetric.points');
+        $this->assertSame('Semana 1', $weeks[0]['label']);
+        $this->assertSame(5, count($weeks));
+        $this->assertEquals(4, array_sum(array_column($weeks, 'value')));
+
+        $months = $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'timeRange' => 'YEAR_TO_DATE'])->json('data.customMetric.points');
+        $this->assertMatchesRegularExpression('/^\d{4}-\d{2}$/', $months[0]['label']);
+    }
+
+    public function test_supplies_and_equipment_rankings_include_remaining_stock(): void
+    {
+        $product = $this->seedActivity();
+
+        foreach (['SUPPLIES', 'EQUIPMENT'] as $entity) {
+            $point = collect($this->metric(['entity' => $entity, 'metric' => 'TOTAL'])->json('data.customMetric.points'))->firstWhere('label', $product->name);
+            $this->assertEquals(20, $point['secondaryValue'], $entity);
+        }
+
+        $condition = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL', 'groupBy' => 'physical_condition'])->json('data.customMetric.points'));
+        $this->assertEqualsCanonicalizing(['Disponible', 'En taller', 'Dado de baja'], $condition->pluck('label')->all());
+    }
+
+    public function test_invalid_group_by_custom_range_and_unknown_fields_return_graphql_errors(): void
+    {
+        $this->metric(['entity' => 'CAREERS', 'metric' => 'COUNT', 'groupBy' => 'level'])
+            ->assertOk()->assertJsonPath('errors.0.message', 'groupBy "level" no es válido para CAREERS. Opciones: specialty.');
+
+        $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'timeRange' => 'CUSTOM'])
+            ->assertJsonPath('errors.0.message', 'CUSTOM requiere dateFrom (y opcionalmente dateTo).');
+
+        $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'timeRange' => 'CUSTOM', 'dateFrom' => '2026-13-45'])
+            ->assertJsonPath('errors.0.message', 'dateFrom / dateTo deben tener formato YYYY-MM-DD.');
+
+        $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'timeRange' => 'CUSTOM', 'dateFrom' => today()->subDays(10)->toDateString(), 'dateTo' => today()->toDateString()])
+            ->assertJsonMissingPath('errors');
+
+        $this->gql('{ customMetric { nada } }')->assertOk()->assertJsonStructure(['errors' => [['message']]]);
+        $this->metric(['entity' => 'EQUIPMENT', 'metric' => 'COUNT', 'groupBy' => 'category'])->assertJsonMissingPath('errors'); // alias de las plantillas
+    }
+
+    public function test_limit_applies_to_rankings(): void
+    {
+        $this->seedActivity();
+
+        $points = $this->metric(['entity' => 'TEACHERS', 'metric' => 'COUNT', 'limit' => 1])->json('data.customMetric.points');
+
+        $this->assertCount(1, $points);
+    }
+
+    public function test_query_depth_is_limited(): void
+    {
+        $deep = '{ customMetric(input: {entity: LOANS, metric: COUNT, timeRange: LAST_7_DAYS, chartType: BAR}) { points { label } } }';
+        $this->gql($deep)->assertOk()->assertJsonMissingPath('errors');
+
+        $abusive = '{ executiveKpis { '.str_repeat('a: activosDisponibles ', 300).' } }';
+        $this->gql($abusive)->assertOk()->assertJsonStructure(['errors']);
+    }
+
+    public function test_only_director_and_admin_can_use_the_endpoint(): void
+    {
+        foreach ([User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
+            Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
+            $this->gql(self::KPIS)->assertForbidden();
+        }
+
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        $this->gql(self::KPIS)->assertOk();
+
+        $this->app['auth']->forgetGuards();
+        $this->postJson('/api/metrics', ['query' => '{ executiveKpis { activosDisponibles } }'])->assertUnauthorized();
+    }
+
+    public function test_request_without_query_is_rejected(): void
+    {
+        $this->postJson('/api/metrics', [])->assertUnprocessable()->assertJsonValidationErrors('query');
+    }
+}

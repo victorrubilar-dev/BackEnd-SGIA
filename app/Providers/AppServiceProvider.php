@@ -61,6 +61,9 @@ class AppServiceProvider extends ServiceProvider
         // Endpoints costosos o sensibles (cambio de contraseña, OCR, subida de archivos).
         RateLimiter::for('sensitive', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
 
+        // El panel dispara varias consultas por carga (una por gráfico).
+        RateLimiter::for('metrics', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
+
         RateLimiter::for('login', function (Request $request) {
             $email = Str::transliterate(Str::lower((string) $request->input('email')));
             $throttleKey = $email.'|'.$request->ip();

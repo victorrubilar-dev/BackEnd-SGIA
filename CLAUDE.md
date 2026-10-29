@@ -61,4 +61,4 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 
 - `InvoiceOcrService` es un **stub**: devuelve datos fijos; no hay OCR real.
 - Las notificaciones (alertas de stock y estado de préstamos) van por `broadcast`, correo y push de Expo, en cola: en producción hace falta `php artisan queue:work`. Las alertas de stock van a `AD-01`, `DIR-01` y `PAN-01`.
-- Dashboards: se decidió GraphQL en `/api/metrics` (ver `TASKS/rework.md`, fase 5); lo implementado hoy es REST (`/api/dashboard/*`), sin KPIs ni filtro por período.
+- Dashboards: GraphQL en `POST /api/metrics` (`app/GraphQL`, `MetricsService`) y REST en `/api/dashboard/*`. El catálogo no distingue equipo de insumo ni registra el nivel de las carreras.

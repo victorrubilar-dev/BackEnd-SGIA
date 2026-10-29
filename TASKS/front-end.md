@@ -70,10 +70,34 @@ Qué llega: alertas de stock a `AD-01`, `DIR-01`, `PAN-01` (`data.type = "stock_
 
 ## C. Requisitos que no coinciden con lo implementado
 
-### C1. Dashboards: KPIs y período listos en REST; GraphQL pendiente — Pronto
-- Ya existen en REST (`DIR-01`, `AD-01`): `GET /api/dashboard/kpis` y los rankings (`top-products`, `top-supplies`, `careers-distribution`, `least-demanded`, `top-teachers`, `loans-by-teacher`). Todos aceptan el período: `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`, `YEAR`, `2026-1`, `2026-2`, `2026`) o `from`/`to`. `since` ahora sí se respeta.
-- Respuesta de `kpis`: `{ data: { period, assets: { available, on_loan, in_repair, written_off }, loans_today, active_loans, overdue_loans, overdue_rate, unresolved_alerts, critical_alerts, units_lent, rotation_rate }, generated_at }`.
-- Decidido: la pantalla irá por GraphQL en `/api/metrics`. **Falta que el frontend entregue su contrato** (ver sección G) para construir el esquema.
+### C1. Dashboards: GraphQL `/api/metrics` — Pronto (hecho en el backend)
+Implementado con los dos documentos exactos de `packages/api-client/src/services/metrics.ts` (`GetExecutiveKpis` y `GetCustomMetric`), enums idénticos a `packages/types/src/metric.ts` y respuesta `{data, errors}`. **Para activarlo en la web basta con que los hooks de `use-metrics.ts` llamen a los servicios del api-client en lugar del mock.**
+
+- `POST /api/metrics`, roles `DIR-01` y `AD-01`, token Bearer. Errores de consulta o de datos: HTTP 200 con `errors[0].message` en español; 401/403 por token o rol.
+- Quitar el *fallback* a datos fijos del api-client cuando el backend falla: hoy ocultaría errores reales (por ejemplo un `groupBy` no soportado) mostrando cifras inventadas.
+- `executiveKpis(timeRange)` (por defecto `LAST_30_DAYS`; `CUSTOM` no se admite aquí): `activosDisponibles`, `activosEnPrestamo`, `activosEnTaller`, `activosDeBaja`, `prestamosActivosHoy`, `tasaAtrasosPct`, `alertasCriticasNoResueltas`, `tasaRotacionMensualPct` (esta última se calcula sobre el `timeRange` pedido, no solo el mes).
+- `customMetric(input)`: `limit` (1-50, por defecto 10) recorta los rankings; las series de tiempo no se recortan. `CUSTOM` exige `dateFrom` (`YYYY-MM-DD`) y admite `dateTo` (por defecto hoy). El `title` se ignora.
+
+**Qué devuelve cada entidad** (el período filtra por fecha del préstamo, de la alerta o del informe, salvo `EQUIPMENT` por categoría, ubicación y condición, que es una foto del inventario actual):
+
+| Entidad | Sin `groupBy` | `groupBy` válidos |
+|---|---|---|
+| `LOANS` | serie en el tiempo (`Semana N` hasta 31 días, `YYYY-MM` si es más largo) | `status`, `teacher`, `subject`, `item_type` (categoría del producto) |
+| `SUPPLIES` | ranking de productos por consumo; `secondaryValue` = stock restante | `career`, `category`, `turnover` (alta / media / baja / sin movimiento) |
+| `EQUIPMENT` | ranking de productos más solicitados; `secondaryValue` = stock | `hardware_category` (alias `category`), `location`, `physical_condition` (disponible / en taller / dado de baja) |
+| `ALERTS` | serie en el tiempo | `criticality`, `specialty_area` |
+| `MAINTENANCE` | serie en el tiempo | `equipment`, `failure_type` (= gravedad del informe), `workshop` (ubicación del equipo) |
+| `CAREERS` | préstamos por carrera (área del solicitante) | `specialty` |
+| `TEACHERS` | ranking de docentes | `subject`, `department` (= área del docente) |
+
+Semántica de la métrica: `COUNT` = registros; `TOTAL` = unidades prestadas; `AVERAGE` = unidades por registro; `RATE` = porcentaje del grupo sobre el total (suma 100). `LOANS` + `RATE` sin `groupBy` devuelve la dona *Devuelto a tiempo / Activo / Atrasado*. En `ALERTS` y `MAINTENANCE` no hay unidades, así que `TOTAL` y `AVERAGE` muestran el conteo y lo avisan en `summary`.
+
+**Desajustes que el frontend debe corregir:**
+- `CAREERS.level` y `TEACHERS.department` están en `GROUP_BY_OPTIONS_BY_ENTITY`: `department` funciona (área del docente) pero `level` **no existe** en el modelo y devuelve un error. Quitar `level` o pedir que se agregue ese dato.
+- Un `groupBy` fuera de la tabla devuelve error (no cae en datos de ejemplo). Las plantillas de `dashboard-page.tsx` usan `groupBy: 'category'` para `EQUIPMENT`: se acepta como alias de `hardware_category`.
+- El catálogo no distingue equipo de insumo (no hay tipo en el producto): `EQUIPMENT` muestra el inventario y `SUPPLIES` el consumo sobre los mismos productos. Si se quiere separar de verdad hace falta un campo `tipo` en los productos.
+- `secondaryValue` y `category` ahora llegan en `points` (el mock nunca los usaba): el gráfico "insumos con proyección de agotamiento" puede usar `secondaryValue` como stock restante.
+- Aceptan además REST: `GET /api/dashboard/kpis` y los rankings, con `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`/`SEMESTER_CURRENT`, `SEMESTER_PREVIOUS`, `YEAR_TO_DATE`, `YEAR`, `2026-1`, `2026`) o `from`/`to`.
 
 ### C2. Préstamos: devolución, cancelación, exportación y vencimiento — Pronto (hecho en el backend)
 Ya existen, con el contrato que el cliente esperaba:
@@ -125,20 +149,12 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 1. Adjuntos: no usa URL directa (A1). 2. Alertas: web con `AD`/`DIR`/`PAN` (A2). 3. Alias: ya usa los canónicos (B1). 4. Errores: lee `message` y `errors` (B2). 5. `DELETE`: tolera 204 (B3). 6. Dashboards: GraphQL mockeado (C1). 7. Push: no existe (B4). 8. Préstamos: ver C2. 9. Estado: ver C3. 10. Novedades: ver C4. 11. Polling: ninguno. 12. 403: no cierra sesión (A4b). 13. Fotos: el móvil no sube todavía.
 
-## G. Lo que necesito del frontend para el GraphQL
-
-Pegar tal cual desde el repositorio del frontend:
-1. Los documentos de consulta GraphQL que se envían a `/api/metrics` (en `features/dashboard`, el constructor de gráficos, `useExecutiveKpis`).
-2. El tipo `MetricResult` (`features/dashboard/types/metrics.ts`) y cualquier tipo relacionado (filtros, rangos, dimensiones).
-3. El `mock-metrics.json` completo (la forma exacta que esperan los gráficos).
-4. Cómo se envía el rango (`LAST_30_DAYS`, semestre, etc.): nombres y valores de los argumentos.
-
 ## F. Pendiente en el frontend (resumen)
 
 - `http.ts`: cerrar sesión con `403` + `code: "account_inactive"` (A4b).
 - Eliminar `revokeAllTokens` o apuntarlo a `/logout-all` (B1).
 - Ocultar checkin, cancelación y exportación de préstamos mientras el backend no los tenga (C2).
 - Tratar el filtro "De Baja" como no soportado por el backend (C3).
-- Dashboards: entregar el contrato GraphQL (sección G); mientras tanto pueden probar los endpoints REST.
+- Dashboards: conectar `use-metrics.ts` al api-client, quitar el *fallback* a datos fijos y ajustar `groupBy` (C1).
 - Push: registrar y borrar el token de Expo (B4).
 - Préstamos: usar `checkin`, cancelación, exportación y los campos nuevos (C2); producto: `estado` y `PATCH /products/{id}/condition` (C3).

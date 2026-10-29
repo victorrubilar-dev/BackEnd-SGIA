@@ -217,10 +217,11 @@
 
 ### 14. Dashboards de Demanda (`FU-06` / `REQ-14`)
 
-Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `careers-distribution` ni a `kpis`) y un período opcional: `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`, `YEAR`, un semestre `2026-1` / `2026-2` o un año `2026`) o `from` / `to` (`since` es alias de `from`). Se aplica a la fecha del préstamo (`loan_date`). Sin período, los rankings cubren todo el historial; `kpis` usa los últimos 30 días.
+Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `careers-distribution` ni a `kpis`) y un período opcional: `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER` (`SEMESTER_CURRENT`), `SEMESTER_PREVIOUS`, `YEAR_TO_DATE`, `YEAR`, un semestre `2026-1` / `2026-2` o un año `2026`) o `from` / `to` (`since` es alias de `from`). Se aplica a la fecha del préstamo (`loan_date`). Sin período, los rankings cubren todo el historial; `kpis` usa los últimos 30 días.
 
 | Método | Endpoint | Descripción | Estado |
 |---|---|---|:---:|
+| `POST` | `/api/metrics` | **GraphQL** del panel: `executiveKpis(timeRange)` (tarjetas) y `customMetric(input)` (cualquier gráfico del constructor). Cuerpo `{query, variables, operationName}`; respuesta `{data, errors}` con HTTP 200 (los errores de consulta viajan en `errors`). Límites: profundidad 6, complejidad 200, 120 solicitudes por minuto, sin introspección en producción. Matriz de entidades y dimensiones en `TASKS/front-end.md` (C1). | ✅ Implementado |
 | `GET` | `/api/dashboard/kpis` | Tarjetas ejecutivas: `assets` (`available`, `on_loan`, `in_repair`, `written_off`), `loans_today`, `active_loans`, `overdue_loans`, `overdue_rate` (%), `unresolved_alerts`, `critical_alerts`, `units_lent` y `rotation_rate` (% = unidades entregadas en el período ÷ (disponible + prestado)). | ✅ Implementado |
 | `GET` | `/api/dashboard/top-products` | Productos/equipos más solicitados. | ✅ Implementado |
 | `GET` | `/api/dashboard/top-supplies` | Insumos fungibles más solicitados. | ✅ Implementado |

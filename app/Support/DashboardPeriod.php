@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
  * Rango de fechas de los dashboards (se aplica a `loans.loan_date`).
  *
  * Acepta un preajuste (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`,
- * `CURRENT_MONTH`, `CURRENT_SEMESTER`, `YEAR`), un semestre (`2026-1`, `2026-2`),
+ * `CURRENT_MONTH`, `CURRENT_SEMESTER`/`SEMESTER_CURRENT`, `SEMESTER_PREVIOUS`, `YEAR_TO_DATE`, `YEAR`), un semestre (`2026-1`, `2026-2`),
  * un año (`2026`) o un rango explícito `from` / `to`.
  */
 final class DashboardPeriod
@@ -57,10 +57,14 @@ final class DashboardPeriod
             'LAST_30_DAYS' => new self($today->subDays(29), $today),
             'LAST_90_DAYS' => new self($today->subDays(89), $today),
             'CURRENT_MONTH' => new self($today->startOfMonth(), $today->endOfMonth()->startOfDay()),
-            'CURRENT_SEMESTER' => self::resolve($today->year.'-'.($today->month <= 6 ? 1 : 2)),
+            'CURRENT_SEMESTER', 'SEMESTER_CURRENT' => self::resolve($today->year.'-'.($today->month <= 6 ? 1 : 2)),
+            'SEMESTER_PREVIOUS' => $today->month <= 6
+                ? self::resolve(($today->year - 1).'-2')
+                : self::resolve($today->year.'-1'),
+            'YEAR_TO_DATE' => new self($today->startOfYear(), $today),
             'YEAR' => self::resolve((string) $today->year),
             default => throw ValidationException::withMessages([
-                'period' => 'Período inválido. Usa LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, CURRENT_MONTH, CURRENT_SEMESTER, YEAR, un semestre (2026-1) o un año (2026).',
+                'period' => 'Período inválido. Usa LAST_7_DAYS, LAST_30_DAYS, LAST_90_DAYS, CURRENT_MONTH, CURRENT_SEMESTER, SEMESTER_PREVIOUS, YEAR_TO_DATE, YEAR, un semestre (2026-1) o un año (2026).',
             ]),
         };
     }
