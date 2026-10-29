@@ -10,6 +10,7 @@ use App\Models\Cajon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class CajonController extends Controller
 {
@@ -79,7 +80,7 @@ class CajonController extends Controller
     /**
      * Remove the specified cajon from storage.
      */
-    public function destroy(Request $request, Cajon $cajon): JsonResponse
+    public function destroy(Request $request, Cajon $cajon): Response|JsonResponse
     {
         if (! $request->user()?->hasRole(['AD-01', 'DIR-01'])) {
             return response()->json(['message' => 'No tienes permisos para eliminar cajones.'], 403);
@@ -87,8 +88,6 @@ class CajonController extends Controller
 
         $cajon->delete();
 
-        return response()->json([
-            'message' => 'Cajón eliminado exitosamente.',
-        ]);
+        return response()->noContent();
     }
 }

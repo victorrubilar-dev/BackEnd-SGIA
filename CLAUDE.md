@@ -42,7 +42,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - Código en inglés; textos al usuario (mensajes de error, validación) en español. `APP_LOCALE=es`.
 - Auditoría en entidades de dominio: `created_by` / `updated_by`.
 - Toda ruta nueva: middleware de rol, FormRequest, Resource y un test Feature (caso feliz, 403 por rol, 422 por validación).
-- No crear alias de rutas nuevos (hoy existen `/me`+`/user`, `/password`+`/change-password`; ver `TASKS/rework.md`).
+- Una sola ruta por operación: no crear alias. Las eliminaciones responden `204` sin cuerpo.
 - Archivos subidos: siempre al disco privado `local` y descarga por endpoint autenticado; nunca al disco `public`.
 - No tocar `vendor/`, `storage/` ni `bootstrap/cache/` a mano.
 - Pint define el estilo; no mezclar reformateos masivos con cambios funcionales.

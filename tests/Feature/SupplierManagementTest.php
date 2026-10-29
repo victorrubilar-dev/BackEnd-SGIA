@@ -185,7 +185,7 @@ class SupplierManagementTest extends TestCase
 
         $response = $this->deleteJson('/api/suppliers/'.$supplier->id);
 
-        $response->assertStatus(200);
+        $response->assertNoContent();
         $this->assertDatabaseMissing('suppliers', ['id' => $supplier->id]);
     }
 

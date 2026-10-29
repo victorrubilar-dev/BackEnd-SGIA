@@ -11,6 +11,7 @@ use App\Models\Supplier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 class SupplierController extends Controller
@@ -107,7 +108,7 @@ class SupplierController extends Controller
      * Remove the supplier (AD-01). If it has linked products it is only
      * deactivated, to preserve the inventory history.
      */
-    public function destroy(Supplier $supplier): JsonResponse
+    public function destroy(Supplier $supplier): Response|JsonResponse
     {
         Gate::authorize('delete', $supplier);
 
@@ -122,8 +123,6 @@ class SupplierController extends Controller
 
         $supplier->delete();
 
-        return response()->json([
-            'message' => 'Proveedor eliminado exitosamente.',
-        ]);
+        return response()->noContent();
     }
 }

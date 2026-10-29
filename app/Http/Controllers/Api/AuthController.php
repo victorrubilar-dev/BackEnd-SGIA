@@ -10,6 +10,7 @@ use App\Models\LoginRecord;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
@@ -126,7 +127,7 @@ class AuthController extends Controller
         ]);
     }
 
-    public function revokeToken(Request $request, int $tokenId): JsonResponse
+    public function revokeToken(Request $request, int $tokenId): Response|JsonResponse
     {
         $token = $request->user()->tokens()->whereKey($tokenId)->first();
 
@@ -136,12 +137,9 @@ class AuthController extends Controller
             ], 404);
         }
 
-        $deviceName = $token->name;
         $token->delete();
 
-        return response()->json([
-            'message' => "Sesión del dispositivo {$deviceName} revocada.",
-        ]);
+        return response()->noContent();
     }
 
     public function revokeOtherTokens(Request $request): JsonResponse

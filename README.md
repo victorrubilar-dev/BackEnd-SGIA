@@ -48,7 +48,7 @@ curl -X POST http://localhost:8000/api/login \
   -d '{"email":"admin@sgia.cl","password":"Admin1234!","device_name":"web"}'
 
 # Uso del token
-curl http://localhost:8000/api/user \
+curl http://localhost:8000/api/me \
   -H "Authorization: Bearer <token>"
 
 # Logout (revoca el token actual)

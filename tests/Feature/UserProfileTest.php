@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Tests\TestCase;
 
 class UserProfileTest extends TestCase
@@ -60,25 +61,13 @@ class UserProfileTest extends TestCase
         $user->delete();
     }
 
-    public function test_user_endpoint_alias_returns_same_profile_resource(): void
+    public function test_retired_aliases_are_not_registered(): void
     {
-        $user = User::factory()->create([
-            'email' => 'alias_test@inacap.cl',
-            'role' => 'DIR-01',
-            'is_active' => true,
-        ]);
+        $uris = collect(Route::getRoutes())->map(fn ($route) => $route->uri())->all();
 
-        $token = $user->createToken('web')->plainTextToken;
-
-        $response = $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/api/user');
-
-        $response->assertStatus(200);
-        $response->assertJsonPath('data.email', 'alias_test@inacap.cl');
-        $response->assertJsonPath('data.role', 'DIR-01');
-
-        $user->tokens()->delete();
-        $user->delete();
+        foreach (['api/user', 'api/change-password', 'api/tokens/revoke-all'] as $alias) {
+            $this->assertNotContains($alias, $uris);
+        }
     }
 
     public function test_unauthenticated_request_to_me_returns_401(): void

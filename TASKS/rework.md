@@ -45,9 +45,9 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 4 — API consistente
 
-- [ ] Aliases duplicados (el frontend ya usa los canónicos, sin riesgo de ruptura): `/me` + `/user`, `/password` + `/change-password`, `/logout-all` + `/tokens/revoke-all`. Canónicos: `/me`, `/password`, `/logout-all`. Retirar `/user`, `/change-password` y `/tokens/revoke-all`, y actualizar los tests y `ENDPOINTS.md`.
+- [x] Aliases duplicados (el frontend ya usa los canónicos, sin riesgo de ruptura): `/me` + `/user`, `/password` + `/change-password`, `/logout-all` + `/tokens/revoke-all`. Canónicos: `/me`, `/password`, `/logout-all`. Retirar `/user`, `/change-password` y `/tokens/revoke-all`, y actualizar los tests y `ENDPOINTS.md`.
 - [ ] Unificar el formato de error (`message` + `errors`) y de paginación en todos los controladores. El frontend solo lee `message` y `errors`; `alert` y `purchase` son claves extra sin uso.
-- [ ] Eliminaciones a 204 (el frontend ya lo tolera) y actualizar los tests.
+- [x] Eliminaciones a 204 (el frontend ya lo tolera) y tests actualizados.
 - [ ] Controladores gruesos (`ProductController` 340 líneas, `LoanController` 283, `PurchaseController` 268): mover la lógica restante a Services.
 - [ ] Los filtros de listados están implementados a mano en cada controlador; extraer un patrón común si se repite más de dos veces.
 - [ ] Índices en BD para los filtros usados (`loans.estado`, `purchases.status`, `products.area`/`cajon_id`); revisar N+1 con `Model::preventLazyLoading()` en entornos no productivos.

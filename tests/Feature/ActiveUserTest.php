@@ -74,7 +74,7 @@ class ActiveUserTest extends TestCase
         $token = $user->createToken('web')->plainTextToken;
 
         $response = $this->withHeader('Authorization', 'Bearer '.$token)
-            ->getJson('/api/user');
+            ->getJson('/api/me');
 
         $response->assertStatus(403);
         $response->assertJsonPath('code', 'account_inactive');

@@ -68,7 +68,7 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 
 #### 5. Gestión del Perfil de Usuario Autenticado (`/api/me`)
 - [x] Crear `UserResource` (`app/Http/Resources/UserResource.php`) para serializar limpiamente el usuario (ocultar campos internos y asegurar estructura consistente de roles y fechas).
-- [x] Reemplazar la función anónima `Route::get('/user')` por un endpoint formal `GET /api/me` (o `GET /api/user`) que devuelva el recurso del usuario autenticado con su rol, área, último login y estado.
+- [x] Reemplazar la función anónima `Route::get('/user')` por un endpoint formal `GET /api/me` que devuelva el recurso del usuario autenticado con su rol, área, último login y estado.
 
 #### 6. Ciclo de Vida y Revocación de Tokens
 - [x] Ajustar la configuración de expiración de Sanctum (`config/sanctum.php`): asegurar que `'expiration' => null` si se utiliza el campo `expires_at` por token individual (para que los 60 días de mobile y las 8 horas de web no se sobrescriban con el valor global).
@@ -76,7 +76,7 @@ Aunque Sanctum ofrece un modo especial de cookies/CSRF para SPAs en el mismo dom
 - [x] Programar en `routes/console.php` la ejecución periódica del comando `sanctum:prune-expired` para eliminar tokens expirados de la base de datos automáticamente.
 
 #### 7. Seguridad de Credenciales y Cambio de Contraseña
-- [x] Endpoint `PUT /api/password` (o `POST /api/change-password`) para que el usuario autenticado cambie su contraseña.
+- [x] Endpoint `PUT /api/password` para que el usuario autenticado cambie su contraseña.
 - [x] Crear FormRequest `ChangePasswordRequest` con validación de:
     - `current_password` (validando la contraseña actual).
     - `password` (nueva contraseña con reglas seguras de Laravel: `Password::min(8)->letters()->numbers()`).

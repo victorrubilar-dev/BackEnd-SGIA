@@ -177,10 +177,7 @@ class AuthTest extends TestCase
         $deleteResponse = $this->withHeader('Authorization', 'Bearer '.$tokenA->plainTextToken)
             ->deleteJson('/api/tokens/'.$tokenB->accessToken->id);
 
-        $deleteResponse->assertStatus(200);
-        $deleteResponse->assertJson([
-            'message' => 'Sesión del dispositivo mobile_pixel revocada.',
-        ]);
+        $deleteResponse->assertNoContent();
 
         $this->assertEquals(1, $user->tokens()->count());
         $this->assertFalse($user->tokens()->where('name', 'mobile_pixel')->exists());

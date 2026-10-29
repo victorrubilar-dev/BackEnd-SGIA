@@ -268,10 +268,7 @@ class UserManagementTest extends TestCase
         ]);
 
         $response = $this->deleteJson('/api/users/'.$targetUser->id);
-        $response->assertStatus(200);
-        $response->assertJson([
-            'message' => 'Usuario eliminado exitosamente.',
-        ]);
+        $response->assertNoContent();
 
         $this->assertDatabaseMissing('users', ['id' => $targetUser->id]);
     }

@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
@@ -103,7 +104,7 @@ class UserController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, User $user): JsonResponse
+    public function destroy(Request $request, User $user): Response|JsonResponse
     {
         Gate::authorize('delete', $user);
 
@@ -111,9 +112,7 @@ class UserController extends Controller
         $user->loginRecords()->delete();
         $user->delete();
 
-        return response()->json([
-            'message' => 'Usuario eliminado exitosamente.',
-        ]);
+        return response()->noContent();
     }
 
     /**

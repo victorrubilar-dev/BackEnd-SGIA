@@ -25,7 +25,7 @@ class CorsTest extends TestCase
         $response = $this->withHeaders([
             'Origin' => 'http://localhost:8081',
             'Access-Control-Request-Method' => 'GET',
-        ])->options('/api/user');
+        ])->options('/api/me');
 
         $response->assertStatus(204);
         $response->assertHeader('Access-Control-Allow-Origin', 'http://localhost:8081');

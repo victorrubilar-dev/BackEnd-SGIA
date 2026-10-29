@@ -152,28 +152,6 @@ class ChangePasswordTest extends TestCase
         $this->assertEquals($token1->accessToken->id, $user->tokens()->first()->id);
     }
 
-    public function test_user_can_change_password_via_post_change_password_alias(): void
-    {
-        $user = User::factory()->create([
-            'password' => Hash::make('InitialPassword123'),
-            'is_active' => true,
-        ]);
-
-        $token = $user->createToken('web');
-
-        $response = $this->withHeader('Authorization', 'Bearer '.$token->plainTextToken)
-            ->postJson('/api/change-password', [
-                'current_password' => 'InitialPassword123',
-                'password' => 'BrandNewPassword789',
-                'password_confirmation' => 'BrandNewPassword789',
-            ]);
-
-        $response->assertStatus(200);
-
-        $user->refresh();
-        $this->assertTrue(Hash::check('BrandNewPassword789', $user->password));
-    }
-
     public function test_password_change_is_rate_limited(): void
     {
         $user = User::factory()->create(['is_active' => true]);

@@ -21,7 +21,7 @@ Para cuando se implementen:
 - El docente (`PRO-01`) recibe **403**. La web no lo deja entrar y el móvil no llama a esos endpoints, pero la campana (`NotificationBell`) se muestra a cualquier rol web: si algún día entra otro rol, ocultarla o filtrarla por rol.
 
 ### A3. Límite de solicitudes en endpoints sensibles — Pronto
-Máximo **10 por minuto por usuario** en: `PUT /api/password` (y `POST /api/change-password`), `POST /api/invoices/scan` (y `/products/scan-invoice`), `POST /api/purchases/{id}/arrival-scan`, `POST /api/equipment/{id}/reports`.
+Máximo **10 por minuto por usuario** en: `PUT /api/password`, `POST /api/invoices/scan` (y `/products/scan-invoice`), `POST /api/purchases/{id}/arrival-scan`, `POST /api/equipment/{id}/reports`.
 
 - Al superarlo responden **429** con header `Retry-After`.
 - El cliente debe deshabilitar el botón mientras la solicitud está en curso (evitar doble envío) y mostrar "Demasiados intentos, espera N segundos" usando `Retry-After`. Sin esto, un doble clic o un reintento automático puede bloquear al usuario un minuto.
@@ -42,14 +42,14 @@ En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la def
 
 Avisar al frontend **antes** de aplicarlos; ninguno está hecho todavía.
 
-### B1. Retiro de rutas duplicadas — Informativo (fase 4)
-Respuesta del frontend: ya usa `/me`, `/password` y `/logout-all`. Se pueden retirar `/user`, `/change-password` y `/tokens/revoke-all` sin cambios en el cliente (`revokeAllTokens` existe en el cliente pero ninguna pantalla lo llama; eliminarlo o apuntarlo a `/logout-all`).
+### B1. Rutas duplicadas retiradas — Informativo (hecho)
+Se eliminaron `/user`, `/change-password` y `/tokens/revoke-all`. El frontend ya usaba `/me`, `/password` y `/logout-all`. Solo falta eliminar `revokeAllTokens` del cliente o apuntarlo a `/logout-all`.
 
 ### B2. Formato de error — Informativo
 El cliente lee `message` y `errors` (objeto de arrays) y no usa `error`, `alert` ni `purchase`. No requiere cambios.
 
-### B3. Eliminaciones a 204 — Informativo
-`request()` devuelve `undefined` en 204 y los 7 usos de `del<void>` no esperan cuerpo. El backend puede pasar a 204 sin romper el cliente.
+### B3. Eliminaciones responden 204 — Informativo (hecho)
+Todos los `DELETE` (ubicaciones, cajones, productos, usuarios, proveedores y `/tokens/{id}`) responden 204 sin cuerpo. El frontend ya lo tolera. Excepción: `DELETE /api/suppliers/{id}` con productos asociados responde 200 con el proveedor desactivado.
 
 ### B4. Notificaciones — Informativo (fase 5)
 Las alertas hoy solo se emiten por el canal `broadcast`; el correo y el push móvil no existen. El móvil debe definir con el backend el proveedor de push (FCM o Expo) para poder registrar el token del dispositivo. Pendiente: endpoint de registro de token.

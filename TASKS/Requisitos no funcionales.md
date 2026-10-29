@@ -8,8 +8,7 @@
 - [ ] Registro de eventos críticos (usuarios, cambios de rol, bajas, aprobación de compras) en una tabla `audit_logs`. No existe.
 
 ### REQ-NF-03 — Accesibilidad de la API
-- [x] Códigos HTTP semánticos (200, 201, 401, 403, 404, 422, 429).
-- [ ] Eliminaciones: hoy responden 200 con mensaje, no 204 (decidir si se cambia o se corrige el requisito).
+- [x] Códigos HTTP semánticos (200, 201, 204, 401, 403, 404, 422, 429). Las eliminaciones responden 204.
 - [ ] Error normalizado `{"message": "...", "errors": {...}}` en todos los endpoints (ver `rework.md`, fase 4).
 
 ### REQ-NF-04 — Rendimiento (< 2 s en el 90 % de las consultas)

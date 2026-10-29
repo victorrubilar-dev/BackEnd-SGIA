@@ -10,6 +10,7 @@ use App\Models\Location;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class LocationController extends Controller
 {
@@ -83,7 +84,7 @@ class LocationController extends Controller
     /**
      * Remove the specified location from storage.
      */
-    public function destroy(Request $request, Location $location): JsonResponse
+    public function destroy(Request $request, Location $location): Response|JsonResponse
     {
         if (! $request->user()?->hasRole(['AD-01', 'DIR-01'])) {
             return response()->json(['message' => 'No tienes permisos para eliminar ubicaciones.'], 403);
@@ -91,8 +92,6 @@ class LocationController extends Controller
 
         $location->delete();
 
-        return response()->json([
-            'message' => 'Ubicación eliminada exitosamente.',
-        ]);
+        return response()->noContent();
     }
 }

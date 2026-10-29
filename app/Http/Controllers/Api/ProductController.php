@@ -18,6 +18,7 @@ use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 class ProductController extends Controller
@@ -218,15 +219,13 @@ class ProductController extends Controller
     /**
      * Remove the specified product from storage.
      */
-    public function destroy(Product $product): JsonResponse
+    public function destroy(Product $product): Response|JsonResponse
     {
         Gate::authorize('delete', $product);
 
         $product->delete();
 
-        return response()->json([
-            'message' => 'Producto eliminado exitosamente.',
-        ]);
+        return response()->noContent();
     }
 
     /**

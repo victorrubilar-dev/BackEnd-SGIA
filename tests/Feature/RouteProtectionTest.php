@@ -34,9 +34,8 @@ class RouteProtectionTest extends TestCase
     public function test_every_api_route_declares_roles_or_is_explicitly_shared(): void
     {
         $shared = [
-            'api/me', 'api/user', 'api/password', 'api/change-password', 'api/logout',
+            'api/me', 'api/password', 'api/logout',
             'api/logout-all', 'api/tokens', 'api/tokens/{tokenId}', 'api/tokens/revoke-others',
-            'api/tokens/revoke-all',
             'api/locations', 'api/locations/{location}', 'api/cajones', 'api/cajones/{cajon}',
             'api/equipment/{product}/technical-sheet', 'api/equipment/{product}/reports',
             'api/incident-reports/{incidentReport}/attachment',
