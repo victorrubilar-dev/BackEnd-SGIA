@@ -59,6 +59,6 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 
 ## Estado conocido (leer antes de confiar en el código)
 
-- `InvoiceOcrService` es un **stub**: devuelve datos fijos; no hay OCR real.
+- `InvoiceOcrService` lee facturas con `pdftotext` (PDF digital) y Tesseract (imágenes y PDF escaneado, vía `pdftoppm`): requiere `poppler-utils` y `tesseract-ocr` + `tesseract-ocr-spa` en el servidor. El parseo es heurístico (número, emisor, líneas `descripción cant precio total`); la ruta de Tesseract aún no se probó con facturas reales.
 - Las notificaciones (alertas de stock y estado de préstamos) van por `broadcast`, correo y push de Expo, en cola: en producción hace falta `php artisan queue:work`. Las alertas de stock van a `AD-01`, `DIR-01` y `PAN-01`.
 - Dashboards: GraphQL en `POST /api/metrics` (`app/GraphQL`, `MetricsService`) y REST en `/api/dashboard/*`. El catálogo no distingue equipo de insumo ni registra el nivel de las carreras.

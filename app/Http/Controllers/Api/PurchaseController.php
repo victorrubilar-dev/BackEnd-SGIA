@@ -115,8 +115,12 @@ class PurchaseController extends Controller
             $attributes['arrival_document'] = $file->store('purchases/arrival', 'local');
 
             if ($invoiceNumber === null) {
-                // Extrae el número de factura desde el documento escaneado (OCR).
-                $invoiceNumber = $ocrService->extractProductsFromInvoice($file)['invoice_number'];
+                // Mejor esfuerzo: si el OCR falla, la recepción igual se completa.
+                try {
+                    $invoiceNumber = $ocrService->extractProductsFromInvoice($file)['invoice_number'];
+                } catch (\RuntimeException $e) {
+                    report($e);
+                }
             }
         }
 

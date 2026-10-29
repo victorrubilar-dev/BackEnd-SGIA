@@ -20,7 +20,7 @@ class ScanArrivalRequest extends FormRequest
             'document' => [
                 'required_without_all:guide_number,invoice_number',
                 'file',
-                'mimes:pdf,png,jpg,jpeg,webp,json',
+                'mimes:pdf,png,jpg,jpeg,webp',
                 'max:10240', // 10MB máx
             ],
             'guide_number' => ['nullable', 'string', 'max:100'],
@@ -33,7 +33,7 @@ class ScanArrivalRequest extends FormRequest
         return [
             'document.required_without_all' => 'Debes adjuntar la guía de despacho / factura de llegada o indicar su número.',
             'document.file' => 'Debes enviar un archivo válido.',
-            'document.mimes' => 'El formato del documento debe ser PDF, imagen (PNG, JPG, WEBP) o JSON.',
+            'document.mimes' => 'El formato del documento debe ser PDF, imagen (PNG, JPG, WEBP).',
             'document.max' => 'El documento no puede exceder los 10MB.',
             'guide_number.string' => 'El número de guía debe ser texto.',
             'invoice_number.string' => 'El número de factura debe ser texto.',

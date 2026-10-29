@@ -64,7 +64,7 @@ El backend ya envía push con la API de Expo y también correo. Para recibirlas 
 Qué llega: alertas de stock a `AD-01`, `DIR-01`, `PAN-01` (`data.type = "stock_alert"`, con `alert_id` y `product_id`) y cambios de estado de préstamos al docente (`data.type = "loan_status"`, con `loan_id` y `status`). Usar `data` para navegar a la pantalla correspondiente. Los tokens inválidos se borran solos cuando Expo informa `DeviceNotRegistered`.
 
 ### B5. Escaneo de facturas — Informativo (fase 5)
-`POST /api/invoices/scan` hoy devuelve datos fijos (no hay OCR real). El cliente no debe asumir que el borrador es fiel a la factura: la pantalla de confirmación debe permitir editar todos los campos. También dejará de aceptar `.json`.
+`POST /api/invoices/scan` ahora lee la factura de verdad (PDF digital o imagen/escaneo) pero con heurística: `invoice_number` y `supplier_name` pueden venir `null` y `draft_products` vacío, y `area` siempre `null`. La pantalla de confirmación debe permitir editar todo y agregar filas a mano. Ya no acepta `.json` (422) y puede responder `503` si el OCR no está disponible: mostrar el mensaje y dejar ingresar manualmente.
 
 ---
 

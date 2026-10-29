@@ -18,7 +18,7 @@ class ScanInvoiceRequest extends FormRequest
             'invoice_file' => [
                 'required',
                 'file',
-                'mimes:pdf,png,jpg,jpeg,webp,json',
+                'mimes:pdf,png,jpg,jpeg,webp',
                 'max:10240', // 10MB máx
             ],
         ];
@@ -29,7 +29,7 @@ class ScanInvoiceRequest extends FormRequest
         return [
             'invoice_file.required' => 'El archivo de la factura es obligatorio.',
             'invoice_file.file' => 'Debes enviar un archivo válido.',
-            'invoice_file.mimes' => 'El formato del archivo debe ser PDF, imagen (PNG, JPG, WEBP) o JSON.',
+            'invoice_file.mimes' => 'El formato del archivo debe ser PDF, imagen (PNG, JPG, WEBP).',
             'invoice_file.max' => 'El archivo no puede exceder los 10MB.',
         ];
     }

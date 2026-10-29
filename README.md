@@ -7,6 +7,7 @@ Este repositorio contiene **solo el backend** (capa de lógica de negocio). El p
 ## Requisitos
 
 - PHP 8.3+ con extensiones `pgsql`, `dom`, `openssl`
+- Para leer facturas (OCR): `poppler-utils` y `tesseract-ocr` con el idioma español (`dnf install poppler-utils tesseract tesseract-langpack-spa` / `apt install poppler-utils tesseract-ocr tesseract-ocr-spa`). Sin ellos `POST /api/invoices/scan` responde 503.
 - Composer
 - Docker (para el contenedor de PostgreSQL en desarrollo)
 - PostgreSQL 16

@@ -1,6 +1,6 @@
 ### REQ-03 — Alta/edición de productos vía escaneo de facturas (FU-02, DIR-01 y AD-01)
 - [x] Endpoint `POST /api/invoices/scan` (alias `/products/scan-invoice`) que recibe la factura y devuelve un borrador de productos.
-- [ ] Extracción real de la factura: hoy `InvoiceOcrService` devuelve datos fijos (ver `rework.md`, fase 5).
+- [x] Extracción real de la factura con `pdftotext` / Tesseract (`InvoiceOcrService`); heurística, el usuario confirma el borrador.
 - [x] Endpoint `POST /api/products` para confirmar el borrador y crear el producto (nombre, cantidad, proveedor, área, foto opcional).
 - [x] Endpoint `PATCH /api/products/{id}` para editar y `PATCH /api/products/{id}/status` para activar/desactivar.
 

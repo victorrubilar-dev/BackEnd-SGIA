@@ -28,6 +28,11 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'tesseract' => [
+        // Idiomas de Tesseract (paquete tesseract-ocr-spa); "spa+eng" suma inglés.
+        'lang' => env('TESSERACT_LANG', 'spa'),
+    ],
+
     'expo' => [
         'url' => env('EXPO_PUSH_URL', 'https://exp.host/--/api/v2/push/send'),
         // Opcional: solo si la cuenta de Expo exige Enhanced Push Security.

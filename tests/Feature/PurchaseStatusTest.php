@@ -9,6 +9,7 @@ use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -237,6 +238,7 @@ class PurchaseStatusTest extends TestCase
     {
         Notification::fake();
         Storage::fake('local');
+        Process::fake(['*pdftotext*' => Process::result("Proveedor SpA\nFACTURA ELECTRONICA N° 998\n")]);
 
         Sanctum::actingAs($this->warehouse);
 
@@ -255,7 +257,7 @@ class PurchaseStatusTest extends TestCase
         $this->assertEquals(Purchase::STATUS_COMPLETED, $purchase->status);
         $this->assertNotNull($purchase->received_at);
         $this->assertNotNull($purchase->arrival_document);
-        $this->assertNotNull($purchase->invoice_number);
+        $this->assertEquals('998', $purchase->invoice_number);
 
         Notification::assertSentTo($this->warehouse, PurchaseArrivalNotification::class);
     }

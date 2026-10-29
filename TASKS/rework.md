@@ -59,11 +59,11 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Fase 5 — Funcionalidad simulada o incompleta
 
-**Decisiones tomadas:** (1) dashboards en **GraphQL** (`/api/metrics`), como pide el requisito y como ya está construida la UI; (2) push móvil con **Expo**; (3) la alerta de stock llega a `AD-01`, `DIR-01` y `PAN-01` (hecho). Pendiente decidir: proveedor de OCR.
+**Decisiones tomadas:** (1) dashboards en **GraphQL** (`/api/metrics`), como pide el requisito y como ya está construida la UI; (2) push móvil con **Expo**; (3) la alerta de stock llega a `AD-01`, `DIR-01` y `PAN-01` (hecho). (4) OCR con Tesseract local.
 
 Esto es lo que más se aleja de lo que dicen los checkboxes.
 
-- [ ] **OCR de facturas (REQ-03):** `InvoiceOcrService` devuelve productos fijos ("Osciloscopio…", "ElectroChile S.A.") salvo que el archivo sea un JSON de prueba. Integrar un proveedor real (decisión del equipo: servicio externo vs. Tesseract) detrás de una interfaz y dejar el stub solo para tests.
+- [x] **OCR de facturas (REQ-03):** decidido Tesseract local. `InvoiceOcrService` usa `pdftotext` para PDF digital y `pdftoppm` + Tesseract para escaneos e imágenes; el stub y la aceptación de `.json` se eliminaron. Verificado con un PDF digital real; la ruta de Tesseract solo con `Process::fake` (no está instalado en esta máquina) → probarla con facturas reales antes de producción. Si falla el binario: 503 en el escaneo, y la recepción de compra sigue sin el número de factura.
 - [x] **Notificaciones (REQ-06, REQ-10):** alertas de stock y estado de préstamos salen por `broadcast`, correo y push de Expo (`ExpoPushChannel`, tabla `device_tokens`, `POST /api/devices` y `DELETE /api/devices/{id}`). Un fallo de Expo se registra y no interrumpe el flujo. Las notificaciones son `ShouldQueue`: en producción con `QUEUE_CONNECTION=database` hay que correr `php artisan queue:work`. No se añadió canal `database`: el panel web lee las alertas de la tabla `stock_alerts`.
 - [x] **Dashboards (REQ-14):** `POST /api/metrics` (GraphQL, `webonyx/graphql-php`) con `executiveKpis` y `customMetric`, contrato idéntico al del frontend; `MetricsService` + `DashboardPeriod` (incluye `SEMESTER_PREVIOUS` y `YEAR_TO_DATE`). Límites de profundidad/complejidad y sin introspección en producción. Quedan sin datos en el modelo `CAREERS.level` y la distinción equipo/insumo (ver `front-end.md`, C1). Los endpoints REST `/api/dashboard/*` se mantienen hasta que el frontend migre.
 - [x] **Devoluciones y atrasos de préstamos:** `due_date`, `returned_at`, `POST /api/loans/checkin` (total o parcial, con condición por ítem), `DELETE /api/loans/requests/{id}`, `GET /api/loans/export` (CSV/PDF) y filtros `atrasado` / `devuelto`. Pendiente: notificar vencimientos.
@@ -86,5 +86,5 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 1. Fase 0 y 1 primero y en commits separados (limpian el diff para todo lo demás).
 2. Fase 2 antes de tocar funcionalidad, para saber qué es requisito real.
 3. Fases 3 y 4 en paralelo; la 4 requiere coordinar con el frontend.
-4. Fase 5: ya están decididos GraphQL, Expo y destinatarios de la alerta; falta elegir el OCR.
+4. Fase 5: ya están decididos GraphQL, Expo y destinatarios de la alerta; OCR resuelto con Tesseract.
 5. Fase 6 se va haciendo con cada fase, no al final.

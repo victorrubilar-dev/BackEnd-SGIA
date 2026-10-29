@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Services\InvoiceOcrService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Gate;
+use RuntimeException;
 
 class InvoiceScanController extends Controller
 {
@@ -20,7 +21,13 @@ class InvoiceScanController extends Controller
 
         $file = $request->file('invoice_file');
 
-        $result = $ocrService->extractProductsFromInvoice($file);
+        try {
+            $result = $ocrService->extractProductsFromInvoice($file);
+        } catch (RuntimeException $e) {
+            report($e);
+
+            return response()->json(['message' => 'El servicio de lectura de facturas no está disponible. Ingresa los productos manualmente.'], 503);
+        }
 
         return response()->json([
             'message' => 'Factura escaneada y procesada exitosamente.',

@@ -4,67 +4,143 @@ namespace App\Services;
 
 use App\Models\Supplier;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Process;
+use RuntimeException;
 
+/**
+ * Lee facturas chilenas (DTE): primero el texto embebido del PDF (pdftotext) y,
+ * si no hay (escaneo o imagen), Tesseract. El resultado es un borrador que el
+ * usuario confirma, no una fuente de verdad.
+ */
 class InvoiceOcrService
 {
     /**
-     * Process an uploaded invoice file (image or PDF) and extract draft products.
-     *
      * @return array{
-     *     invoice_number: string,
-     *     supplier_name: string,
+     *     invoice_number: string|null,
+     *     supplier_name: string|null,
      *     supplier_id: int|null,
      *     items: array<int, array{name: string, quantity: int, unit_price: float, area: string|null}>
      * }
+     *
+     * @throws RuntimeException si el binario de lectura no está disponible.
      */
     public function extractProductsFromInvoice(UploadedFile $file): array
     {
-        $filename = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        $extension = strtolower($file->getClientOriginalExtension());
+        return $this->parse($this->readText($file));
+    }
 
-        // Si es un archivo de prueba con contenido JSON estructurado, podemos deserializarlo directamente
-        $content = @file_get_contents($file->getRealPath());
-        if ($content && ($decoded = json_decode($content, true)) && isset($decoded['items'])) {
-            $supplierName = $decoded['supplier_name'] ?? 'Proveedor Factura';
-            $supplier = Supplier::where('name', 'ilike', $supplierName)->first();
+    public function readText(UploadedFile $file): string
+    {
+        $path = $file->getRealPath();
 
-            return [
-                'invoice_number' => $decoded['invoice_number'] ?? 'FAC-'.date('Ymd').'-001',
-                'supplier_name' => $supplierName,
-                'supplier_id' => $supplier?->id,
-                'items' => array_map(fn ($item) => [
-                    'name' => (string) ($item['name'] ?? 'Producto Desconocido'),
-                    'quantity' => (int) ($item['quantity'] ?? 1),
-                    'unit_price' => (float) ($item['unit_price'] ?? 0.0),
-                    'area' => $item['area'] ?? 'Electricidad',
-                ], $decoded['items']),
-            ];
+        if (strtolower($file->getClientOriginalExtension()) !== 'pdf') {
+            return $this->tesseract($path);
         }
 
-        // Extracción heurística predeterminada para imágenes o PDFs de facturas
-        $supplierName = 'ElectroChile S.A.';
-        $supplier = Supplier::where('name', 'ilike', $supplierName)->first();
+        $text = $this->run(['pdftotext', '-layout', $path, '-']);
+        if (mb_strlen(trim($text)) >= 40) {
+            return $text;
+        }
 
-        $defaultItems = [
-            [
-                'name' => 'Osciloscopio Digital 100MHz',
-                'quantity' => 5,
-                'unit_price' => 250000.0,
-                'area' => 'Electrónica',
-            ],
-            [
-                'name' => 'Generador de Funciones 25MHz',
-                'quantity' => 4,
-                'unit_price' => 180000.0,
-                'area' => 'Telecomunicaciones',
-            ],
-        ];
+        // PDF escaneado: se rasterizan las primeras páginas y se pasan por OCR.
+        $dir = sys_get_temp_dir().'/sgia-ocr-'.uniqid();
+        File::makeDirectory($dir);
+
+        try {
+            $this->run(['pdftoppm', '-r', '200', '-l', '3', '-png', $path, $dir.'/p']);
+
+            return collect(File::glob($dir.'/p*.png'))
+                ->map(fn (string $png) => $this->tesseract($png))
+                ->implode("\n");
+        } finally {
+            File::deleteDirectory($dir);
+        }
+    }
+
+    /**
+     * @return array{invoice_number: string|null, supplier_name: string|null, supplier_id: int|null, items: array<int, array<string, mixed>>}
+     */
+    public function parse(string $text): array
+    {
+        $supplierName = $this->supplierName($text);
 
         return [
-            'invoice_number' => 'FAC-'.strtoupper(substr(md5($filename), 0, 8)),
+            'invoice_number' => $this->invoiceNumber($text),
             'supplier_name' => $supplierName,
-            'supplier_id' => $supplier?->id,
-            'items' => $defaultItems,
+            'supplier_id' => $supplierName ? Supplier::where('name', 'ilike', $supplierName)->value('id') : null,
+            'items' => $this->items($text),
         ];
+    }
+
+    private function invoiceNumber(string $text): ?string
+    {
+        if (preg_match('/FACTURA[^\n\d]*?N\s*[°º.o]*\s*:?\s*(\d+)/iu', $text, $m)
+            || preg_match('/FOLIO\s*:?\s*(\d+)/iu', $text, $m)) {
+            return $m[1];
+        }
+
+        return null;
+    }
+
+    /**
+     * El emisor es la primera línea con letras que no sea un RUT ni el título.
+     */
+    private function supplierName(string $text): ?string
+    {
+        foreach (preg_split('/\R/u', $text) as $line) {
+            $line = trim(preg_replace('/\s{2,}.*/u', '', trim($line)));
+
+            if ($line !== '' && preg_match('/\pL{3}/u', $line)
+                && ! preg_match('/R\.?U\.?T|FACTURA|S\.?I\.?I|^N\s*[°º]/iu', $line)) {
+                return $line;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Líneas "descripción  cantidad  precio  total". Se exige que
+     * cantidad × precio ≈ total para descartar encabezados y texto suelto.
+     *
+     * @return array<int, array{name: string, quantity: int, unit_price: float, area: string|null}>
+     */
+    private function items(string $text): array
+    {
+        $items = [];
+
+        foreach (preg_split('/\R/u', $text) as $line) {
+            if (! preg_match('/^\s*(.+?)\s+(\d+)\s+\$?\s*([\d.]+)\s+\$?\s*([\d.]+)\s*$/u', $line, $m)) {
+                continue;
+            }
+
+            [$quantity, $price, $total] = [(int) $m[2], (float) str_replace('.', '', $m[3]), (float) str_replace('.', '', $m[4])];
+
+            if ($quantity > 0 && $price > 0 && abs($quantity * $price - $total) <= 1) {
+                $items[] = ['name' => trim($m[1]), 'quantity' => $quantity, 'unit_price' => $price, 'area' => null];
+            }
+        }
+
+        return $items;
+    }
+
+    private function tesseract(string $path): string
+    {
+        return $this->run(['tesseract', $path, 'stdout', '-l', config('services.tesseract.lang'), '--psm', '6']);
+    }
+
+    /**
+     * @param  array<int, string>  $command
+     */
+    private function run(array $command): string
+    {
+        $result = Process::timeout(60)->run($command);
+
+        if ($result->failed()) {
+            throw new RuntimeException("Falló {$command[0]}: ".trim($result->errorOutput()));
+        }
+
+        return $result->output();
     }
 }
