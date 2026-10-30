@@ -31,5 +31,6 @@ jobs:
           coverage: pcov
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: vendor/bin/pint --test
+      - run: php artisan migrate --env=testing --force
       # Umbral conservador, no medido localmente (sin driver de cobertura): subirlo tras el primer run.
       - run: php artisan test --coverage --min=60
