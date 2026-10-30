@@ -96,11 +96,17 @@ Implementado con los dos documentos exactos de `packages/api-client/src/services
 Semántica de la métrica: `COUNT` = registros; `TOTAL` = unidades prestadas; `AVERAGE` = unidades por registro; `RATE` = porcentaje del grupo sobre el total (suma 100). `LOANS` + `RATE` sin `groupBy` devuelve la dona *Devuelto a tiempo / Activo / Atrasado*. En `ALERTS` y `MAINTENANCE` no hay unidades, así que `TOTAL` y `AVERAGE` muestran el conteo y lo avisan en `summary`.
 
 **Desajustes que el frontend debe corregir:**
-- `CAREERS.level` y `TEACHERS.department` están en `GROUP_BY_OPTIONS_BY_ENTITY`: `department` funciona (área del docente) pero `level` **no existe** en el modelo y devuelve un error. Quitar `level` o pedir que se agregue ese dato.
+- `CAREERS.level` y `TEACHERS.department` están en `GROUP_BY_OPTIONS_BY_ENTITY`: ambos funcionan (`level` desde C1b).
 - Un `groupBy` fuera de la tabla devuelve error (no cae en datos de ejemplo). Las plantillas de `dashboard-page.tsx` usan `groupBy: 'category'` para `EQUIPMENT`: se acepta como alias de `hardware_category`.
-- El catálogo no distingue equipo de insumo (no hay tipo en el producto): `EQUIPMENT` muestra el inventario y `SUPPLIES` el consumo sobre los mismos productos. Si se quiere separar de verdad hace falta un campo `tipo` en los productos.
+- `EQUIPMENT` y `SUPPLIES` ya filtran por `products.type` (C1b).
 - `secondaryValue` y `category` ahora llegan en `points` (el mock nunca los usaba): el gráfico "insumos con proyección de agotamiento" puede usar `secondaryValue` como stock restante.
 - Aceptan además REST: `GET /api/dashboard/kpis` y los rankings, con `period` (`LAST_7_DAYS`, `LAST_30_DAYS`, `LAST_90_DAYS`, `CURRENT_MONTH`, `CURRENT_SEMESTER`/`SEMESTER_CURRENT`, `SEMESTER_PREVIOUS`, `YEAR_TO_DATE`, `YEAR`, `2026-1`, `2026`) o `from`/`to`.
+
+### C1b. Tipo de producto y nivel de carrera — Pronto
+- `POST` y `PATCH /api/products` aceptan `type` opcional (`equipo` | `insumo`; por defecto `equipo`, otro valor → `422`). Agregar el selector al formulario de alta (web y móvil) y a la confirmación del escaneo de facturas; sin él, todo lo nuevo cuenta como equipo en los dashboards. `ProductResource` trae `type` y `GET /api/products` filtra con `?type=`. Los productos que ya existían quedaron como `equipo`.
+- En `/api/metrics`, `EQUIPMENT` solo cuenta productos `equipo` y `SUPPLIES` solo `insumo` (incluida la rotación). Las tarjetas de `executiveKpis` siguen sumando todos los productos.
+- `CAREERS` acepta `groupBy: "level"`: etiquetas `Técnico de Nivel Superior`, `Profesional` y `Sin nivel` (el `area` del solicitante no coincide con ninguna carrera del catálogo).
+- Nuevo catálogo `GET/POST /api/careers`, `GET/PATCH/DELETE /api/careers/{id}` (lectura `AD-01`/`DIR-01`, escritura `AD-01`): `id`, `name`, `level` (`tecnico` | `profesional`), `level_label`. El `area` del usuario debe escribirse igual que `name` para que cuente: conviene que el formulario de usuarios ofrezca las carreras como opciones.
 
 ### C2. Préstamos: devolución, cancelación, exportación y vencimiento — Pronto (hecho en el backend)
 Ya existen, con el contrato que el cliente esperaba:
@@ -159,5 +165,6 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - Ocultar checkin, cancelación y exportación de préstamos mientras el backend no los tenga (C2).
 - Tratar el filtro "De Baja" como no soportado por el backend (C3).
 - Dashboards: conectar `use-metrics.ts` al api-client, quitar el *fallback* a datos fijos y ajustar `groupBy` (C1).
+- Productos: selector de `type` en el alta (C1b); usuarios: elegir `area` desde `/api/careers` (C1b).
 - Push: registrar y borrar el token de Expo (B4).
 - Préstamos: usar `checkin`, cancelación, exportación y los campos nuevos (C2); producto: `estado` y `PATCH /products/{id}/condition` (C3).

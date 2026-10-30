@@ -8,7 +8,9 @@
 - [x] `GET /api/dashboard/loans-by-teacher`: préstamos por docente y asignatura.
 - [x] Filtro por período (`period`, `from`/`to`, `since`) en todas las consultas.
 - [x] Capa GraphQL `POST /api/metrics` con `executiveKpis` y `customMetric` (entidades `LOANS`, `SUPPLIES`, `EQUIPMENT`, `ALERTS`, `MAINTENANCE`, `CAREERS`, `TEACHERS`; métricas `COUNT`, `TOTAL`, `AVERAGE`, `RATE`; períodos incluidos `SEMESTER_PREVIOUS`, `YEAR_TO_DATE` y `CUSTOM`).
-- [ ] Dimensiones sin datos en el modelo: `CAREERS.level` y `MAINTENANCE.failure_type` (se usa la gravedad). El catálogo tampoco distingue equipo de insumo (ver `front-end.md`, C1).
+- [x] `CAREERS` con `groupBy: "level"` desde el catálogo `careers` (`/api/careers`, unido por nombre con `users.area`).
+- [x] `EQUIPMENT` y `SUPPLIES` separados por `products.type` (`equipo` / `insumo`).
+- [ ] `MAINTENANCE.failure_type` sin dato propio: se usa la gravedad del informe.
 
 ## Referencia para el cliente (`apps/web`, no es trabajo de este repo)
 

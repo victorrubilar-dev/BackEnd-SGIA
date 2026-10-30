@@ -60,6 +60,18 @@
 | `DELETE` | `/api/users/{id}` | `AD-01` | Elimina un usuario y borra en cascada sus tokens y registros de sesión. | ✅ Implementado |
 | `PATCH` | `/api/users/{id}/status` | `AD-01` | Activa o desactiva la cuenta sin borrarla. Si se desactiva (`is_active = false`), se revocan de inmediato todas sus sesiones activas.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
 
+### 2.0 Carreras (`FU-06` / `REQ-14`)
+
+Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exacto con `careers.name`; es lo que alimenta `CAREERS` con `groupBy: "level"` en `/api/metrics`.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/careers` | `AD-01`, `DIR-01` | Listado paginado.<br>**Query Params:** `level`, `search` (nombre), `per_page`. Cada carrera: `id`, `name`, `level`, `level_label`, auditoría. | ✅ Implementado |
+| `GET` | `/api/careers/{id}` | `AD-01`, `DIR-01` | Detalle de una carrera. | ✅ Implementado |
+| `POST` | `/api/careers` | `AD-01` | Crea una carrera.<br>**Body:** `name` (único), `level` (`tecnico` \| `profesional`). | ✅ Implementado |
+| `PATCH` | `/api/careers/{id}` | `AD-01` | Cambia nombre o nivel. | ✅ Implementado |
+| `DELETE` | `/api/careers/{id}` | `AD-01` | Elimina la carrera (204). Los usuarios conservan su `area`; sus préstamos pasan a "Sin nivel". | ✅ Implementado |
+
 ---
 
 ### 2.1 Ubicaciones Físicas y Cajones (`FU-02` / `REQ-05`)
@@ -84,10 +96,10 @@
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/products` | Todos (`auth`) | Listado paginado de productos con relaciones eager loaded (`supplier`, `location`).<br>**Query Params:** `search` (nombre, código de barras o descripción), `area`, `is_active`, `supplier_id`, `location_id`, `sala`, `cajon`, `critical_only`, `per_page`. | ✅ Implementado |
-| `POST` | `/api/products` | `AD-01`, `DIR-01`, `PAN-01` | Alta de producto. Si no se envía código de barras, genera automáticamente uno único tipo Code128 (`SGIA-XXXXXXXX`). Si se envían `sala` y `cajon`, crea/asocia la ubicación física automáticamente.<br>**Body:** `name`, `description`, `barcode` (opcional), `quantity`, `stock_minimo`, `supplier_id`, `sala`, `cajon`, `area`, `photo_url`, `is_active`. | ✅ Implementado |
+| `GET` | `/api/products` | Todos (`auth`) | Listado paginado de productos con relaciones eager loaded (`supplier`, `location`).<br>**Query Params:** `search` (nombre, código de barras o descripción), `type` (`equipo` \| `insumo`), `area`, `is_active`, `supplier_id`, `location_id`, `sala`, `cajon`, `critical_only`, `per_page`. | ✅ Implementado |
+| `POST` | `/api/products` | `AD-01`, `DIR-01`, `PAN-01` | Alta de producto. Si no se envía código de barras, genera automáticamente uno único tipo Code128 (`SGIA-XXXXXXXX`). Si se envían `sala` y `cajon`, crea/asocia la ubicación física automáticamente.<br>**Body:** `type` (opcional: `equipo` \| `insumo`, por defecto `equipo`), `name`, `description`, `barcode` (opcional), `quantity`, `stock_minimo`, `supplier_id`, `sala`, `cajon`, `area`, `photo_url`, `is_active`. | ✅ Implementado |
 | `GET` | `/api/products/{id}` | Todos (`auth`) | Detalle de un producto con sus relaciones. | ✅ Implementado |
-| `PUT / PATCH` | `/api/products/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edición de producto. Al modificar stock o stock mínimo, evalúa y dispara alertas de stock automáticamente. | ✅ Implementado |
+| `PUT / PATCH` | `/api/products/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edición de producto (incluido `type`). Al modificar stock o stock mínimo, evalúa y dispara alertas de stock automáticamente. | ✅ Implementado |
 | `DELETE` | `/api/products/{id}` | `AD-01`, `DIR-01` | Eliminación de producto de inventario. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/condition` | `AD-01`, `DIR-01`, `PAN-01` | Mueve unidades entre disponible, taller y baja.<br>**Body:** `action` (`send_to_repair`, `repaired`, `write_off`), `quantity`, `source` (`stock` \| `repair`, obligatorio en `write_off`). `422` si no hay unidades suficientes en el origen. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Activa o desactiva un producto del inventario.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
@@ -243,4 +255,4 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `ca
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (87 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (94 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

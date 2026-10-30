@@ -15,7 +15,7 @@ class ProductService
     public function __construct(private readonly StockAlertService $stockAlerts) {}
 
     /**
-     * Aplica los filtros del listado de productos (búsqueda, área, estado,
+     * Aplica los filtros del listado de productos (búsqueda, tipo, área, estado,
      * proveedor, ubicación y stock crítico).
      */
     public function applyFilters(Builder $query, Request $request): Builder
@@ -27,6 +27,10 @@ class ProductService
                     ->orWhere('barcode', 'ilike', $search)
                     ->orWhere('description', 'ilike', $search);
             });
+        }
+
+        if ($request->filled('type')) {
+            $query->where('type', $request->string('type'));
         }
 
         if ($request->filled('area')) {

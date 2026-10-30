@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Career;
 use App\Models\Loan;
+use App\Models\Product;
 use App\Models\User;
 use App\Support\DashboardPeriod;
 use Carbon\Exceptions\InvalidFormatException;
@@ -22,9 +24,10 @@ use Illuminate\Validation\ValidationException;
  *  - AVERAGE: unidades por registro; donde no hay unidades equivale a COUNT.
  *  - RATE: porcentaje del grupo sobre el total (suma 100).
  *
- * El catálogo no distingue "equipo" de "insumo": EQUIPMENT describe el
- * inventario (stock por categoría, ubicación y condición) y SUPPLIES el
- * consumo (unidades prestadas por carrera, categoría y rotación).
+ * EQUIPMENT describe los productos de tipo `equipo` (inventario por categoría,
+ * ubicación y condición) y SUPPLIES los de tipo `insumo` (consumo por carrera,
+ * categoría y rotación). El nivel de carrera sale de `careers`, unida por
+ * nombre con `users.area`.
  */
 class MetricsService
 {
@@ -35,7 +38,7 @@ class MetricsService
         'EQUIPMENT' => ['hardware_category', 'location', 'physical_condition'],
         'ALERTS' => ['criticality', 'specialty_area'],
         'MAINTENANCE' => ['equipment', 'failure_type', 'workshop'],
-        'CAREERS' => ['specialty'],
+        'CAREERS' => ['specialty', 'level'],
         'TEACHERS' => ['subject', 'department'],
     ];
 
@@ -48,6 +51,7 @@ class MetricsService
     private const VALUE_LABELS = [
         'criticality' => ['critical' => 'Crítica', 'warning' => 'Advertencia'],
         'failure_type' => ['leve' => 'Leve', 'media' => 'Media', 'critica' => 'Crítica'],
+        'level' => Career::LEVELS,
     ];
 
     public function __construct(private readonly DashboardService $dashboard) {}
@@ -108,7 +112,7 @@ class MetricsService
                 'EQUIPMENT' => $this->equipment($groupBy, $period),
                 'ALERTS' => $this->alerts($groupBy, $period),
                 'MAINTENANCE' => $this->maintenance($groupBy, $period),
-                'CAREERS' => $this->careers($period),
+                'CAREERS' => $this->careers($groupBy, $period),
                 'TEACHERS' => $this->teachers($groupBy, $period),
             };
 
@@ -257,7 +261,7 @@ class MetricsService
     }
 
     /**
-     * Préstamos agrupados por una expresión SQL (users y products ya unidos).
+     * Préstamos agrupados por una expresión SQL (users, products y careers ya unidos).
      *
      * @return array<int, object>
      */
@@ -267,6 +271,7 @@ class MetricsService
             ->leftJoin('loan_items', 'loan_items.loan_id', '=', 'loans.id')
             ->leftJoin('products', 'products.id', '=', 'loan_items.product_id')
             ->leftJoin('users', 'users.id', '=', 'loans.requested_by')
+            ->leftJoin('careers', 'careers.name', '=', 'users.area')
             ->whereBetween('loans.loan_date', [$period->from->toDateString(), $period->to->toDateString()])
             ->whereRaw($extraWhere)
             ->groupBy(DB::raw($labelExpr))
@@ -286,10 +291,11 @@ class MetricsService
      */
     private function supplies(?string $groupBy, DashboardPeriod $period): array
     {
-        $byItems = fn (string $expr) => $this->loanGroups($expr, $period, countExpr: 'count(loan_items.id)');
+        $supply = "products.type = '".Product::TYPE_SUPPLY."'";
+        $byItems = fn (string $expr) => $this->loanGroups($expr, $period, countExpr: 'count(loan_items.id)', extraWhere: $supply);
 
         return match ($groupBy) {
-            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: 'products.id is not null'), null, true, secondary: true),
+            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: $supply), null, true, secondary: true),
             'career' => $this->groups($byItems("coalesce(users.area, 'Sin carrera')"), null, true),
             'category' => $this->groups($byItems("coalesce(products.area, 'Sin categoría')"), null, true),
             'turnover' => $this->turnover($period),
@@ -297,7 +303,7 @@ class MetricsService
     }
 
     /**
-     * Productos activos clasificados por rotación = prestado / (stock + prestado).
+     * Insumos activos clasificados por rotación = prestado / (stock + prestado).
      *
      * @return array<string, mixed>
      */
@@ -313,6 +319,7 @@ class MetricsService
         $products = DB::table('products')
             ->leftJoinSub($lent, 'l', 'l.product_id', '=', 'products.id')
             ->where('products.is_active', true)
+            ->where('products.type', Product::TYPE_SUPPLY)
             ->selectRaw('products.quantity, coalesce(l.units, 0) as units')
             ->get();
 
@@ -342,10 +349,11 @@ class MetricsService
      */
     private function equipment(?string $groupBy, DashboardPeriod $period): array
     {
-        $products = fn () => DB::table('products')->where('products.is_active', true);
+        $products = fn () => DB::table('products')->where('products.is_active', true)->where('products.type', Product::TYPE_EQUIPMENT);
+        $equipment = "products.type = '".Product::TYPE_EQUIPMENT."'";
 
         return match ($groupBy) {
-            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: 'products.id is not null'), null, true, secondary: true),
+            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: $equipment), null, true, secondary: true),
             'hardware_category' => $this->groups(
                 $products()->groupBy(DB::raw("coalesce(area, 'Sin categoría')"))
                     ->selectRaw("coalesce(area, 'Sin categoría') as label, count(*) as c, coalesce(sum(quantity), 0) as t")->get()->all(),
@@ -367,7 +375,7 @@ class MetricsService
      */
     private function physicalCondition(): array
     {
-        $row = DB::table('products')->selectRaw('
+        $row = DB::table('products')->where('type', Product::TYPE_EQUIPMENT)->selectRaw('
             coalesce(sum(case when is_active then quantity else 0 end), 0) as available,
             coalesce(sum(quantity_in_repair), 0) as repair,
             coalesce(sum(quantity_written_off), 0) as written_off,
@@ -441,9 +449,12 @@ class MetricsService
     /**
      * @return array<string, mixed>
      */
-    private function careers(DashboardPeriod $period): array
+    private function careers(?string $groupBy, DashboardPeriod $period): array
     {
-        return $this->groups($this->loanGroups("coalesce(users.area, 'Sin carrera')", $period), null, true);
+        return match ($groupBy) {
+            'level' => $this->groups($this->loanGroups("coalesce(careers.level, 'Sin nivel')", $period), 'level', true),
+            default => $this->groups($this->loanGroups("coalesce(users.area, 'Sin carrera')", $period), null, true),
+        };
     }
 
     /**

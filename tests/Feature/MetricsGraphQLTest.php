@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -149,19 +150,56 @@ class MetricsGraphQLTest extends TestCase
     {
         $product = $this->seedActivity();
 
-        foreach (['SUPPLIES', 'EQUIPMENT'] as $entity) {
-            $point = collect($this->metric(['entity' => $entity, 'metric' => 'TOTAL'])->json('data.customMetric.points'))->firstWhere('label', $product->name);
-            $this->assertEquals(20, $point['secondaryValue'], $entity);
-        }
+        $point = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL'])->json('data.customMetric.points'))->firstWhere('label', $product->name);
+        $this->assertEquals(20, $point['secondaryValue']);
 
         $condition = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL', 'groupBy' => 'physical_condition'])->json('data.customMetric.points'));
         $this->assertEqualsCanonicalizing(['Disponible', 'En taller', 'Dado de baja'], $condition->pluck('label')->all());
     }
 
+    public function test_equipment_and_supplies_only_include_their_product_type(): void
+    {
+        $equipment = $this->seedActivity();
+        $supply = Product::factory()->supply()->create(['quantity' => 40, 'area' => 'Consumibles']);
+        $loan = Loan::factory()->processed()->create(['loan_date' => today()->subDay()->toDateString()]);
+        LoanItem::create(['loan_id' => $loan->id, 'product_id' => $supply->id, 'name' => $supply->name, 'quantity' => 6]);
+
+        $labels = fn (array $input) => collect($this->metric($input + ['limit' => 50])->json('data.customMetric.points'))->pluck('label');
+
+        $supplies = $labels(['entity' => 'SUPPLIES', 'metric' => 'TOTAL']);
+        $this->assertContains($supply->name, $supplies);
+        $this->assertNotContains($equipment->name, $supplies);
+
+        $ranking = $labels(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL']);
+        $this->assertContains($equipment->name, $ranking);
+        $this->assertNotContains($supply->name, $ranking);
+
+        $this->assertNotContains('Consumibles', $labels(['entity' => 'EQUIPMENT', 'metric' => 'COUNT', 'groupBy' => 'hardware_category']));
+        $this->assertContains('Consumibles', $labels(['entity' => 'SUPPLIES', 'metric' => 'COUNT', 'groupBy' => 'category']));
+
+        $point = collect($this->metric(['entity' => 'SUPPLIES', 'metric' => 'TOTAL'])->json('data.customMetric.points'))->firstWhere('label', $supply->name);
+        $this->assertEquals(6, $point['value']);
+        $this->assertEquals(40, $point['secondaryValue']);
+    }
+
+    public function test_careers_group_by_level_uses_the_career_catalog(): void
+    {
+        $this->seedActivity(); // 4 préstamos de un docente de "Ciberseguridad"
+        Career::factory()->create(['name' => 'Ciberseguridad', 'level' => Career::LEVEL_PROFESSIONAL]);
+
+        $other = User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true, 'area' => 'Sin catálogo']);
+        Loan::factory()->processed()->create(['requested_by' => $other->id, 'loan_date' => today()->subDay()->toDateString()]);
+
+        $points = collect($this->metric(['entity' => 'CAREERS', 'metric' => 'COUNT', 'groupBy' => 'level'])->json('data.customMetric.points'))->pluck('value', 'label');
+
+        $this->assertGreaterThanOrEqual(4, $points['Profesional']);
+        $this->assertGreaterThanOrEqual(1, $points['Sin nivel']);
+    }
+
     public function test_invalid_group_by_custom_range_and_unknown_fields_return_graphql_errors(): void
     {
-        $this->metric(['entity' => 'CAREERS', 'metric' => 'COUNT', 'groupBy' => 'level'])
-            ->assertOk()->assertJsonPath('errors.0.message', 'groupBy "level" no es válido para CAREERS. Opciones: specialty.');
+        $this->metric(['entity' => 'CAREERS', 'metric' => 'COUNT', 'groupBy' => 'grade'])
+            ->assertOk()->assertJsonPath('errors.0.message', 'groupBy "grade" no es válido para CAREERS. Opciones: specialty, level.');
 
         $this->metric(['entity' => 'LOANS', 'metric' => 'COUNT', 'timeRange' => 'CUSTOM'])
             ->assertJsonPath('errors.0.message', 'CUSTOM requiere dateFrom (y opcionalmente dateTo).');

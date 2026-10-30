@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Cajon;
+use App\Models\Career;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -38,6 +39,15 @@ class DatabaseSeeder extends Seeder
         // Datos de demostración: nunca en producción.
         if (app()->isProduction()) {
             return;
+        }
+
+        // Carreras del área con su nivel (CAREERS por level en /api/metrics)
+        foreach ([
+            'Ingeniería en Informática' => Career::LEVEL_PROFESSIONAL,
+            'Ingeniería en Ciberseguridad' => Career::LEVEL_PROFESSIONAL,
+            'Analista Programador' => Career::LEVEL_TECHNICIAN,
+        ] as $name => $level) {
+            Career::firstOrCreate(['name' => $name], ['level' => $level, 'created_by' => $admin->id, 'updated_by' => $admin->id]);
         }
 
         // Crear ubicaciones base (Salas y Pañoles)

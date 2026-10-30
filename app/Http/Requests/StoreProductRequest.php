@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreProductRequest extends FormRequest
 {
@@ -23,6 +24,7 @@ class StoreProductRequest extends FormRequest
             ],
             'description' => ['nullable', 'string'],
             'barcode' => ['nullable', 'string', 'max:50', 'unique:products,barcode'],
+            'type' => ['sometimes', 'string', Rule::in(Product::TYPES)],
             'quantity' => ['required', 'integer', 'min:0'],
             'stock_minimo' => ['sometimes', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
@@ -42,6 +44,7 @@ class StoreProductRequest extends FormRequest
         return [
             'name.required' => 'El nombre del producto es obligatorio.',
             'name.regex' => 'El nombre del producto no debe contener caracteres especiales.',
+            'type.in' => 'El tipo de producto debe ser equipo o insumo.',
             'quantity.required' => 'La cantidad de stock es obligatoria.',
             'quantity.integer' => 'La cantidad debe ser un número entero.',
             'quantity.min' => 'La cantidad de producto debe ser positiva o cero.',

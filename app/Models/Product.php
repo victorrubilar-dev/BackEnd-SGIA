@@ -11,10 +11,21 @@ class Product extends Model
 {
     use HasFactory;
 
+    public const TYPE_EQUIPMENT = 'equipo';
+
+    public const TYPE_SUPPLY = 'insumo';
+
+    public const TYPES = [self::TYPE_EQUIPMENT, self::TYPE_SUPPLY];
+
+    protected $attributes = [
+        'type' => self::TYPE_EQUIPMENT,
+    ];
+
     protected $fillable = [
         'name',
         'description',
         'barcode',
+        'type',
         'quantity',
         'quantity_in_repair',
         'quantity_written_off',

@@ -35,6 +35,7 @@ class UpdateProductRequest extends FormRequest
                 'max:50',
                 Rule::unique('products', 'barcode')->ignore($productId),
             ],
+            'type' => ['sometimes', 'required', 'string', Rule::in(Product::TYPES)],
             'quantity' => ['sometimes', 'required', 'integer', 'min:0'],
             'stock_minimo' => ['sometimes', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
@@ -53,6 +54,7 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name.regex' => 'El nombre del producto no debe contener caracteres especiales.',
+            'type.in' => 'El tipo de producto debe ser equipo o insumo.',
             'quantity.min' => 'La cantidad de producto debe ser positiva o cero.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'cajon_id.exists' => 'El cajón seleccionado no existe.',

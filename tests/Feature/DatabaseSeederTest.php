@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cajon;
+use App\Models\Career;
 use App\Models\Location;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -21,6 +22,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'admin@sgia.cl', 'role' => User::ROLE_ADMIN]);
         $this->assertGreaterThan(0, Location::count());
         $this->assertGreaterThan(0, Cajon::count());
+        $this->assertDatabaseHas('careers', ['name' => 'Analista Programador', 'level' => Career::LEVEL_TECHNICIAN]);
     }
 
     public function test_seeder_is_idempotent(): void

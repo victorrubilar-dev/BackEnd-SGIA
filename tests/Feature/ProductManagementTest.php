@@ -210,4 +210,25 @@ class ProductManagementTest extends TestCase
             'updated_by' => $other->id,
         ]);
     }
+
+    public function test_product_type_defaults_to_equipment_and_is_validated_filterable_and_editable(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        $this->postJson('/api/products', ['name' => 'Router Cisco', 'quantity' => 2])
+            ->assertCreated()->assertJsonPath('data.type', 'equipo');
+        $this->postJson('/api/products', ['type' => 'herramienta', 'name' => 'Cable UTP', 'quantity' => 10])
+            ->assertUnprocessable()->assertJsonValidationErrors('type');
+
+        $id = $this->postJson('/api/products', ['type' => 'insumo', 'name' => 'Cable UTP', 'quantity' => 10])
+            ->assertCreated()->assertJsonPath('data.type', 'insumo')->json('data.id');
+        $equipment = Product::factory()->create();
+
+        $ids = collect($this->getJson('/api/products?type=insumo&per_page=100')->assertOk()->json('data'))->pluck('id');
+        $this->assertContains($id, $ids);
+        $this->assertNotContains($equipment->id, $ids);
+
+        $this->patchJson("/api/products/{$id}", ['type' => 'equipo'])->assertOk()->assertJsonPath('data.type', 'equipo');
+        $this->patchJson("/api/products/{$id}", ['type' => 'otro'])->assertUnprocessable()->assertJsonValidationErrors('type');
+    }
 }

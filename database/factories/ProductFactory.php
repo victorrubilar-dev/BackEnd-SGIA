@@ -24,6 +24,7 @@ class ProductFactory extends Factory
             'name' => 'Producto '.fake()->unique()->words(2, true),
             'description' => fake()->paragraph(),
             'barcode' => 'SGIA-'.fake()->unique()->numerify('##########'),
+            'type' => Product::TYPE_EQUIPMENT,
             'quantity' => fake()->numberBetween(10, 100),
             'stock_minimo' => 5,
             'supplier_id' => Supplier::factory(),
@@ -33,5 +34,10 @@ class ProductFactory extends Factory
             'photo_url' => null,
             'is_active' => true,
         ];
+    }
+
+    public function supply(): static
+    {
+        return $this->state(['type' => Product::TYPE_SUPPLY]);
     }
 }
