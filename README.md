@@ -22,7 +22,7 @@ docker compose up -d db
 composer install
 
 # 3. Configurar variables de entorno
-cp .env.example .env     # ajustar credenciales si cambiaste docker-compose.yml
+# crear .env a mano (DB_*, CORS_ALLOWED_ORIGINS, SANCTUM_*, MAIL_*); DB_PASSWORD debe coincidir con docker-compose.yml
 php artisan key:generate
 
 # 4. Ejecutar migraciones (crea users, login_records, tokens, etc.)
