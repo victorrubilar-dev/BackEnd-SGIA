@@ -58,7 +58,7 @@ class StateMachineTest extends TestCase
     }
 
     #[DataProvider('machines')]
-    public function test_unknown_statuses_are_invalid_and_have_no_transitions(string $machine): void
+    public function test_unknown_statuses_are_invalid_and_have_no_transitions(string $machine, array $expected): void
     {
         $this->assertFalse($machine::isValidStatus('inventado'));
         $this->assertSame([], $machine::allowedFrom('inventado'));
