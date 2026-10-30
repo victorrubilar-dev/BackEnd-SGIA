@@ -113,7 +113,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `POST` | `/api/invoices/scan` | `AD-01`, `DIR-01` | Procesa documento o imagen de factura (PDF, PNG, JPG, WEBP de hasta 10MB) y extrae número de factura, proveedor sugerido y lista de borradores de productos con cantidades y precios para su posterior confirmación. Lectura con `pdftotext` (PDF digital) o Tesseract (imagen / PDF escaneado); es heurística, el borrador puede venir incompleto (`invoice_number`/`supplier_name` nulos, `draft_products` vacío). `503` si el OCR no está instalado. | ✅ Implementado |
+| `POST` | `/api/invoices/scan` | `AD-01`, `DIR-01` | Procesa documento o imagen de factura (PDF, PNG, JPG, WEBP de hasta 10MB) y extrae número de factura, proveedor sugerido y lista de borradores de productos con cantidades y precios para su posterior confirmación. Lectura con AWS Textract (`AnalyzeExpense`); si falla, respaldo local con `pdftotext` (PDF digital) o Tesseract (imagen / PDF escaneado), que es heurístico: el borrador puede venir incompleto (`invoice_number`/`supplier_name` nulos, `draft_products` vacío). `503` si Textract y el lector local fallan. | ✅ Implementado |
 | `POST` | `/api/products/scan-invoice` | `AD-01`, `DIR-01` | Alias idéntico de `POST /api/invoices/scan`. | ✅ Implementado |
 
 ---

@@ -16,6 +16,7 @@ use App\Policies\PurchasePolicy;
 use App\Policies\QuotationPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\UserPolicy;
+use Aws\Textract\TextractClient;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -31,7 +32,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(TextractClient::class, function () {
+            $config = config('services.textract');
+
+            return new TextractClient([
+                'version' => '2018-06-27',
+                'region' => $config['region'],
+                'credentials' => [
+                    'key' => $config['key'],
+                    'secret' => $config['secret'],
+                    'token' => $config['token'] ?: null,
+                ],
+                'http' => ['timeout' => 30, 'connect_timeout' => 5],
+            ]);
+        });
     }
 
     /**

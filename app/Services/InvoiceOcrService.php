@@ -9,12 +9,15 @@ use Illuminate\Support\Facades\Process;
 use RuntimeException;
 
 /**
- * Lee facturas chilenas (DTE): primero el texto embebido del PDF (pdftotext) y,
- * si no hay (escaneo o imagen), Tesseract. El resultado es un borrador que el
- * usuario confirma, no una fuente de verdad.
+ * Lee facturas chilenas (DTE). Con OCR_DRIVER=textract usa AWS Textract
+ * (AnalyzeExpense) y, si falla o no admite el archivo, cae al lector local:
+ * texto embebido del PDF (pdftotext) y, si no hay, Tesseract. El resultado es
+ * un borrador que el usuario confirma, no una fuente de verdad.
  */
 class InvoiceOcrService
 {
+    public function __construct(private readonly TextractExpenseReader $textract) {}
+
     /**
      * @return array{
      *     invoice_number: string|null,
@@ -27,6 +30,18 @@ class InvoiceOcrService
      */
     public function extractProductsFromInvoice(UploadedFile $file): array
     {
+        if ($this->textract->isConfigured()) {
+            try {
+                $result = $this->textract->read(File::get($file->getRealPath()));
+                $supplierName = $result['supplier_name'];
+
+                return $result + ['supplier_id' => $this->supplierId($supplierName)];
+            } catch (RuntimeException $e) {
+                // Credenciales vencidas, red caída, PDF multipágina o WEBP: se lee en local.
+                report($e);
+            }
+        }
+
         return $this->parse($this->readText($file));
     }
 
@@ -68,9 +83,14 @@ class InvoiceOcrService
         return [
             'invoice_number' => $this->invoiceNumber($text),
             'supplier_name' => $supplierName,
-            'supplier_id' => $supplierName ? Supplier::where('name', 'ilike', $supplierName)->value('id') : null,
+            'supplier_id' => $this->supplierId($supplierName),
             'items' => $this->items($text),
         ];
+    }
+
+    private function supplierId(?string $name): ?int
+    {
+        return $name ? Supplier::where('name', 'ilike', $name)->value('id') : null;
     }
 
     private function invoiceNumber(string $text): ?string

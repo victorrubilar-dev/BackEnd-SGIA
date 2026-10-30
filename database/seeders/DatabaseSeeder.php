@@ -41,6 +41,24 @@ class DatabaseSeeder extends Seeder
             return;
         }
 
+        // Un usuario de prueba por rol (misma contraseña que el admin)
+        foreach ([
+            'director@sgia.cl' => ['Director de Carrera', User::ROLE_DIRECTOR],
+            'panolero@sgia.cl' => ['Pañolero', User::ROLE_WAREHOUSE],
+            'docente@sgia.cl' => ['Docente', User::ROLE_TEACHER],
+        ] as $email => [$name, $role]) {
+            User::updateOrCreate(
+                ['email' => $email],
+                [
+                    'name' => $name,
+                    'password' => Hash::make($password),
+                    'role' => $role,
+                    'area' => 'Informática',
+                    'is_active' => true,
+                ]
+            );
+        }
+
         // Carreras del área con su nivel (CAREERS por level en /api/metrics)
         foreach ([
             'Ingeniería en Informática' => Career::LEVEL_PROFESSIONAL,

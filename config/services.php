@@ -28,6 +28,19 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'ocr' => [
+        // "textract" (AWS, con respaldo local si falla) o "local" (pdftotext + Tesseract).
+        'driver' => env('OCR_DRIVER', 'textract'),
+    ],
+
+    'textract' => [
+        'key' => env('AWS_ACCESS_KEY_ID'),
+        'secret' => env('AWS_SECRET_ACCESS_KEY'),
+        // Solo con credenciales temporales (STS / AWS Academy); vencen y hay que renovarlas.
+        'token' => env('AWS_SESSION_TOKEN'),
+        'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
+    ],
+
     'tesseract' => [
         // Idiomas de Tesseract (paquete tesseract-ocr-spa); "spa+eng" suma inglés.
         'lang' => env('TESSERACT_LANG', 'spa'),

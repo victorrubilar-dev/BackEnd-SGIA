@@ -4,6 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\Supplier;
 use App\Models\User;
+use Aws\Command;
+use Aws\Exception\AwsException;
+use Aws\MockHandler;
+use Aws\Result;
+use Aws\Textract\TextractClient;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
@@ -100,6 +105,72 @@ TXT;
                     ['name' => 'Generador de Funciones 25MHz', 'quantity' => 4, 'unit_price' => 180000, 'area' => null],
                 ]);
         }
+    }
+
+    private function fakeTextract(Result|AwsException $response): void
+    {
+        config([
+            'services.ocr.driver' => 'textract',
+            'services.textract.key' => 'test',
+            'services.textract.secret' => 'test',
+        ]);
+
+        $this->app->instance(TextractClient::class, new TextractClient([
+            'version' => '2018-06-27',
+            'region' => 'us-east-1',
+            'credentials' => ['key' => 'test', 'secret' => 'test'],
+            'handler' => new MockHandler([$response]),
+        ]));
+    }
+
+    private function expenseResult(): Result
+    {
+        $field = fn (string $type, string $text) => ['Type' => ['Text' => $type], 'ValueDetection' => ['Text' => $text]];
+
+        return new Result(['ExpenseDocuments' => [[
+            'SummaryFields' => [
+                $field('INVOICE_RECEIPT_ID', 'N° 4521'),
+                $field('VENDOR_NAME', 'Comercial ElectroChile S.A.'),
+            ],
+            'LineItemGroups' => [['LineItems' => [
+                ['LineItemExpenseFields' => [$field('ITEM', 'Osciloscopio Digital 100MHz'), $field('QUANTITY', '5'), $field('UNIT_PRICE', '$250.000'), $field('PRICE', '$1.250.000')]],
+                ['LineItemExpenseFields' => [$field('ITEM', 'Generador de Funciones 25MHz'), $field('QUANTITY', '4'), $field('PRICE', '720.000')]],
+                ['LineItemExpenseFields' => [$field('ITEM', 'Flete')]],
+            ]]],
+        ]]]);
+    }
+
+    public function test_textract_driver_returns_structured_draft(): void
+    {
+        Supplier::factory()->create(['name' => 'Comercial ElectroChile S.A.']);
+        $this->fakeTextract($this->expenseResult());
+        Process::fake();
+        Sanctum::actingAs($this->director);
+
+        $this->postJson('/api/invoices/scan', [
+            'invoice_file' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
+        ])->assertOk()
+            ->assertJsonPath('invoice_number', '4521')
+            ->assertJsonPath('supplier_name', 'Comercial ElectroChile S.A.')
+            ->assertJsonPath('draft_products', [
+                ['name' => 'Osciloscopio Digital 100MHz', 'quantity' => 5, 'unit_price' => 250000, 'area' => null],
+                ['name' => 'Generador de Funciones 25MHz', 'quantity' => 4, 'unit_price' => 180000, 'area' => null],
+            ]);
+
+        Process::assertNothingRan();
+    }
+
+    public function test_textract_failure_falls_back_to_local_reader(): void
+    {
+        $this->fakeTextract(new AwsException('The security token included in the request is expired', new Command('AnalyzeExpense'), ['code' => 'ExpiredTokenException']));
+        Process::fake(['*pdftotext*' => Process::result(self::INVOICE_TEXT)]);
+        Sanctum::actingAs($this->director);
+
+        $this->postJson('/api/invoices/scan', [
+            'invoice_file' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
+        ])->assertOk()->assertJsonPath('invoice_number', '4521');
+
+        Process::assertRan(fn ($process) => $process->command[0] === 'pdftotext');
     }
 
     public function test_image_invoice_goes_through_tesseract(): void
