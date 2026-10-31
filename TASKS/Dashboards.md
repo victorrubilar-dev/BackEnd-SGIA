@@ -12,6 +12,18 @@
 - [x] `EQUIPMENT` y `SUPPLIES` separados por `products.type` (`equipo` / `insumo`).
 - [ ] `MAINTENANCE.failure_type` sin dato propio: se usa la gravedad del informe.
 
+### REQ-15 — Dashboard personalizado por usuario (FU-06, DIR-01 y AD-01)
+Modelos `ChartTemplate` y `UserChart` (`TASKS/Equipos.md`, fase 1). Cada usuario arma su panel con hasta 5 gráficos.
+- [ ] `GET /api/chart-templates`: plantillas disponibles (sembradas; sin CRUD por ahora).
+- [ ] `GET /api/me/charts`: gráficos del usuario autenticado, ordenados por `position`, con su plantilla.
+- [ ] `POST /api/me/charts`: `chart_template_id`, `custom_title`, `type`, `position` (1–5), `entity`, `metric`, `group_by`, `period`. `entity`, `metric`, `group_by` y `period` se validan contra los mismos valores que acepta `customMetric` de `/api/metrics` (incluida `SCALE_MODELS`; constantes compartidas con `MetricsService`/`DashboardPeriod`, sin duplicar listas). `422` si la posición está ocupada o ya tiene 5.
+- [ ] `PATCH /api/me/charts/{userChart}`: editar cualquier campo salvo `user_id`; `is_active` para ocultarlo sin borrarlo.
+- [ ] `PUT /api/me/charts/positions`: reordenar en bloque (`[{id, position}]`) en una transacción. Requiere que `unique(user_id, position)` sea `DEFERRABLE INITIALLY DEFERRED` (fase 1) para poder intercambiar posiciones.
+- [ ] `DELETE /api/me/charts/{userChart}`: `204`.
+- [ ] `UserChartPolicy`: solo el dueño ve y modifica sus gráficos (otro usuario → `404`, para no revelar ids).
+- [ ] `UserChartResource` y `ChartTemplateResource` en `ResourceContractTest`; `front-end.md` y `ENDPOINTS.md`.
+- [ ] Test Feature `UserChartTest`: caso feliz, `403` para PAN-01/PRO-01, `422` (posición 6, posición ocupada, sexto gráfico, entidad inválida), reordenar intercambiando dos posiciones, aislamiento entre usuarios.
+
 ## Referencia para el cliente (`apps/web`, no es trabajo de este repo)
 
 Gráficos previstos con `react-chartjs-2` sobre tema oscuro (fondo `#111113`, acento `#ef4444`):

@@ -21,3 +21,15 @@
 - [x] `DELETE /api/loans/requests/{id}`: el docente cancela su solicitud mientras está pendiente.
 - [x] `GET /api/loans/export`: historial en CSV (Excel) o PDF por rango de fechas.
 - [ ] Notificar al docente cuando su préstamo vence o está atrasado (sin implementar).
+
+### REQ-20 — Registro de estudiantes (FU-04, PAN-01 y AD-01)
+Modelo `Student` (`TASKS/Equipos.md`, fase 5).
+- [ ] `GET /api/students`: filtros `search` (RUT o nombre), `career_id`.
+- [ ] `GET /api/students/by-rut/{rut}`: búsqueda exacta para el checkout (acepta RUT con o sin puntos y guion). `404` si no existe.
+- [ ] `POST /api/students`: `rut` (regla `ChileanRut`, se guarda normalizado `12345678-9`, único), `full_name?`, `email?`, `career_id?`.
+- [ ] `PATCH /api/students/{student}`: mismos campos.
+- [ ] `DELETE /api/students/{student}` (`AD-01`): `204`; `422` si tiene préstamos.
+- [ ] `GET /api/students/{student}/loans`: historial de préstamos del estudiante.
+- [ ] `POST /api/loans/checkout` acepta `student_id` o `student_rut`: liga `loans.student_id` y completa `borrower_name`/`borrower_document` desde el estudiante. Si el RUT no existe y viene `borrower_name`, crea el estudiante.
+- [ ] `StudentResource` (`ResourceContractTest`), `LoanResource` añade `student_id` y `student`; `ENDPOINTS.md`, `front-end.md`.
+- [ ] Test Feature `StudentTest`: caso feliz, `403` (PRO-01, DIR-01), `422` (RUT inválido, duplicado, borrar con préstamos), búsqueda por RUT con formatos distintos, checkout con `student_rut` existente y nuevo.

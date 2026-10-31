@@ -62,3 +62,27 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `InvoiceOcrService` lee facturas con AWS Textract `AnalyzeExpense` (`TextractExpenseReader`, `OCR_DRIVER=textract`, credenciales `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY`/`AWS_SESSION_TOKEN`/`AWS_DEFAULT_REGION`). Si Textract falla (token temporal vencido, PDF multipágina, WEBP, red) cae al lector local: `pdftotext` (PDF digital) y Tesseract (imágenes y PDF escaneado, vía `pdftoppm`), que requiere `poppler-utils` y `tesseract-ocr` + `tesseract-ocr-spa`. `OCR_DRIVER=local` salta Textract (los tests lo fuerzan en `.env.testing`). El parseo local es heurístico; ni Textract ni Tesseract se probaron aún con facturas reales.
 - Las notificaciones (alertas de stock y estado de préstamos) van por `broadcast`, correo y push de Expo, en cola: en producción hace falta `php artisan queue:work`. Las alertas de stock van a `AD-01`, `DIR-01` y `PAN-01`.
 - Dashboards: GraphQL en `POST /api/metrics` (`app/GraphQL`, `MetricsService`) y REST en `/api/dashboard/*`. `products.type` (`equipo`/`insumo`) separa `EQUIPMENT` de `SUPPLIES`; el nivel de carrera vive en `careers` y se une por nombre con `users.area` (texto libre: si no coincide, cae en "Sin nivel").
+
+
+## Codigos de barra para elementos
+
+PREFIJO-CARRERA-CODIGO
+
+IC-MAQ-000001 -> maquetas
+INS-ISD-000002 -> insumos
+AP-PRO-000003 -> productos
+
+codigo {
+id int
+nombre varchar(20)
+prefijo varchar(3)
+carrera varchar(3)
+indice int
+}
+
+carreras {
+ISD: telecomunicaciones
+II: Ingenieria en informatica
+IC: Ingenieria en ciberseguridad
+AP: analista programador
+}

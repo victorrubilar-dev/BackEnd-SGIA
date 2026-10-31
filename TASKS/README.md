@@ -7,11 +7,11 @@ Fuente: *Informe de Diseño de Arquitectura de Software — SGIA* (INACAP Sede T
 | FU | Módulo | Archivos |
 |---|---|---|
 | FU-01 | Usuarios y accesos | `Autenticación.md` (REQ-01), `Administración de usuarios.md` (REQ-02) |
-| FU-02 | Stock e inventario | `Productos.md` (REQ-03 a REQ-06) |
-| FU-03 | Compras y adquisiciones | `Cotizaciones.md` (REQ-07), `Compra.md` (REQ-08) |
-| FU-04 | Préstamos | `Prestamos.md` (REQ-09 a REQ-11) |
-| FU-05 | Mantenimiento y fichas técnicas | `Fichas tecnicas.md` (REQ-12), `Informe de novedades.md` (REQ-13) |
-| FU-06 | Reportes y dashboards | `Dashboards.md` (REQ-14) |
+| FU-02 | Stock e inventario | `Productos.md` (REQ-03 a REQ-06), `Equipos.md` (plan: modelos de `MODELS.MD` y unidades de equipo) |
+| FU-03 | Compras y adquisiciones | `Cotizaciones.md` (REQ-07), `Compra.md` (REQ-08, REQ-16 presupuestos, REQ-17 ingresos de facturas) |
+| FU-04 | Préstamos | `Prestamos.md` (REQ-09 a REQ-11, REQ-20 estudiantes) |
+| FU-05 | Mantenimiento y fichas técnicas | `Fichas tecnicas.md` (REQ-12, REQ-18 mantenciones, REQ-19 documentos), `Informe de novedades.md` (REQ-13) |
+| FU-06 | Reportes y dashboards | `Dashboards.md` (REQ-14, REQ-15 dashboard personalizado) |
 | — | Cambios para el frontend | `front-end.md` |
 | — | Requisitos no funcionales | `Requisitos no funcionales.md` (REQ-NF-01 a 04) |
 
