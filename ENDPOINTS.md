@@ -28,6 +28,57 @@
 
 ---
 
+## 🔄 Guía de cambios para el frontend (plan Equipos, rama `plan/modelos-y-equipos`)
+
+> Resumen de lo que cambió respecto de la versión anterior de la API. Detalle por campo en las secciones indicadas; contrato de cada Resource en `TASKS/front-end.md`. Marca cada punto al terminarlo.
+
+### Cambios que rompen (hay que adaptar sí o sí)
+
+- [ ] **Alta de producto** (`POST /api/products`, §3): `category_id` es **obligatorio** (hay que listar/elegir categoría). Un `insumo` sin `barcode` exige `career_id` (carrera con `code`). Un `equipo`/`maqueta` con `quantity > 0` exige `career_id` y cajón (`cajon_id`, o `sala` + `cajon`) y crea las unidades; `units: [{serial_number}]` opcional.
+- [ ] **Cantidad de un equipo/maqueta es de solo lectura**: `PATCH /api/products/{id}` con `quantity*` → `422` ("La cantidad de un equipo se calcula a partir de sus unidades."). `quantity`, `quantity_in_repair`, `quantity_written_off` se derivan de las unidades (las `prestado` no suman). Quitar los campos de cantidad del formulario de edición de equipos.
+- [ ] **`PATCH /api/products/{id}/condition`** solo vale para `insumo`. En `equipo`/`maqueta` → `422`; usar `PATCH /api/equipment-units/{id}/status`.
+- [ ] **Informes de novedades** (`POST /api/equipment/{id}/reports`, §13): si el producto es `equipo`/`maqueta`, `equipment_unit_id` es **obligatorio** (unidad de ese producto). El formulario debe cargar `GET /api/products/{id}/units` para elegirla.
+- [ ] **Cambio de `type`**: `equipo` → `insumo` con unidades existentes → `422`; `insumo` → `equipo` genera las unidades desde los contadores.
+- [ ] **Borrados con dependencias ahora responden `422`** (mostrar `message`; algunos traen `units_count`/`products_count`): producto (con unidades, ofertas o facturas), cajón y borrado masivo (con productos o unidades), ubicación (con cajones), proveedor (con cotizaciones; desactivarlo), unidad (prestada o con préstamos, mantenciones o informes).
+- [ ] **Préstamos** (§9–§11): los productos `equipo`/`maqueta` sin unidades `disponible` no se pueden pedir ni prestar (`422` por stock). `approve`, `checkout` y `deliver` asignan unidades; `checkin` devuelve por unidad.
+
+### Campos nuevos en respuestas (opcionales de leer)
+
+| Recurso | Campos nuevos |
+|---|---|
+| `Career` | `code` (`ISD`, `II`, `IC`, `AP`; único, opcional en `POST/PATCH /api/careers`) |
+| `Location` | `storeroom_id` (por defecto `PAN-TEMUCO`), `building`, `floor` (opcionales al crear/editar) |
+| `Cajon` | `barcode` (`EST-xxxxxxxx`, autogenerado) |
+| `Product` | `category_id`, `career_id`, `maintenance_priority` (`A`\|`B`\|`C`), `requires_calibration`, `maintenance_frequency_months`, `reference_price`; `type` acepta `maqueta` |
+| `Supplier` | `rut` (normalizado `12345678-5`, único, dígito verificador validado), `address` — ambos opcionales |
+| `Quotation` | `career_id`, `title` (opcionales en `POST /api/quotations`) |
+| `QuotationSupplier` | `quotation_number`, `has_backup_file` |
+| `LoanItem` | `delivered_quantity`, `returned_quantity`, `units[]` (`id`, `code`, `serial_number`, `status`, `returned_at`, `return_condition`) |
+| `IncidentReport` | `equipment_unit_id`, `equipment_unit`, `request_type` (`falla`\|`reposicion`\|`mantencion`), `has_evidence_photo` |
+
+### Endpoints nuevos (todos en la sección 3.1 salvo indicación)
+
+- [ ] Unidades: `GET/POST /api/products/{id}/units`, `GET /api/equipment-units`, `GET /api/equipment-units/by-code/{code}` (escaneo), `GET/PATCH/DELETE /api/equipment-units/{id}`, `PATCH /api/equipment-units/{id}/status`, `GET /api/equipment-units/{id}/barcode`.
+- [ ] Hoja de vida por unidad: `GET /api/equipment-units/{id}/technical-sheet` (PDF) y `GET /api/equipment-units/{id}/reports` (JSON o `?format=pdf`).
+- [ ] Foto de evidencia: `GET /api/incident-reports/{id}/evidence-photo` (descarga autenticada, enviar el token; no usar URL directa).
+- [ ] Préstamos: `POST /api/loans/{id}/deliver` acepta `items: [{item_id, unit_ids}]`; `checkout` y `checkin` aceptan `items.*.unit_ids`; `checkout` acepta `storeroom_id`.
+- [ ] Métricas (§14): entidad `SCALE_MODELS` en `customMetric`; `EQUIPMENT`/`SCALE_MODELS` con `groupBy: location` y `physical_condition` cuentan **unidades**.
+
+### Flujos de pantalla sugeridos
+
+1. **Detalle de producto (equipo/maqueta):** tabla de unidades (`/products/{id}/units`, filtros `status`, `cajon_id`, `search`), botón "Agregar unidades" (`POST` con `count` o `serial_numbers[]`), acciones por unidad (estado, mover de cajón, borrar, código de barras, hoja de vida PDF).
+2. **Escaneo móvil:** leer el código y llamar `GET /api/equipment-units/by-code/{code}`; `404` si no existe. El detalle trae `active_loan`.
+3. **Préstamo presencial / entrega:** mostrar las unidades asignadas por el backend y permitir cambiarlas (`unit_ids`) antes de confirmar; para equipos `quantity` = número de `unit_ids`.
+4. **Devolución:** por unidad, con condición (`bueno`/`regular` → disponible, `danado` → en reparación, `extraviado` → baja). Devolución parcial permitida.
+5. **Informe de novedades:** selector de unidad (obligatorio en equipos), `request_type`, foto de evidencia opcional (`multipart/form-data`).
+6. **Estados de unidad:** `disponible` ↔ `en_reparacion`, cualquiera → `dado_de_baja` (final); `prestado` solo lo cambian los préstamos (intentar a mano → `422`).
+
+### Aún sin API (no construir pantallas todavía)
+
+Gráficos por usuario, presupuestos anuales, ingresos de factura (OCR persistido), mantenciones y sus documentos, y estudiantes (REQ-15 a REQ-20). Las tablas existen, pero no hay endpoints.
+
+---
+
 ## 🟢 Endpoints Implementados (Listos para Uso)
 
 ### 1. Autenticación y Sesiones (`FU-01` / `REQ-01`)
@@ -66,9 +117,9 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/careers` | `AD-01`, `DIR-01` | Listado paginado.<br>**Query Params:** `level`, `search` (nombre), `per_page`. Cada carrera: `id`, `name`, `level`, `level_label`, auditoría. | ✅ Implementado |
+| `GET` | `/api/careers` | `AD-01`, `DIR-01` | Listado paginado.<br>**Query Params:** `level`, `search` (nombre), `per_page`. Cada carrera: `id`, `name`, `code`, `level`, `level_label`, auditoría. | ✅ Implementado |
 | `GET` | `/api/careers/{id}` | `AD-01`, `DIR-01` | Detalle de una carrera. | ✅ Implementado |
-| `POST` | `/api/careers` | `AD-01` | Crea una carrera.<br>**Body:** `name` (único), `level` (`tecnico` \| `profesional`). | ✅ Implementado |
+| `POST` | `/api/careers` | `AD-01` | Crea una carrera.<br>**Body:** `name` (único), `level` (`tecnico` \| `profesional`), `code` (opcional: `ISD`, `II`, `IC`, `AP`; único). | ✅ Implementado |
 | `PATCH` | `/api/careers/{id}` | `AD-01` | Cambia nombre o nivel. | ✅ Implementado |
 | `DELETE` | `/api/careers/{id}` | `AD-01` | Elimina la carrera (204). Los usuarios conservan su `area`; sus préstamos pasan a "Sin nivel". | ✅ Implementado |
 
@@ -169,7 +220,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `GET` | `/api/suppliers` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de empresas proveedoras.<br>**Query Params:** `category`, `is_active`, `search` (nombre, contacto o correo), `per_page` (1-100). Incluye `products_count`. | ✅ Implementado |
-| `POST` | `/api/suppliers` | `AD-01`, `DIR-01` | Crear proveedor.<br>**Body:** `name`, `contact_name`, `email`, `phone`, `category`, `is_active`. | ✅ Implementado |
+| `POST` | `/api/suppliers` | `AD-01`, `DIR-01` | Crear proveedor.<br>**Body:** `name`, `contact_name`, `email`, `phone`, `category`, `is_active`, `rut` (opcional, único, con dígito verificador), `address` (opcional). | ✅ Implementado |
 | `GET` | `/api/suppliers/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle del proveedor y su historial de productos suministrados. | ✅ Implementado |
 | `PUT / PATCH` | `/api/suppliers/{id}` | `AD-01`, `DIR-01` | Actualizar información del proveedor. | ✅ Implementado |
 | `DELETE` | `/api/suppliers/{id}` | `AD-01` | Eliminar proveedor; si tiene productos asociados solo se desactiva, preservando el historial de inventario. | ✅ Implementado |
@@ -183,7 +234,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los 3+ proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `supplier_ids` (mínimo 3 proveedores distintos), `notes`, `expires_at`. | ✅ Implementado |
+| `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los 3+ proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `career_id` y `title` (opcionales), `supplier_ids` (mínimo 3 proveedores distintos), `notes`, `expires_at`. | ✅ Implementado |
 | `GET` | `/api/quotations` | `AD-01`, `DIR-01` | Historial de cotizaciones emitidas con ítems y proveedores contactados.<br>**Query Params:** `status` (alias `estado`: `pendiente`, `aceptada`, `rechazada`, `convertida`), `search` (código), `per_page`. | ✅ Implementado |
 | `GET` | `/api/quotations/{id}` | `AD-01`, `DIR-01` | Detalle de la cotización: ítems, proveedores contactados con su respuesta (`status`, `offer_total`, `responded_at`), orden de compra generada y transiciones permitidas. | ✅ Implementado |
 | `POST` | `/api/quotations/{id}/resend` | `AD-01`, `DIR-01` | Reintenta el correo a los proveedores que no lo recibieron (sin correo o con error). Solo cotizaciones `pendiente`. Responde `emails_sent` y `emails_failed`. Cada proveedor contactado trae `email_sent_at` y `email_error`. | ✅ Implementado |
