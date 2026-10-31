@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-8 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-9 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -213,11 +213,11 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 9 — Dashboards y métricas
 
-- [ ] `MetricsService` `EQUIPMENT`: `groupBy: location` cuenta unidades (no productos) por sala del cajón de la unidad, excluyendo `dado_de_baja`; `groupBy: physical_condition` cuenta unidades por `status` (añadir `prestado` solo si el frontend lo admite).
-- [ ] Entidad nueva `SCALE_MODELS` en `customMetric` (enum GraphQL en `app/GraphQL`, `MetricsService`): mismas métricas y agrupaciones que `EQUIPMENT` (ranking de más solicitadas, `hardware_category`/`category`, `location`, `physical_condition`), filtrando `products.type = 'maqueta'`. Reutilizar el método de `EQUIPMENT` parametrizando el tipo, sin duplicar consultas. Las tarjetas de `executiveKpis` siguen sumando todos los productos. Documentar la entidad en `front-end.md` (tabla "Qué devuelve cada entidad").
-- [ ] `MAINTENANCE` `groupBy: workshop`: sala de la unidad cuando el informe tenga `equipment_unit_id`.
-- [ ] `DashboardService::kpis` sin cambios (lee contadores); test que coincide con el conteo de unidades.
-- [ ] Ampliar `MetricsGraphQLTest` con unidades de un producto en dos salas, y con `SCALE_MODELS` (cuenta solo maquetas; `EQUIPMENT` no las incluye).
+- [x] `MetricsService` `EQUIPMENT`: `groupBy: location` cuenta unidades (no productos) por sala del cajón de la unidad, excluyendo `dado_de_baja`; `groupBy: physical_condition` cuenta unidades por `status` (añadir `prestado` solo si el frontend lo admite).
+- [x] Entidad nueva `SCALE_MODELS` en `customMetric` (enum GraphQL en `app/GraphQL`, `MetricsService`): mismas métricas y agrupaciones que `EQUIPMENT` (ranking de más solicitadas, `hardware_category`/`category`, `location`, `physical_condition`), filtrando `products.type = 'maqueta'`. Reutilizar el método de `EQUIPMENT` parametrizando el tipo, sin duplicar consultas. Las tarjetas de `executiveKpis` siguen sumando todos los productos. Documentar la entidad en `front-end.md` (tabla "Qué devuelve cada entidad").
+- [x] `MAINTENANCE` `groupBy: workshop`: sala de la unidad cuando el informe tenga `equipment_unit_id`.
+- [x] `DashboardService::kpis` sin cambios (lee contadores); test que coincide con el conteo de unidades.
+- [x] Ampliar `MetricsGraphQLTest` con unidades de un producto en dos salas, y con `SCALE_MODELS` (cuenta solo maquetas; `EQUIPMENT` no las incluye).
 
 ## Fase 10 — Documentación
 

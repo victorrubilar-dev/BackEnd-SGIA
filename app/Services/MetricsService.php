@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Models\Career;
+use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\Product;
 use App\Models\User;
 use App\Support\DashboardPeriod;
 use Carbon\Exceptions\InvalidFormatException;
 use GraphQL\Error\UserError;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -36,6 +38,7 @@ class MetricsService
         'LOANS' => ['status', 'teacher', 'subject', 'item_type'],
         'SUPPLIES' => ['career', 'category', 'turnover'],
         'EQUIPMENT' => ['hardware_category', 'location', 'physical_condition'],
+        'SCALE_MODELS' => ['hardware_category', 'location', 'physical_condition'],
         'ALERTS' => ['criticality', 'specialty_area'],
         'MAINTENANCE' => ['equipment', 'failure_type', 'workshop'],
         'CAREERS' => ['specialty', 'level'],
@@ -43,7 +46,7 @@ class MetricsService
     ];
 
     private const ENTITY_LABELS = [
-        'LOANS' => 'Préstamos', 'SUPPLIES' => 'Insumos', 'EQUIPMENT' => 'Equipos', 'ALERTS' => 'Alertas de stock',
+        'LOANS' => 'Préstamos', 'SUPPLIES' => 'Insumos', 'EQUIPMENT' => 'Equipos', 'SCALE_MODELS' => 'Maquetas', 'ALERTS' => 'Alertas de stock',
         'MAINTENANCE' => 'Mantenciones', 'CAREERS' => 'Carreras', 'TEACHERS' => 'Docentes',
     ];
 
@@ -90,7 +93,7 @@ class MetricsService
         $groupBy = ($input['groupBy'] ?? '') !== '' ? $input['groupBy'] : null;
 
         // Las plantillas del frontend usan `category` para EQUIPMENT.
-        if ($entity === 'EQUIPMENT' && $groupBy === 'category') {
+        if (in_array($entity, ['EQUIPMENT', 'SCALE_MODELS'], true) && $groupBy === 'category') {
             $groupBy = 'hardware_category';
         }
 
@@ -109,7 +112,8 @@ class MetricsService
             $data = match ($entity) {
                 'LOANS' => $this->loans($groupBy, $period),
                 'SUPPLIES' => $this->supplies($groupBy, $period),
-                'EQUIPMENT' => $this->equipment($groupBy, $period),
+                'EQUIPMENT' => $this->equipment($groupBy, $period, Product::TYPE_EQUIPMENT),
+                'SCALE_MODELS' => $this->equipment($groupBy, $period, Product::TYPE_SCALE_MODEL),
                 'ALERTS' => $this->alerts($groupBy, $period),
                 'MAINTENANCE' => $this->maintenance($groupBy, $period),
                 'CAREERS' => $this->careers($groupBy, $period),
@@ -345,50 +349,66 @@ class MetricsService
     }
 
     /**
+     * Equipos (`equipo`) o maquetas (`maqueta`): mismas métricas y agrupaciones. Ubicación y
+     * condición física cuentan unidades (`equipment_units`), no productos.
+     *
      * @return array<string, mixed>
      */
-    private function equipment(?string $groupBy, DashboardPeriod $period): array
+    private function equipment(?string $groupBy, DashboardPeriod $period, string $type): array
     {
-        $products = fn () => DB::table('products')->where('products.is_active', true)->where('products.type', Product::TYPE_EQUIPMENT);
-        $equipment = "products.type = '".Product::TYPE_EQUIPMENT."'";
+        $products = fn () => DB::table('products')->where('products.is_active', true)->where('products.type', $type);
+        $filter = "products.type = '{$type}'";
 
         return match ($groupBy) {
-            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: $equipment), null, true, secondary: true),
+            null => $this->groups($this->loanGroups('products.name', $period, countExpr: 'count(loan_items.id)', secondaryExpr: 'max(products.quantity)', extraWhere: $filter), null, true, secondary: true),
             'hardware_category' => $this->groups(
                 $products()->groupBy(DB::raw("coalesce(area, 'Sin categoría')"))
                     ->selectRaw("coalesce(area, 'Sin categoría') as label, count(*) as c, coalesce(sum(quantity), 0) as t")->get()->all(),
                 null, true
             ),
             'location' => $this->groups(
-                $products()->leftJoin('cajones', 'cajones.id', '=', 'products.cajon_id')
-                    ->leftJoin('locations', fn ($j) => $j->whereRaw('locations.id = coalesce(products.location_id, cajones.location_id)'))
-                    ->groupBy(DB::raw("coalesce(locations.nombre, 'Sin ubicación')"))
-                    ->selectRaw("coalesce(locations.nombre, 'Sin ubicación') as label, count(*) as c, coalesce(sum(products.quantity), 0) as t")->get()->all(),
+                $this->activeUnits($type)
+                    ->where('equipment_units.status', '!=', EquipmentUnit::STATUS_WRITTEN_OFF)
+                    ->join('cajones', 'cajones.id', '=', 'equipment_units.cajon_id')
+                    ->join('locations', 'locations.id', '=', 'cajones.location_id')
+                    ->groupBy('locations.nombre')
+                    ->selectRaw('locations.nombre as label, count(*) as c, count(*) as t')->get()->all(),
                 null, true
             ),
-            'physical_condition' => $this->physicalCondition(),
+            'physical_condition' => $this->physicalCondition($type),
         };
     }
 
     /**
+     * Unidades de productos activos del tipo indicado.
+     */
+    private function activeUnits(string $type): Builder
+    {
+        return DB::table('equipment_units')
+            ->join('products', 'products.id', '=', 'equipment_units.product_id')
+            ->where('products.is_active', true)
+            ->where('products.type', $type);
+    }
+
+    /**
+     * Unidades por estado: disponible, en taller y dado de baja.
+     *
      * @return array<string, mixed>
      */
-    private function physicalCondition(): array
+    private function physicalCondition(string $type): array
     {
-        $row = DB::table('products')->where('type', Product::TYPE_EQUIPMENT)->selectRaw('
-            coalesce(sum(case when is_active then quantity else 0 end), 0) as available,
-            coalesce(sum(quantity_in_repair), 0) as repair,
-            coalesce(sum(quantity_written_off), 0) as written_off,
-            sum(case when is_active and quantity > 0 then 1 else 0 end) as p_available,
-            sum(case when quantity_in_repair > 0 then 1 else 0 end) as p_repair,
-            sum(case when quantity_written_off > 0 then 1 else 0 end) as p_written_off
-        ')->first();
+        $counts = $this->activeUnits($type)
+            ->groupBy('equipment_units.status')
+            ->selectRaw('equipment_units.status as status, count(*) as total')
+            ->pluck('total', 'status');
+
+        $row = fn (string $label, string $status) => ['label' => $label, 'count' => (int) ($counts[$status] ?? 0), 'total' => (int) ($counts[$status] ?? 0)];
 
         return [
             'rows' => [
-                ['label' => 'Disponible', 'count' => (int) $row->p_available, 'total' => (int) $row->available],
-                ['label' => 'En taller', 'count' => (int) $row->p_repair, 'total' => (int) $row->repair],
-                ['label' => 'Dado de baja', 'count' => (int) $row->p_written_off, 'total' => (int) $row->written_off],
+                $row('Disponible', EquipmentUnit::STATUS_AVAILABLE),
+                $row('En taller', EquipmentUnit::STATUS_IN_REPAIR),
+                $row('Dado de baja', EquipmentUnit::STATUS_WRITTEN_OFF),
             ],
             'series' => true,
             'hasTotal' => true,
@@ -436,7 +456,10 @@ class MetricsService
             'workshop' => $this->groups(
                 $base()->leftJoin('products', 'products.id', '=', 'incident_reports.product_id')
                     ->leftJoin('cajones', 'cajones.id', '=', 'products.cajon_id')
-                    ->leftJoin('locations', fn ($j) => $j->whereRaw('locations.id = coalesce(products.location_id, cajones.location_id)'))
+                    // Si el informe es de una unidad, la sala es la de su cajón.
+                    ->leftJoin('equipment_units', 'equipment_units.id', '=', 'incident_reports.equipment_unit_id')
+                    ->leftJoin('cajones as unit_cajones', 'unit_cajones.id', '=', 'equipment_units.cajon_id')
+                    ->leftJoin('locations', fn ($j) => $j->whereRaw('locations.id = coalesce(unit_cajones.location_id, products.location_id, cajones.location_id)'))
                     ->groupBy(DB::raw("coalesce(locations.nombre, 'Sin ubicación')"))
                     ->selectRaw("coalesce(locations.nombre, 'Sin ubicación') as label, count(*) as c")->get()->all(),
                 null, false

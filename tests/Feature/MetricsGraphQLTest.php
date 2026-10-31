@@ -2,13 +2,17 @@
 
 namespace Tests\Feature;
 
+use App\Models\Cajon;
 use App\Models\Career;
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\StockAlert;
 use App\Models\User;
+use App\Services\EquipmentUnitService;
 use App\Services\MetricsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Testing\TestResponse;
@@ -155,6 +159,101 @@ class MetricsGraphQLTest extends TestCase
 
         $condition = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL', 'groupBy' => 'physical_condition'])->json('data.customMetric.points'));
         $this->assertEqualsCanonicalizing(['Disponible', 'En taller', 'Dado de baja'], $condition->pluck('label')->all());
+    }
+
+    /**
+     * @return array{0: Product, 1: Location, 2: Location}
+     */
+    private function unitsInTwoRooms(string $type = Product::TYPE_EQUIPMENT): array
+    {
+        $roomA = Location::factory()->create(['nombre' => 'Sala Métrica A']);
+        $roomB = Location::factory()->create(['nombre' => 'Sala Métrica B']);
+        $cajonA = Cajon::factory()->create(['location_id' => $roomA->id]);
+        $cajonB = Cajon::factory()->create(['location_id' => $roomB->id]);
+        $product = Product::factory()->create(['type' => $type, 'quantity' => 0, 'cajon_id' => $cajonA->id, 'location_id' => $roomA->id]);
+
+        EquipmentUnit::factory()->count(2)->create(['product_id' => $product->id, 'cajon_id' => $cajonA->id]);
+        EquipmentUnit::factory()->create(['product_id' => $product->id, 'cajon_id' => $cajonB->id]);
+        EquipmentUnit::factory()->inRepair()->create(['product_id' => $product->id, 'cajon_id' => $cajonB->id]);
+        EquipmentUnit::factory()->writtenOff()->create(['product_id' => $product->id, 'cajon_id' => $cajonB->id]);
+        app(EquipmentUnitService::class)->syncProductCounters($product);
+
+        return [$product, $roomA, $roomB];
+    }
+
+    public function test_equipment_location_counts_units_per_room_excluding_written_off(): void
+    {
+        $this->unitsInTwoRooms();
+
+        $points = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'COUNT', 'groupBy' => 'location', 'limit' => 50])->assertJsonMissingPath('errors')->json('data.customMetric.points'))->pluck('value', 'label');
+
+        $this->assertEquals(2, $points['Sala Métrica A']);
+        $this->assertEquals(2, $points['Sala Métrica B']); // 1 disponible + 1 en reparación; la dada de baja no cuenta
+    }
+
+    public function test_equipment_physical_condition_counts_units_by_status(): void
+    {
+        $this->unitsInTwoRooms();
+        $before = collect($this->metric(['entity' => 'EQUIPMENT', 'metric' => 'TOTAL', 'groupBy' => 'physical_condition'])->json('data.customMetric.points'))->pluck('value', 'label');
+
+        $this->assertGreaterThanOrEqual(3, $before['Disponible']);
+        $this->assertGreaterThanOrEqual(1, $before['En taller']);
+        $this->assertGreaterThanOrEqual(1, $before['Dado de baja']);
+    }
+
+    public function test_scale_models_entity_counts_only_scale_models(): void
+    {
+        $this->unitsInTwoRooms(Product::TYPE_EQUIPMENT);
+        $this->unitsInTwoRooms(Product::TYPE_SCALE_MODEL);
+
+        $points = fn (string $entity) => collect($this->metric(['entity' => $entity, 'metric' => 'COUNT', 'groupBy' => 'location', 'limit' => 50])->assertJsonMissingPath('errors')->json('data.customMetric.points'))->pluck('value', 'label');
+
+        // Ambas entidades usan las mismas salas, pero cada una solo suma sus unidades (2 por sala).
+        $this->assertEquals(2, $points('SCALE_MODELS')['Sala Métrica A']);
+        $this->assertEquals(2, $points('EQUIPMENT')['Sala Métrica A']);
+
+        $summary = $this->metric(['entity' => 'SCALE_MODELS', 'metric' => 'COUNT', 'groupBy' => 'physical_condition'])->json('data.customMetric.summary');
+        $this->assertStringContainsString('Maquetas', $summary);
+        $this->metric(['entity' => 'SCALE_MODELS', 'metric' => 'COUNT', 'groupBy' => 'category'])->assertJsonMissingPath('errors');
+        $this->metric(['entity' => 'SCALE_MODELS', 'metric' => 'COUNT', 'groupBy' => 'turnover'])->assertJsonPath('errors.0.message', 'groupBy "turnover" no es válido para SCALE_MODELS. Opciones: hardware_category, location, physical_condition.');
+    }
+
+    public function test_scale_models_ranking_is_filtered_by_type(): void
+    {
+        $model = Product::factory()->scaleModel()->create(['quantity' => 3]);
+        $equipment = Product::factory()->create(['quantity' => 3]);
+        $loan = Loan::factory()->processed()->create(['loan_date' => today()->subDay()->toDateString()]);
+        LoanItem::create(['loan_id' => $loan->id, 'product_id' => $model->id, 'name' => $model->name, 'quantity' => 1]);
+        LoanItem::create(['loan_id' => $loan->id, 'product_id' => $equipment->id, 'name' => $equipment->name, 'quantity' => 1]);
+
+        $labels = fn (string $entity) => collect($this->metric(['entity' => $entity, 'metric' => 'COUNT', 'limit' => 50])->json('data.customMetric.points'))->pluck('label');
+
+        $this->assertContains($model->name, $labels('SCALE_MODELS'));
+        $this->assertNotContains($equipment->name, $labels('SCALE_MODELS'));
+        $this->assertNotContains($model->name, $labels('EQUIPMENT'));
+    }
+
+    public function test_maintenance_workshop_uses_the_unit_room_when_report_has_a_unit(): void
+    {
+        [$product, , $roomB] = $this->unitsInTwoRooms();
+        $unitInB = $product->units()->whereHas('cajon', fn ($q) => $q->where('location_id', $roomB->id))->first();
+        IncidentReport::factory()->create(['product_id' => $product->id, 'equipment_unit_id' => $unitInB->id]);
+
+        $points = collect($this->metric(['entity' => 'MAINTENANCE', 'metric' => 'COUNT', 'groupBy' => 'workshop', 'limit' => 50])->json('data.customMetric.points'))->pluck('value', 'label');
+
+        $this->assertEquals(1, $points['Sala Métrica B']);
+        $this->assertArrayNotHasKey('Sala Métrica A', $points->all());
+    }
+
+    public function test_kpis_match_the_unit_counts_of_a_product(): void
+    {
+        $before = $this->gql(self::KPIS, ['timeRange' => 'LAST_30_DAYS'])->json('data.executiveKpis');
+        $this->unitsInTwoRooms();
+        $after = $this->gql(self::KPIS, ['timeRange' => 'LAST_30_DAYS'])->json('data.executiveKpis');
+
+        $this->assertSame(3, $after['activosDisponibles'] - $before['activosDisponibles']);
+        $this->assertSame(1, $after['activosEnTaller'] - $before['activosEnTaller']);
+        $this->assertSame(1, $after['activosDeBaja'] - $before['activosDeBaja']);
     }
 
     public function test_equipment_and_supplies_only_include_their_product_type(): void

@@ -19,7 +19,7 @@ use GraphQL\Validator\Rules\QueryDepth;
 class MetricsGraphQL
 {
     public const SDL = <<<'GRAPHQL'
-        enum MetricEntity { EQUIPMENT SUPPLIES LOANS ALERTS MAINTENANCE CAREERS TEACHERS }
+        enum MetricEntity { EQUIPMENT SCALE_MODELS SUPPLIES LOANS ALERTS MAINTENANCE CAREERS TEACHERS }
         enum MetricAggregation { TOTAL AVERAGE COUNT RATE }
         enum TimeRange { LAST_7_DAYS LAST_30_DAYS SEMESTER_CURRENT SEMESTER_PREVIOUS YEAR_TO_DATE CUSTOM }
         enum ChartType { BAR LINE DOUGHNUT POLAR_AREA }

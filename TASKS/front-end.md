@@ -87,9 +87,10 @@ Implementado con los dos documentos exactos de `packages/api-client/src/services
 |---|---|---|
 | `LOANS` | serie en el tiempo (`Semana N` hasta 31 días, `YYYY-MM` si es más largo) | `status`, `teacher`, `subject`, `item_type` (categoría del producto) |
 | `SUPPLIES` | ranking de productos por consumo; `secondaryValue` = stock restante | `career`, `category`, `turnover` (alta / media / baja / sin movimiento) |
-| `EQUIPMENT` | ranking de productos más solicitados; `secondaryValue` = stock | `hardware_category` (alias `category`), `location`, `physical_condition` (disponible / en taller / dado de baja) |
+| `EQUIPMENT` | ranking de productos más solicitados; `secondaryValue` = stock | `hardware_category` (alias `category`), `location` (**unidades** por sala del cajón, sin las dadas de baja), `physical_condition` (**unidades** disponible / en taller / dado de baja) |
+| `SCALE_MODELS` | igual que `EQUIPMENT`, solo productos `maqueta` | `hardware_category` (alias `category`), `location`, `physical_condition` |
 | `ALERTS` | serie en el tiempo | `criticality`, `specialty_area` |
-| `MAINTENANCE` | serie en el tiempo | `equipment`, `failure_type` (= gravedad del informe), `workshop` (ubicación del equipo) |
+| `MAINTENANCE` | serie en el tiempo | `equipment`, `failure_type` (= gravedad del informe), `workshop` (sala de la unidad del informe, o la del producto si el informe no tiene unidad) |
 | `CAREERS` | préstamos por carrera (área del solicitante) | `specialty` |
 | `TEACHERS` | ranking de docentes | `subject`, `department` (= área del docente) |
 
@@ -211,3 +212,9 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `IncidentReportResource` añade `equipment_unit_id`, `equipment_unit`, `request_type`, `has_evidence_photo`. Foto: `GET /api/incident-reports/{id}/evidence-photo` (AD/DIR/PAN).
 - `GET /api/incident-reports` acepta `equipment_unit_id` y `request_type`.
 - Nuevos: `GET /api/equipment-units/{id}/reports` (JSON paginado o `?format=pdf`) y `GET /api/equipment-units/{id}/technical-sheet` (PDF de la hoja de vida: producto, ubicación, mantención, préstamos, mantenciones e informes). La ficha del producto (`/equipment/{id}/technical-sheet`) incluye la tabla de unidades.
+
+## Plan Equipos — fase 9 (métricas)
+
+- Entidad nueva `SCALE_MODELS` en `customMetric` (enum `MetricEntity`): mismas métricas y agrupaciones que `EQUIPMENT`, filtrando `products.type = 'maqueta'`. `EQUIPMENT` sigue sin incluir maquetas.
+- `EQUIPMENT`/`SCALE_MODELS` con `groupBy: location` y `physical_condition` cuentan unidades (no productos).
+- `MAINTENANCE` con `groupBy: workshop` usa la sala de la unidad cuando el informe tiene `equipment_unit_id`.
