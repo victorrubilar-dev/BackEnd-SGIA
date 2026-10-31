@@ -33,3 +33,10 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 - [ ] `POST /api/loans/checkout` acepta `student_id` o `student_rut`: liga `loans.student_id` y completa `borrower_name`/`borrower_document` desde el estudiante. Si el RUT no existe y viene `borrower_name`, crea el estudiante.
 - [ ] `StudentResource` (`ResourceContractTest`), `LoanResource` añade `student_id` y `student`; `ENDPOINTS.md`, `front-end.md`.
 - [ ] Test Feature `StudentTest`: caso feliz, `403` (PRO-01, DIR-01), `422` (RUT inválido, duplicado, borrar con préstamos), búsqueda por RUT con formatos distintos, checkout con `student_rut` existente y nuevo.
+
+### Préstamos con unidades (plan `Equipos.md`, fase 7)
+- [x] `checkout` y `approve` asignan unidades (`unit_ids` o automáticas) y las pasan a `prestado`; stock insuficiente → `422` (`LoanUnitsTest`).
+- [x] `deliver` admite `items: [{item_id, unit_ids}]` para reemplazar la asignación (`LoanUnitsTest`).
+- [x] `checkin` devuelve todas las unidades pendientes o `unit_ids` concretas; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja` (`LoanUnitsTest`).
+- [x] `LoanItemResource`: `units`, `delivered_quantity`, `returned_quantity`; export CSV/PDF con los códigos (`LoanUnitsTest`, `ResourceContractTest`).
+- [x] El checkout con RUT válido en `borrower_document` crea o reutiliza el `Student` (`LoanUnitsTest`).

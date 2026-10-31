@@ -76,6 +76,8 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 ### 2.1 Ubicaciones Físicas y Cajones (`FU-02` / `REQ-05`)
 
+> `locations` añade `storeroom_id` (pañol; por defecto `PAN-TEMUCO`), `building` y `floor`; los cajones añaden `barcode` (`EST-xxxxxxxx`). Una ubicación con cajones, o un cajón con productos o unidades, no se puede borrar (`422`).
+
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `GET` | `/api/locations` | Todos (`auth`) | Listado paginado de ubicaciones (salas, pañoles, talleres). Soporta filtros por `tipo` (`sala`, `panol`, `taller`, `bodega`) y búsqueda por texto (`search`). Incluye conteo y lista de cajones, más auditoría (`created_by`, `updated_by`). | ✅ Implementado |
@@ -97,15 +99,35 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `GET` | `/api/products` | Todos (`auth`) | Listado paginado de productos con relaciones eager loaded (`supplier`, `location`).<br>**Query Params:** `search` (nombre, código de barras o descripción), `type` (`equipo` \| `insumo`), `area`, `is_active`, `supplier_id`, `location_id`, `sala`, `cajon`, `critical_only`, `per_page`. | ✅ Implementado |
-| `POST` | `/api/products` | `AD-01`, `DIR-01`, `PAN-01` | Alta de producto. Si no se envía código de barras, genera automáticamente uno único tipo Code128 (`SGIA-XXXXXXXX`). Si se envían `sala` y `cajon`, crea/asocia la ubicación física automáticamente.<br>**Body:** `type` (opcional: `equipo` \| `insumo`, por defecto `equipo`), `name`, `description`, `barcode` (opcional), `quantity`, `stock_minimo`, `supplier_id`, `sala`, `cajon`, `area`, `photo_url`, `is_active`. | ✅ Implementado |
+| `POST` | `/api/products` | `AD-01`, `DIR-01`, `PAN-01` | Alta de producto. Si no se envía código de barras, genera automáticamente uno único tipo Code128 (`SGIA-XXXXXXXX`). Si se envían `sala` y `cajon`, crea/asocia la ubicación física automáticamente. **`category_id` es obligatorio.** Un `insumo` sin `barcode` recibe `INS-{carrera}-000001` y exige `career_id` (con código); un `equipo`/`maqueta` con `quantity > 0` exige `career_id` y cajón (`cajon_id` o `sala` + `cajon`) y crea esas unidades (`units: [{serial_number}]` opcional). Campos nuevos: `career_id`, `maintenance_priority` (`A`\|`B`\|`C`), `requires_calibration`, `maintenance_frequency_months`, `reference_price`.<br>**Body:** `type` (opcional: `equipo` \| `insumo`, por defecto `equipo`), `name`, `description`, `barcode` (opcional), `quantity`, `stock_minimo`, `supplier_id`, `sala`, `cajon`, `area`, `photo_url`, `is_active`. | ✅ Implementado |
 | `GET` | `/api/products/{id}` | Todos (`auth`) | Detalle de un producto con sus relaciones. | ✅ Implementado |
-| `PUT / PATCH` | `/api/products/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edición de producto (incluido `type`). Al modificar stock o stock mínimo, evalúa y dispara alertas de stock automáticamente. | ✅ Implementado |
-| `DELETE` | `/api/products/{id}` | `AD-01`, `DIR-01` | Eliminación de producto de inventario. | ✅ Implementado |
-| `PATCH` | `/api/products/{id}/condition` | `AD-01`, `DIR-01`, `PAN-01` | Mueve unidades entre disponible, taller y baja.<br>**Body:** `action` (`send_to_repair`, `repaired`, `write_off`), `quantity`, `source` (`stock` \| `repair`, obligatorio en `write_off`). `422` si no hay unidades suficientes en el origen. | ✅ Implementado |
+| `PUT / PATCH` | `/api/products/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edición de producto (incluido `type`, que acepta `maqueta`). En `equipo`/`maqueta` `quantity*` está prohibido (`422`: se calcula desde las unidades); `insumo` → `equipo` genera las unidades desde los contadores; `equipo` con unidades → `insumo` es `422`. Al modificar stock o stock mínimo, evalúa y dispara alertas de stock automáticamente. | ✅ Implementado |
+| `DELETE` | `/api/products/{id}` | `AD-01`, `DIR-01` | Eliminación de producto de inventario. `422` si tiene unidades o está referenciado por ofertas/facturas. | ✅ Implementado |
+| `PATCH` | `/api/products/{id}/condition` | `AD-01`, `DIR-01`, `PAN-01` | Mueve cantidades entre disponible, taller y baja (**solo insumos**; en `equipo`/`maqueta` responde `422` y se usa `PATCH /api/equipment-units/{id}/status`).<br>**Body:** `action` (`send_to_repair`, `repaired`, `write_off`), `quantity`, `source` (`stock` \| `repair`, obligatorio en `write_off`). `422` si no hay unidades suficientes en el origen. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Activa o desactiva un producto del inventario.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
 | `GET` | `/api/products/{id}/location` | Todos (`auth`) | Obtiene la sala, cajón y descripción de ubicación física de un producto. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/location` | `AD-01`, `DIR-01`, `PAN-01` | Asigna o actualiza la ubicación física.<br>**Body:** `location_id` o combinación de `sala` y `cajon` con `descripcion` opcional. | ✅ Implementado |
 | `GET` | `/api/products/{id}/barcode` | Todos (`auth`) | Retorna el código de barras del producto, su representación vectorial en SVG y su formato Data URI / HTML. | ✅ Implementado |
+
+---
+
+#### 3.1 Unidades de equipo (`equipo` y `maqueta`)
+
+> Los productos `equipo` y `maqueta` se gestionan por **unidades** (`equipment_units`), cada una con su código (`PRO-{carrera}-000001` / `MAQ-{carrera}-000001`), serie opcional y cajón. `quantity`, `quantity_in_repair` y `quantity_written_off` del producto se **derivan** de las unidades (las `prestado` no suman). Lectura: todos; alta/edición/estado: `AD-01`, `DIR-01`, `PAN-01`; borrado: `AD-01`, `DIR-01`. Estados: `disponible`, `prestado` (solo por préstamos), `en_reparacion`, `dado_de_baja` (final).
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/products/{id}/units` | Todos (`auth`) | Unidades del producto, paginadas.<br>**Query Params:** `status`, `cajon_id`, `location_id`, `search` (código o serie), `per_page`. | ✅ Implementado |
+| `POST` | `/api/products/{id}/units` | `AD-01`, `DIR-01`, `PAN-01` | Crea una unidad (`code` y `serial_number` opcionales) o varias con `count` (máx. 200, `serial_numbers[]` opcional). `cajon_id` obligatorio; el producto necesita una carrera con código. `422` si es insumo. `201`. | ✅ Implementado |
+| `GET` | `/api/equipment-units` | Todos (`auth`) | Listado global.<br>**Query Params:** `product_id`, `status`, `cajon_id`, `location_id`, `storeroom_id`, `search`, `maintenance_due` (próxima mantención vencida), `per_page`. | ✅ Implementado |
+| `GET` | `/api/equipment-units/by-code/{code}` | Todos (`auth`) | Búsqueda exacta por código (escaneo móvil). `404` si no existe. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}` | Todos (`auth`) | Detalle con producto, cajón, sala, pañol y préstamo activo (`active_loan`). | ✅ Implementado |
+| `PATCH` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Edita `code`, `serial_number`, `cajon_id`, `last_maintenance_at`, `next_maintenance_at`. `status` y `product_id` prohibidos (`422`). | ✅ Implementado |
+| `PATCH` | `/api/equipment-units/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado con la máquina de estados; `prestado` solo por préstamos (`422`). **Body:** `status`. | ✅ Implementado |
+| `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones e informes. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 
 ---
 
@@ -188,11 +210,11 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `GET` | `/api/loans/pending` | `PAN-01`, `AD-01` | Solicitudes remotas en estado `pendiente` por despachar; cada ítem devuelve la **cantidad solicitada**, el **stock disponible** (`available_stock`) y la **ubicación física** (`location`: `sala`, `cajon`, `descripcion`).<br>**Query Params:** `per_page` (1-100). | ✅ Implementado |
-| `POST` | `/api/loans/{id}/approve` | `PAN-01`, `AD-01` | Aprueba la solicitud: **descuenta el stock** de cada producto (transacción con bloqueo de filas, 422 si no alcanza) y **notifica al solicitante**. Pasa a `en_proceso` y registra `approved_by` / `approved_at`. Evalúa además las alertas de stock (REQ-06). | ✅ Implementado |
+| `POST` | `/api/loans/{id}/approve` | `PAN-01`, `AD-01` | Aprueba la solicitud (en equipos/maquetas asigna unidades `disponible` automáticas): **descuenta el stock** de cada producto (transacción con bloqueo de filas, 422 si no alcanza) y **notifica al solicitante**. Pasa a `en_proceso` y registra `approved_by` / `approved_at`. Evalúa además las alertas de stock (REQ-06). | ✅ Implementado |
 | `POST` | `/api/loans/{id}/reject` | `PAN-01`, `AD-01` | Rechaza la solicitud con **motivo obligatorio** y **notifica al solicitante**. No descuenta stock.<br>**Body:** `rejection_reason` (alias `motivo`, mínimo 5 caracteres). | ✅ Implementado |
-| `POST` | `/api/loans/checkout` | `PAN-01`, `AD-01` | Registra un **préstamo presencial directo**: crea el préstamo `procesado` con código (`PRE-<año>-XXXXXX`), descuenta stock atómicamente y guarda profesor/estudiante, ítems, asignatura, sala y fecha.<br>**Body:** `borrower_name` (alias `solicitante`), `borrower_document` (alias `credencial`, opcional), `items` (`product_id` + `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block`, `notes` opcionales. | ✅ Implementado |
-| `POST` | `/api/loans/{id}/deliver` | `PAN-01`, `AD-01` | Confirma la entrega material al docente (`en_proceso` → `procesado`), registra `processed_by` / `processed_at` y notifica al solicitante. **Nuevo respecto del catálogo original**, necesario para cerrar el ciclo del préstamo remoto. | ✅ Implementado |
-| `POST` | `/api/loans/checkin` | `PAN-01`, `AD-01` | Registra la devolución de ítems de un préstamo `procesado`; admite devoluciones parciales.<br>**Body:** `loan_id`, `general_notes` (opcional), `items[]` con `item_id` o `product_id`, `condition` (`bueno`, `optimo`, `regular`, `dañado`, `extraviado`) y `damaged` (bool; fuerza `dañado` si el estado era bueno).<br>`bueno`/`regular` reintegran stock; `dañado` suma a `quantity_in_repair`; `extraviado` a `quantity_written_off`. Cuando todos los ítems volvieron, el préstamo trae `returned_at`. | ✅ Implementado |
+| `POST` | `/api/loans/checkout` | `PAN-01`, `AD-01` | Registra un **préstamo presencial directo** (`items.*.unit_ids` opcional para equipos/maquetas, `storeroom_id` opcional; un `borrower_document` con RUT válido crea/reutiliza el estudiante): crea el préstamo `procesado` con código (`PRE-<año>-XXXXXX`), descuenta stock atómicamente y guarda profesor/estudiante, ítems, asignatura, sala y fecha.<br>**Body:** `borrower_name` (alias `solicitante`), `borrower_document` (alias `credencial`, opcional), `items` (`product_id` + `quantity`, mínimo 1), `subject` (alias `asignatura`), `room` (alias `sala`), `loan_date` (alias `fecha`), `time_block`, `notes` opcionales. | ✅ Implementado |
+| `POST` | `/api/loans/{id}/deliver` | `PAN-01`, `AD-01` | Confirma la entrega material al docente (`en_proceso` → `procesado`; cuerpo opcional `items: [{item_id, unit_ids}]` reemplaza las unidades asignadas por las realmente entregadas), registra `processed_by` / `processed_at` y notifica al solicitante. **Nuevo respecto del catálogo original**, necesario para cerrar el ciclo del préstamo remoto. | ✅ Implementado |
+| `POST` | `/api/loans/checkin` | `PAN-01`, `AD-01` | Registra la devolución de ítems de un préstamo `procesado`; admite devoluciones parciales (`items.*.unit_ids` para devolver unidades concretas de un equipo; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`).<br>**Body:** `loan_id`, `general_notes` (opcional), `items[]` con `item_id` o `product_id`, `condition` (`bueno`, `optimo`, `regular`, `dañado`, `extraviado`) y `damaged` (bool; fuerza `dañado` si el estado era bueno).<br>`bueno`/`regular` reintegran stock; `dañado` suma a `quantity_in_repair`; `extraviado` a `quantity_written_off`. Cuando todos los ítems volvieron, el préstamo trae `returned_at`. | ✅ Implementado |
 
 ---
 
@@ -221,9 +243,10 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `POST` | `/api/equipment/{id}/reports` | `PRO-01`, `PAN-01` | Crea un informe de novedades asociado al equipo (`multipart/form-data`).<br>**Body:** `description` (obligatorio si no hay `title`), `title`, `severity` (`leve`, `media`, `critica`), `attachment` (opcional: pdf, jpg, png o webp, máx. 10 MB). | ✅ Implementado |
-| `GET` | `/api/incident-reports` | `AD-01`, `DIR-01`, `PAN-01` | Listado global de informes, paginado, con el equipo y el reportante.<br>**Query Params:** `severity`, `status`, `product_id`, `search` (código, título o descripción), `per_page`. | ✅ Implementado |
+| `POST` | `/api/equipment/{id}/reports` | `PRO-01`, `PAN-01` | Crea un informe de novedades asociado al equipo (`multipart/form-data`).<br>**Body:** `equipment_unit_id` (obligatorio en `equipo`/`maqueta`, debe ser del producto), `request_type` (`falla`\|`reposicion`\|`mantencion`), `evidence_photo` (opcional, jpg/png/webp, 10 MB), `description` (obligatorio si no hay `title`), `title`, `severity` (`leve`, `media`, `critica`), `attachment` (opcional: pdf, jpg, png o webp, máx. 10 MB). | ✅ Implementado |
+| `GET` | `/api/incident-reports` | `AD-01`, `DIR-01`, `PAN-01` | Listado global de informes, paginado, con el equipo y el reportante.<br>**Query Params:** `severity`, `status`, `product_id`, `equipment_unit_id`, `request_type`, `search` (código, título o descripción), `per_page`. | ✅ Implementado |
 | `PATCH` | `/api/incident-reports/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado de atención. Transiciones: `reportado` → `en_revision` \| `en_reparacion` \| `dado_de_baja`; `en_revision` → `en_reparacion` \| `reparado` \| `dado_de_baja`; `en_reparacion` → `reparado` \| `dado_de_baja`. `reparado` y `dado_de_baja` son finales. Cada informe trae `allowed_transitions`. `422` si la transición no es válida. | ✅ Implementado |
+| `GET` | `/api/incident-reports/{id}/evidence-photo` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada de la foto de evidencia (disco privado). `404` si no tiene. | ✅ Implementado |
 | `GET` | `/api/incident-reports/{id}/attachment` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada del adjunto del informe (disco privado). Es la `attachment_url` que devuelve el informe. | ✅ Implementado |
 
 ---
@@ -255,4 +278,4 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `ca
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (94 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (106 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

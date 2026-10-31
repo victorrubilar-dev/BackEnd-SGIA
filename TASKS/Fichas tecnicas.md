@@ -23,3 +23,7 @@ Modelo `MaintenanceDocument` (`TASKS/Equipos.md`, fase 5).
 - [ ] `DELETE /api/maintenance-documents/{maintenanceDocument}`: `204`; borra también el archivo.
 - [ ] `MaintenanceDocumentResource` con `is_expired` (`valid_until` pasada) en `ResourceContractTest`; `ENDPOINTS.md`, `front-end.md`. La ficha técnica de la unidad lista sus documentos vigentes.
 - [ ] Test Feature `MaintenanceDocumentTest`: subida y descarga, `422` (no PDF, > 10 MB, mantención de otra unidad), `403` por rol, archivo en disco privado (`Storage::fake('local')`), borrado elimina el archivo.
+
+### Hoja de vida por unidad (plan `Equipos.md`, fase 8)
+- [x] `GET /api/equipment-units/{id}/technical-sheet`: PDF con producto, ubicación (pañol/sala/estante), fechas de mantención, préstamos, mantenciones e informes (`UnitLifeSheetTest`).
+- [x] La ficha del producto (`/equipment/{id}/technical-sheet`) incluye la tabla de sus unidades (`UnitLifeSheetTest`).

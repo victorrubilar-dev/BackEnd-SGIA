@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-9 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **implementado (fases 1-10).** Pendientes: los endpoints de los modelos nuevos (REQ-15 a REQ-20) y retirar `users.role`. Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -221,10 +221,10 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 10 — Documentación
 
-- [ ] `ENDPOINTS.md`: rutas nuevas y campos nuevos.
-- [ ] `TASKS/front-end.md`: todas las claves nuevas de Resources (Parte 1 y 2), los `422` nuevos (alta de producto sin `category_id`, cantidades de equipo, `/condition`, borrados con unidades), pantallas sugeridas (unidades por producto, escaneo por código, selección de unidades al entregar y devolver).
-- [ ] `TASKS/Productos.md`, `Prestamos.md`, `Fichas tecnicas.md`, `Informe de novedades.md`: casillas nuevas, marcadas solo con test.
-- [ ] `CLAUDE.md` "Estado conocido" y "Arquitectura": tabla de correspondencias resumida (`MODELS.MD` ↔ tablas) y que en `equipo` los contadores se derivan de `equipment_units`.
+- [x] `ENDPOINTS.md`: rutas nuevas y campos nuevos.
+- [x] `TASKS/front-end.md`: todas las claves nuevas de Resources (Parte 1 y 2), los `422` nuevos (alta de producto sin `category_id`, cantidades de equipo, `/condition`, borrados con unidades), pantallas sugeridas (unidades por producto, escaneo por código, selección de unidades al entregar y devolver).
+- [x] `TASKS/Productos.md`, `Prestamos.md`, `Fichas tecnicas.md`, `Informe de novedades.md`: casillas nuevas, marcadas solo con test.
+- [x] `CLAUDE.md` "Estado conocido" y "Arquitectura": tabla de correspondencias resumida (`MODELS.MD` ↔ tablas) y que en `equipo` los contadores se derivan de `equipment_units`.
 
 ## Pendiente fuera de este plan
 
