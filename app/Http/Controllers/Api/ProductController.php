@@ -17,6 +17,7 @@ use App\Services\BarcodeService;
 use App\Services\CodeSequenceService;
 use App\Services\ProductService;
 use App\Services\StockAlertService;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -131,7 +132,13 @@ class ProductController extends Controller
             ], 422);
         }
 
-        $product->delete();
+        try {
+            $product->delete();
+        } catch (QueryException) {
+            return response()->json([
+                'message' => 'El producto está referenciado por facturas o cotizaciones y no puede eliminarse; desactívalo en su lugar.',
+            ], 422);
+        }
 
         return response()->noContent();
     }

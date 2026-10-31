@@ -180,3 +180,10 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 ## Plan Equipos — fase 3 (unidades)
 
 - **422 nuevos:** `DELETE /api/products/{id}` con unidades ("El producto tiene equipos registrados; dalos de baja en su lugar.", `units_count`); `DELETE /api/cajones/{id}` y `bulk-delete` con unidades (`units_count`).
+
+## Plan Equipos — fase 4 (finanzas y cotizaciones)
+
+- `SupplierResource` añade `rut` (normalizado `12345678-5`, único, validado con dígito verificador) y `address`; ambos opcionales.
+- `QuotationResource` añade `career_id` y `title` (opcionales en `POST /api/quotations`).
+- `QuotationSupplierResource` añade `quotation_number` (opcional en la respuesta del proveedor) y `has_backup_file`.
+- **422 nuevos:** `DELETE /api/suppliers/{id}` con cotizaciones (desactívalo); `DELETE /api/products/{id}` referenciado por ofertas o facturas.

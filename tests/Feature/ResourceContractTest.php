@@ -56,7 +56,7 @@ class ResourceContractTest extends TestCase
     public function test_user_and_catalog_resources(): void
     {
         $this->assertKeys(UserResource::class, User::factory()->create(), explode(',', 'area,created_at,email,id,is_active,last_login_at,name,role,updated_at'));
-        $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'category,contact_name,created_at,email,id,is_active,name,phone,updated_at'));
+        $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
 
         $location = Location::factory()->create();
         $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,created_at,created_by,descripcion,floor,id,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
@@ -95,9 +95,9 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(PurchaseItemResource::class, $purchaseItem, explode(',', 'id,name,product_id,purchase_id,quantity,unit_price'));
 
         $quotation = Quotation::factory()->create(['created_by' => $user->id]);
-        $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,code,converted_at,created_at,created_by,expires_at,id,notes,purchase_id,status,updated_at'));
+        $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,career_id,code,converted_at,created_at,created_by,expires_at,id,notes,purchase_id,status,title,updated_at'));
         $this->assertKeys(QuotationItemResource::class, $quotation->items()->create(['name' => 'a', 'quantity' => 1]), explode(',', 'id,name,product_id,quantity,quotation_id'));
-        $this->assertKeys(QuotationSupplierResource::class, $quotation->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'contacted_at,email_error,email_sent_at,id,notes,offer_total,quotation_id,responded_at,status,supplier_id'));
+        $this->assertKeys(QuotationSupplierResource::class, $quotation->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'contacted_at,email_error,email_sent_at,has_backup_file,id,notes,offer_total,quotation_id,quotation_number,responded_at,status,supplier_id'));
     }
 
     public function test_incident_report_resource(): void

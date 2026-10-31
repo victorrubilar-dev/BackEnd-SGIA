@@ -33,6 +33,8 @@ class QuotationService
                 'code' => Quotation::generateUniqueCode(),
                 'created_by' => $creator->id,
                 'status' => QuotationStateMachine::STATUS_PENDING,
+                'career_id' => $validated['career_id'] ?? null,
+                'title' => $validated['title'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'expires_at' => $validated['expires_at'] ?? null,
             ]);
@@ -106,6 +108,7 @@ class QuotationService
         $contact->update([
             'status' => $validated['status'],
             'offer_total' => $validated['offer_total'] ?? $contact->offer_total,
+            'quotation_number' => $validated['quotation_number'] ?? $contact->quotation_number,
             'notes' => $validated['notes'] ?? $contact->notes,
             'responded_at' => now(),
         ]);

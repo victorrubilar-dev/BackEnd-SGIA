@@ -24,6 +24,8 @@ class QuotationSupplierResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'status' => $this->status,
             'offer_total' => $this->offer_total !== null ? (float) $this->offer_total : null,
+            'quotation_number' => $this->quotation_number,
+            'has_backup_file' => $this->backup_file_path !== null,
             'notes' => $this->notes,
             'responded_at' => $this->responded_at?->toIso8601String(),
             'email_sent_at' => $this->email_sent_at?->toIso8601String(),

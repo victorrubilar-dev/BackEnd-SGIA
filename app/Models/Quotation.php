@@ -25,6 +25,8 @@ class Quotation extends Model
 
     protected $fillable = [
         'code',
+        'career_id',
+        'title',
         'created_by',
         'status',
         'notes',
@@ -44,6 +46,11 @@ class Quotation extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function career(): BelongsTo
+    {
+        return $this->belongsTo(Career::class);
     }
 
     public function items(): HasMany

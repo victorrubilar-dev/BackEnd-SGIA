@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Proveedor contactado por una cotización, con su respuesta individual.
@@ -30,6 +31,8 @@ class QuotationSupplier extends Model
         'supplier_id',
         'status',
         'offer_total',
+        'quotation_number',
+        'backup_file_path',
         'notes',
         'responded_at',
         'email_sent_at',
@@ -48,6 +51,11 @@ class QuotationSupplier extends Model
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
+    }
+
+    public function offerItems(): HasMany
+    {
+        return $this->hasMany(QuotationOfferItem::class);
     }
 
     public function supplier(): BelongsTo

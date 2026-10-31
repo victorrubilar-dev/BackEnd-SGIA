@@ -26,6 +26,8 @@ class StoreQuotationRequest extends FormRequest
             'supplier_ids' => ['required', 'array', 'min:3', 'distinct'],
             'supplier_ids.*' => ['required', 'integer', Rule::exists('suppliers', 'id')],
 
+            'career_id' => ['nullable', 'integer', 'exists:careers,id'],
+            'title' => ['nullable', 'string', 'max:150'],
             'notes' => ['nullable', 'string', 'max:1000'],
             'expires_at' => ['nullable', 'date'],
         ];

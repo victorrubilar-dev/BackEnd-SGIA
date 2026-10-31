@@ -62,6 +62,8 @@ class SupplierController extends Controller
             'contact_name' => $validated['contact_name'] ?? null,
             'email' => $validated['email'] ?? null,
             'phone' => $validated['phone'] ?? null,
+            'rut' => $validated['rut'] ?? null,
+            'address' => $validated['address'] ?? null,
             'category' => $validated['category'] ?? null,
             'is_active' => $validated['is_active'] ?? true,
         ]);
@@ -111,6 +113,12 @@ class SupplierController extends Controller
     public function destroy(Supplier $supplier): Response|JsonResponse
     {
         Gate::authorize('delete', $supplier);
+
+        if ($supplier->quotationSuppliers()->exists()) {
+            return response()->json([
+                'message' => 'El proveedor tiene cotizaciones registradas; desactívalo en lugar de eliminarlo.',
+            ], 422);
+        }
 
         if ($supplier->products()->exists()) {
             $supplier->forceFill(['is_active' => false])->save();

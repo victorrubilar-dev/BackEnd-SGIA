@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (fases 1-3 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (fases 1-4 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -121,15 +121,15 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 4 — Finanzas, ingesta OCR y cotizaciones
 
-- [ ] `annual_budgets`: `id`, `career_id` (FK `restrictOnDelete`), `year` (int), `initial_amount` y `available_amount` (decimal 15,2), auditoría, timestamps; `unique(career_id, year)`. `Career::annualBudgets()`. Regla en el modelo/servicio (sin endpoint aún): `available_amount` nunca negativo (`CHECK (available_amount >= 0)`).
-- [ ] `invoice_intakes` (`ingresos_ocr`): `id`, `user_id` (FK `restrictOnDelete`), `annual_budget_id` (FK `restrictOnDelete`), `pdf_path` (nullable, disco privado), `document_number` (100, nullable), `total_deducted` (decimal 15,2, nullable), `raw_ocr_payload` (`jsonb`, nullable, cast `array`), `status` (50, nullable; valores `borrador` | `confirmado` | `anulado`), `received_at` (timestamp, default `now`), timestamps.
-- [ ] `invoice_intake_items`: `id`, `invoice_intake_id` (FK `cascadeOnDelete`), `product_id` (FK `restrictOnDelete`), `detected_name` (255, nullable), `quantity` (int), `unit_price` y `subtotal` (decimal 15,2, nullable), timestamps.
-- [ ] Modelos `InvoiceIntake` (`user`, `annualBudget`, `items`) e `InvoiceIntakeItem` (`intake`, `product`). Sin endpoints en esta fase: el flujo (subida, confirmación, descuento de presupuesto e ingreso de stock) es REQ-17 en `Compra.md`. `POST /api/invoices/scan` no se toca.
-- [ ] `suppliers`: `rut` (string 20, unique, nullable y opcional; si viene, validar formato y dígito verificador de RUT chileno con una regla `App\Rules\ChileanRut`, mensaje en español), `address` (255, nullable). `SupplierResource` y FormRequests → `ResourceContractTest`, `front-end.md`.
-- [ ] `quotations` (`procesos_cotizacion`): `career_id` (FK `restrictOnDelete`) y `title` (150), ambos nullable y opcionales en `StoreQuotationRequest`. `QuotationResource` → contrato.
-- [ ] `quotation_suppliers` (`cotizaciones`): `quotation_number` (100, nullable), `backup_file_path` (nullable, disco privado). `QuotationSupplierResource` → contrato. `quotation_suppliers.supplier_id` hoy es `cascadeOnDelete`; `MODELS.MD` pide `RESTRICT`: cambiarlo y comprobar que `DELETE /suppliers/{id}` con cotizaciones responde `422`.
-- [ ] `quotation_offer_items` (`cotizacion_items`): `id`, `quotation_supplier_id` (FK `cascadeOnDelete`), `product_id` (FK `restrictOnDelete`), `requested_quantity` (int), `offered_unit_price` (decimal 15,2, nullable), timestamps. `QuotationSupplier::offerItems()`. Es el precio ofertado por cada proveedor por ítem; `quotation_items` (cantidades pedidas en el proceso) se mantiene.
-- [ ] Tests `FinanceModelsSchemaTest`: relaciones, `unique(career_id, year)`, `CHECK` de saldo, cast JSONB, `RESTRICT` de proveedores.
+- [x] `annual_budgets`: `id`, `career_id` (FK `restrictOnDelete`), `year` (int), `initial_amount` y `available_amount` (decimal 15,2), auditoría, timestamps; `unique(career_id, year)`. `Career::annualBudgets()`. Regla en el modelo/servicio (sin endpoint aún): `available_amount` nunca negativo (`CHECK (available_amount >= 0)`).
+- [x] `invoice_intakes` (`ingresos_ocr`): `id`, `user_id` (FK `restrictOnDelete`), `annual_budget_id` (FK `restrictOnDelete`), `pdf_path` (nullable, disco privado), `document_number` (100, nullable), `total_deducted` (decimal 15,2, nullable), `raw_ocr_payload` (`jsonb`, nullable, cast `array`), `status` (50, nullable; valores `borrador` | `confirmado` | `anulado`), `received_at` (timestamp, default `now`), timestamps.
+- [x] `invoice_intake_items`: `id`, `invoice_intake_id` (FK `cascadeOnDelete`), `product_id` (FK `restrictOnDelete`), `detected_name` (255, nullable), `quantity` (int), `unit_price` y `subtotal` (decimal 15,2, nullable), timestamps.
+- [x] Modelos `InvoiceIntake` (`user`, `annualBudget`, `items`) e `InvoiceIntakeItem` (`intake`, `product`). Sin endpoints en esta fase: el flujo (subida, confirmación, descuento de presupuesto e ingreso de stock) es REQ-17 en `Compra.md`. `POST /api/invoices/scan` no se toca.
+- [x] `suppliers`: `rut` (string 20, unique, nullable y opcional; si viene, validar formato y dígito verificador de RUT chileno con una regla `App\Rules\ChileanRut`, mensaje en español), `address` (255, nullable). `SupplierResource` y FormRequests → `ResourceContractTest`, `front-end.md`.
+- [x] `quotations` (`procesos_cotizacion`): `career_id` (FK `restrictOnDelete`) y `title` (150), ambos nullable y opcionales en `StoreQuotationRequest`. `QuotationResource` → contrato.
+- [x] `quotation_suppliers` (`cotizaciones`): `quotation_number` (100, nullable), `backup_file_path` (nullable, disco privado). `QuotationSupplierResource` → contrato. `quotation_suppliers.supplier_id` hoy es `cascadeOnDelete`; `MODELS.MD` pide `RESTRICT`: cambiarlo y comprobar que `DELETE /suppliers/{id}` con cotizaciones responde `422`.
+- [x] `quotation_offer_items` (`cotizacion_items`): `id`, `quotation_supplier_id` (FK `cascadeOnDelete`), `product_id` (FK `restrictOnDelete`), `requested_quantity` (int), `offered_unit_price` (decimal 15,2, nullable), timestamps. `QuotationSupplier::offerItems()`. Es el precio ofertado por cada proveedor por ítem; `quotation_items` (cantidades pedidas en el proceso) se mantiene.
+- [x] Tests `FinanceModelsSchemaTest`: relaciones, `unique(career_id, year)`, `CHECK` de saldo, cast JSONB, `RESTRICT` de proveedores.
 
 ## Fase 5 — Mantención, estudiantes y préstamos
 

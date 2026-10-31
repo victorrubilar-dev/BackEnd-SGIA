@@ -20,6 +20,8 @@ class SupplierResource extends JsonResource
             'contact_name' => $this->contact_name,
             'email' => $this->email,
             'phone' => $this->phone,
+            'rut' => $this->rut,
+            'address' => $this->address,
             'category' => $this->category,
             'is_active' => (bool) $this->is_active,
             'products_count' => $this->whenCounted('products'),

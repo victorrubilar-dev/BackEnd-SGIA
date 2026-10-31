@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Carrera y su nivel. Los usuarios la referencian por nombre en `users.area`.
@@ -37,6 +38,11 @@ class Career extends Model
     public function levelLabel(): string
     {
         return self::LEVELS[$this->level] ?? $this->level;
+    }
+
+    public function annualBudgets(): HasMany
+    {
+        return $this->hasMany(AnnualBudget::class);
     }
 
     public function users(): BelongsToMany

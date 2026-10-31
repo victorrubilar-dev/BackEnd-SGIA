@@ -18,6 +18,8 @@ class QuotationResource extends JsonResource
         return [
             'id' => $this->id,
             'code' => $this->code,
+            'career_id' => $this->career_id,
+            'title' => $this->title,
             'status' => $this->status,
             'allowed_transitions' => QuotationStateMachine::allowedFrom($this->status),
             'created_by' => $this->created_by,

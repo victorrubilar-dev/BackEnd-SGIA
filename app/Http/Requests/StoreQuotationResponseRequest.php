@@ -25,6 +25,7 @@ class StoreQuotationResponseRequest extends FormRequest
                 Rule::in([QuotationSupplier::STATUS_ACCEPTED, QuotationSupplier::STATUS_REJECTED]),
             ],
             'offer_total' => ['nullable', 'numeric', 'min:0'],
+            'quotation_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ];
     }
