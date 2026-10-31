@@ -111,6 +111,6 @@ class ResourceContractTest extends TestCase
     {
         $report = IncidentReport::factory()->create(['product_id' => Product::factory()->create()->id]);
 
-        $this->assertKeys(IncidentReportResource::class, $report, explode(',', 'allowed_transitions,attachment,attachment_original_name,attachment_url,code,created_at,description,id,product_id,reported_by,severity,severity_label,status,title,updated_at'));
+        $this->assertKeys(IncidentReportResource::class, $report, explode(',', 'allowed_transitions,attachment,attachment_original_name,attachment_url,code,created_at,description,equipment_unit_id,has_evidence_photo,id,product_id,reported_by,request_type,severity,severity_label,status,title,updated_at'));
     }
 }

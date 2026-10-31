@@ -27,6 +27,7 @@
     <div class="header">
         <h1>Informes de novedades</h1>
         <p>Equipo: {{ $product->name }} · {{ $product->barcode ?? 'sin código' }} ·
+           @if (! empty($unit)) Unidad {{ $unit->code }} · @endif
            {{ $reports->count() }} informe(s)</p>
     </div>
 

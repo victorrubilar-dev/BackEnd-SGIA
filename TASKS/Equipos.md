@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-7 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-8 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -203,13 +203,13 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 8 — Hoja de vida por unidad
 
-- [ ] `POST /equipment/{product}/reports`: `equipment_unit_id` (obligatorio si el producto es `equipo`, debe pertenecer a `{product}`), `request_type`, `evidence_photo` opcional (imagen, 10 MB, disco privado) además del adjunto. `IncidentReportResource` añade `equipment_unit_id`, `equipment_unit`, `request_type`, `has_evidence_photo` → contrato. Descarga `GET /incident-reports/{id}/evidence-photo`.
-- [ ] `GET /incident-reports`: filtros `equipment_unit_id`, `request_type`.
-- [ ] `GET /equipment-units/{equipmentUnit}/reports` (JSON paginado o `?format=pdf`).
-- [ ] `GET /equipment-units/{equipmentUnit}/technical-sheet`: PDF con producto (categoría, prioridad, calibración), código, serie, estado, ubicación (pañol/sala/estante), fechas de mantención, historial de préstamos, mantenciones e informes de la unidad. Método nuevo en `EquipmentPdfService` y vista en `resources/views/equipment/`.
-- [ ] La ficha del producto (`/equipment/{product}/technical-sheet`) añade la tabla de sus unidades.
+- [x] `POST /equipment/{product}/reports`: `equipment_unit_id` (obligatorio si el producto es `equipo`, debe pertenecer a `{product}`), `request_type`, `evidence_photo` opcional (imagen, 10 MB, disco privado) además del adjunto. `IncidentReportResource` añade `equipment_unit_id`, `equipment_unit`, `request_type`, `has_evidence_photo` → contrato. Descarga `GET /incident-reports/{id}/evidence-photo`.
+- [x] `GET /incident-reports`: filtros `equipment_unit_id`, `request_type`.
+- [x] `GET /equipment-units/{equipmentUnit}/reports` (JSON paginado o `?format=pdf`).
+- [x] `GET /equipment-units/{equipmentUnit}/technical-sheet`: PDF con producto (categoría, prioridad, calibración), código, serie, estado, ubicación (pañol/sala/estante), fechas de mantención, historial de préstamos, mantenciones e informes de la unidad. Método nuevo en `EquipmentPdfService` y vista en `resources/views/equipment/`.
+- [x] La ficha del producto (`/equipment/{product}/technical-sheet`) añade la tabla de sus unidades.
 - [ ] Endpoints de mantención y documentos: REQ-18 y REQ-19 en `Fichas tecnicas.md` (se implementan después de esta fase).
-- [ ] Tests: ampliar `IncidentReportTest` y `TechnicalSheetTest`.
+- [x] Tests: ampliar `IncidentReportTest` y `TechnicalSheetTest`.
 
 ## Fase 9 — Dashboards y métricas
 

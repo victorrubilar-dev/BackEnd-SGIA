@@ -204,3 +204,10 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `POST /api/loans/{id}/deliver`: cuerpo opcional `items: [{item_id, unit_ids}]` para reemplazar las unidades asignadas por las realmente entregadas.
 - `POST /api/loans/checkin`: `items.*.unit_ids` opcional para devolución parcial por unidad; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`. El ítem queda devuelto cuando todas sus unidades lo están (`return_condition` = la peor).
 - Export CSV/PDF: los códigos de las unidades van entre corchetes junto al nombre del ítem.
+
+## Plan Equipos — fase 8 (hoja de vida por unidad)
+
+- `POST /api/equipment/{product}/reports`: `equipment_unit_id` obligatorio si el producto es `equipo`/`maqueta` (debe ser una unidad de ese producto); `request_type` (`falla` por defecto | `reposicion` | `mantencion`); `evidence_photo` opcional (jpg/png/webp, 10 MB, disco privado).
+- `IncidentReportResource` añade `equipment_unit_id`, `equipment_unit`, `request_type`, `has_evidence_photo`. Foto: `GET /api/incident-reports/{id}/evidence-photo` (AD/DIR/PAN).
+- `GET /api/incident-reports` acepta `equipment_unit_id` y `request_type`.
+- Nuevos: `GET /api/equipment-units/{id}/reports` (JSON paginado o `?format=pdf`) y `GET /api/equipment-units/{id}/technical-sheet` (PDF de la hoja de vida: producto, ubicación, mantención, préstamos, mantenciones e informes). La ficha del producto (`/equipment/{id}/technical-sheet`) incluye la tabla de unidades.

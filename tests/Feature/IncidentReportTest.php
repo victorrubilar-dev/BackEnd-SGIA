@@ -39,7 +39,7 @@ class IncidentReportTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->product = Product::factory()->create([
+        $this->product = Product::factory()->supply()->create([
             'name' => 'Osciloscopio Rigol',
         ]);
     }

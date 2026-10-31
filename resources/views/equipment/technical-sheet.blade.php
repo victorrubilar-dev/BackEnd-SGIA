@@ -130,6 +130,30 @@
     </div>
 
     <div class="section">
+        <h2>Unidades ({{ $unitsTotal }})</h2>
+        @if ($units->isEmpty())
+            <p class="empty">Este producto no tiene unidades registradas.</p>
+        @else
+            <table class="list">
+                <thead>
+                    <tr><th>Código</th><th>Serie</th><th>Estado</th><th>Ubicación</th><th>Próx. mantención</th></tr>
+                </thead>
+                <tbody>
+                    @foreach ($units as $unit)
+                        <tr>
+                            <td>{{ $unit->code }}</td>
+                            <td>{{ $unit->serial_number ?? '—' }}</td>
+                            <td>{{ str_replace('_', ' ', $unit->status) }}</td>
+                            <td>{{ $unit->cajon?->location?->nombre ?? '—' }} / {{ $unit->cajon?->codigo ?? '—' }}</td>
+                            <td>{{ $unit->next_maintenance_at?->format('d-m-Y') ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
+    <div class="section">
         <h2>Historial de novedades ({{ $reportsTotal }} en total · últimos {{ $reports->count() }})</h2>
         @if ($reports->isEmpty())
             <p class="empty">Este equipo no tiene informes de novedades registrados.</p>

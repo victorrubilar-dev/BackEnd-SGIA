@@ -53,6 +53,15 @@ class StoreIncidentReportRequest extends FormRequest
             'severity' => ['sometimes', 'nullable', Rule::in(IncidentReport::SEVERITIES)],
             // Adjunto opcional: documento o imagen (máx. 10 MB).
             'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
+            // Equipos y maquetas se reportan por unidad (hoja de vida).
+            'equipment_unit_id' => [
+                Rule::requiredIf(fn () => $this->route('product')?->hasUnits() ?? false),
+                'nullable',
+                'integer',
+                Rule::exists('equipment_units', 'id')->where('product_id', $this->route('product')?->id),
+            ],
+            'request_type' => ['sometimes', 'nullable', Rule::in(IncidentReport::REQUEST_TYPES)],
+            'evidence_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
         ];
     }
 
@@ -64,6 +73,11 @@ class StoreIncidentReportRequest extends FormRequest
             'severity.in' => 'La severidad debe ser leve, media o crítica.',
             'attachment.mimes' => 'El adjunto debe ser un documento PDF o una imagen (jpg, png, webp).',
             'attachment.max' => 'El adjunto no puede superar los 10 MB.',
+            'equipment_unit_id.required' => 'Indica la unidad del equipo a la que corresponde el informe.',
+            'equipment_unit_id.exists' => 'La unidad indicada no pertenece a este equipo.',
+            'request_type.in' => 'El tipo de solicitud debe ser falla, reposicion o mantencion.',
+            'evidence_photo.mimes' => 'La foto de evidencia debe ser jpg, png o webp.',
+            'evidence_photo.max' => 'La foto de evidencia no puede superar los 10 MB.',
         ];
     }
 }

@@ -170,6 +170,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::patch('/incident-reports/{incidentReport}/status', [EquipmentReportController::class, 'updateStatus']);
     // Los adjuntos viven en disco privado: se descargan autenticados.
     Route::get('/incident-reports/{incidentReport}/attachment', [EquipmentReportController::class, 'attachment']);
+    Route::get('/incident-reports/{incidentReport}/evidence-photo', [EquipmentReportController::class, 'evidencePhoto']);
 
     // REQ-13: Solicitud de reposición mediante informe de novedades
     // (FU-05, PRO-01/PAN-01): formulario + adjunto opcional, asociado
@@ -194,6 +195,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/equipment-units/by-code/{code}', [EquipmentUnitController::class, 'byCode']);
     Route::get('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'show']);
     Route::get('/equipment-units/{equipmentUnit}/barcode', [EquipmentUnitController::class, 'barcode']);
+    Route::get('/equipment-units/{equipmentUnit}/technical-sheet', [EquipmentUnitController::class, 'technicalSheet']);
+    Route::get('/equipment-units/{equipmentUnit}/reports', [EquipmentReportController::class, 'unitIndex']);
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::patch('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'update']);
         Route::patch('/equipment-units/{equipmentUnit}/status', [EquipmentUnitController::class, 'updateStatus']);

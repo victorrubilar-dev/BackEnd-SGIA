@@ -25,6 +25,10 @@ class IncidentReportResource extends JsonResource
             'status' => $this->status,
             'allowed_transitions' => $this->allowedTransitions(),
             'product' => new ProductResource($this->whenLoaded('product')),
+            'equipment_unit_id' => $this->equipment_unit_id,
+            'equipment_unit' => new EquipmentUnitResource($this->whenLoaded('equipmentUnit')),
+            'request_type' => $this->request_type,
+            'has_evidence_photo' => $this->evidence_photo_path !== null,
             'attachment' => $this->attachment,
             'attachment_original_name' => $this->attachment_original_name,
             // Descarga autenticada: el adjunto vive en disco privado.

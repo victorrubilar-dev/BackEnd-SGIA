@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\Product;
@@ -33,6 +34,8 @@ class EquipmentPdfService
 
         return $this->render(view('equipment.technical-sheet', [
             'product' => $product,
+            'units' => $product->units()->with('cajon.location')->orderBy('id')->limit(200)->get(),
+            'unitsTotal' => $product->units()->count(),
             'reports' => $reports,
             'reportsTotal' => $product->incidentReports()->count(),
         ]));
@@ -43,14 +46,31 @@ class EquipmentPdfService
      *
      * @param  Collection<int, IncidentReport>  $reports
      */
-    public function reportsList(Product $product, Collection $reports): string
+    public function reportsList(Product $product, Collection $reports, ?EquipmentUnit $unit = null): string
     {
         $product->loadMissing(['supplier', 'cajon.location', 'location']);
 
         return $this->render(view('equipment.reports', [
             'product' => $product,
             'reports' => $reports,
+            'unit' => $unit,
         ]));
+    }
+
+    /**
+     * Hoja de vida de una unidad: producto, ubicación, mantenciones, préstamos e informes.
+     */
+    public function unitTechnicalSheet(EquipmentUnit $unit): string
+    {
+        $unit->load([
+            'product.category',
+            'cajon.location.storeroom',
+            'loanItems.loan',
+            'maintenanceRecords.responsible',
+            'incidentReports',
+        ]);
+
+        return $this->render(view('equipment.unit-technical-sheet', ['unit' => $unit]));
     }
 
     /**

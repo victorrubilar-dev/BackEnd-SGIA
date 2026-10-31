@@ -10,6 +10,7 @@ use App\Http\Resources\EquipmentUnitResource;
 use App\Models\EquipmentUnit;
 use App\Models\Product;
 use App\Services\BarcodeService;
+use App\Services\EquipmentPdfService;
 use App\Services\EquipmentUnitService;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
@@ -17,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class EquipmentUnitController extends Controller
 {
@@ -144,6 +146,19 @@ class EquipmentUnitController extends Controller
             'barcode_image_uri' => $barcodeService->generateBarcodeImageUri($equipmentUnit->code),
             'barcode_html' => $barcodeService->generateHtml($equipmentUnit->code),
         ]);
+    }
+
+    /**
+     * GET /api/equipment-units/{equipmentUnit}/technical-sheet
+     */
+    public function technicalSheet(EquipmentUnit $equipmentUnit, EquipmentPdfService $pdfService): SymfonyResponse
+    {
+        Gate::authorize('view', $equipmentUnit);
+
+        return $pdfService->download(
+            $pdfService->unitTechnicalSheet($equipmentUnit),
+            'hoja-de-vida-'.$equipmentUnit->code.'.pdf'
+        );
     }
 
     private function loadDetail(EquipmentUnit $unit): EquipmentUnit
