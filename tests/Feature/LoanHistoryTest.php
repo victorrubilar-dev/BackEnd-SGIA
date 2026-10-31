@@ -51,8 +51,8 @@ class LoanHistoryTest extends TestCase
         ]);
 
         $this->products = [
-            'multimetro' => Product::factory()->create(['name' => 'Multímetro Digital Fluke', 'quantity' => 30]),
-            'soldador' => Product::factory()->create(['name' => 'Soldador de Pistola 60W', 'quantity' => 15]),
+            'multimetro' => Product::factory()->supply()->create(['name' => 'Multímetro Digital Fluke', 'quantity' => 30]),
+            'soldador' => Product::factory()->supply()->create(['name' => 'Soldador de Pistola 60W', 'quantity' => 15]),
         ];
 
         $this->loans = [

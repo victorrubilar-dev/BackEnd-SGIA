@@ -43,7 +43,7 @@ class LoanRequestTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->product = Product::factory()->create(['quantity' => 20]);
+        $this->product = Product::factory()->supply()->create(['quantity' => 20]);
     }
 
     public function test_teacher_can_send_remote_loan_request(): void
@@ -139,7 +139,7 @@ class LoanRequestTest extends TestCase
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('items.0.quantity');
 
-        $inactive = Product::factory()->create(['is_active' => false]);
+        $inactive = Product::factory()->supply()->create(['is_active' => false]);
 
         $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $inactive->id, 'quantity' => 1]],

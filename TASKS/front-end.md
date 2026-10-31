@@ -195,3 +195,12 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `POST /api/products` de `equipo`/`maqueta` con `quantity > 0`: exige `career_id` (con código) y `cajon_id` (o `sala` + `cajon`) y crea las unidades con códigos `PRO-{carrera}-000001` / `MAQ-{carrera}-000001`; `units: [{serial_number}]` opcional.
 - **422 nuevos:** `PATCH /api/products/{id}` con `quantity` en un equipo ("La cantidad de un equipo se calcula a partir de sus unidades."); `type` → `insumo` con unidades; `PATCH /api/products/{id}/condition` en un equipo (usar `PATCH /api/equipment-units/{id}/status`); cambiar a `prestado` a mano; `DELETE` de una unidad prestada o con historial.
 - `products.quantity`, `quantity_in_repair` y `quantity_written_off` de un equipo se derivan de las unidades (las `prestado` no suman).
+
+## Plan Equipos — fase 7 (préstamos con unidades)
+
+- `LoanItemResource` añade `delivered_quantity`, `returned_quantity` y `units` (`id`, `code`, `serial_number`, `status`, `returned_at`, `return_condition`; solo si el ítem es un equipo/maqueta y las unidades vienen cargadas: detalle, historial, pendientes, checkout, checkin, deliver).
+- `POST /api/loans/checkout`: `items.*.unit_ids` opcional (prohibido en insumos; debe haber exactamente `quantity` ids, del mismo producto y `disponible`); `storeroom_id` opcional (por defecto el del pañolero). Sin `unit_ids` se asignan unidades automáticas. Si `borrower_document` es un RUT válido se crea/reutiliza el `Student`.
+- `POST /api/loans/{id}/approve`: asigna unidades automáticas.
+- `POST /api/loans/{id}/deliver`: cuerpo opcional `items: [{item_id, unit_ids}]` para reemplazar las unidades asignadas por las realmente entregadas.
+- `POST /api/loans/checkin`: `items.*.unit_ids` opcional para devolución parcial por unidad; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`. El ítem queda devuelto cuando todas sus unidades lo están (`return_condition` = la peor).
+- Export CSV/PDF: los códigos de las unidades van entre corchetes junto al nombre del ítem.

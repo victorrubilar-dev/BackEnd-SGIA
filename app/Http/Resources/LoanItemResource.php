@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class LoanItemResource extends JsonResource
 {
@@ -29,6 +30,16 @@ class LoanItemResource extends JsonResource
             'product' => new ProductResource($this->whenLoaded('product')),
             'name' => $this->name,
             'quantity' => (int) $this->quantity,
+            'delivered_quantity' => (int) $this->delivered_quantity,
+            'returned_quantity' => (int) $this->returned_quantity,
+            'units' => $this->when($this->relationLoaded('units'), fn () => $this->units->map(fn ($unit) => [
+                'id' => $unit->id,
+                'code' => $unit->code,
+                'serial_number' => $unit->serial_number,
+                'status' => $unit->status,
+                'returned_at' => $unit->pivot->returned_at ? Carbon::parse($unit->pivot->returned_at)->toIso8601String() : null,
+                'return_condition' => $unit->pivot->return_condition,
+            ])->values()),
             'is_returned' => $this->returned_at !== null,
             'returned_at' => $this->returned_at?->toIso8601String(),
             'return_condition' => $this->return_condition,

@@ -46,7 +46,7 @@ class LoanOperationTest extends TestCase
             'is_active' => true,
         ]);
 
-        $this->product = Product::factory()->create([
+        $this->product = Product::factory()->supply()->create([
             'quantity' => 20,
             'stock_minimo' => 2,
         ]);

@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\Exceptions\InvalidLoanStatusTransition;
+use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Product;
+use App\Models\Storeroom;
+use App\Models\Student;
 use App\Models\User;
 use App\Notifications\LoanStatusNotification;
+use App\Rules\ChileanRut;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,7 +28,10 @@ use Illuminate\Validation\ValidationException;
  */
 class LoanService
 {
-    public function __construct(private readonly StockAlertService $stockAlertService) {}
+    public function __construct(
+        private readonly StockAlertService $stockAlertService,
+        private readonly EquipmentUnitService $equipmentUnits,
+    ) {}
 
     /**
      * Crea la solicitud remota de préstamo del docente en estado `pendiente`.
@@ -112,14 +119,41 @@ class LoanService
     /**
      * Confirma la entrega material al docente: `en_proceso` -> `procesado`.
      *
-     * @throws InvalidLoanStatusTransition
+     * `$assignments` (`[['item_id' => 1, 'unit_ids' => [..]]]`) reemplaza la asignación
+     * automática por las unidades realmente entregadas; las anteriores vuelven a `disponible`.
+     *
+     * @param  array<int, array{item_id: int, unit_ids: array<int, int>}>  $assignments
+     *
+     * @throws InvalidLoanStatusTransition|ValidationException
      */
-    public function deliver(Loan $loan, User $processor): Loan
+    public function deliver(Loan $loan, User $processor, array $assignments = []): Loan
     {
-        $this->transition($loan, LoanStateMachine::STATUS_PROCESSED, [
-            'processed_by' => $processor->id,
-            'processed_at' => now(),
-        ]);
+        DB::transaction(function () use ($loan, $processor, $assignments) {
+            if (! LoanStateMachine::canTransition($loan->status, LoanStateMachine::STATUS_PROCESSED)) {
+                throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_PROCESSED);
+            }
+
+            $loan->load('items.product');
+
+            foreach ($assignments as $index => $assignment) {
+                $item = $loan->items->firstWhere('id', (int) $assignment['item_id']);
+
+                if ($item === null || ! $item->product?->hasUnits()) {
+                    throw ValidationException::withMessages([
+                        "items.{$index}.item_id" => 'El ítem no pertenece a este préstamo o no se gestiona por unidades.',
+                    ]);
+                }
+
+                $this->replaceUnits($item, array_map('intval', $assignment['unit_ids']), $index);
+            }
+
+            $loan->items()->update(['delivered_quantity' => DB::raw('quantity')]);
+
+            $this->transition($loan, LoanStateMachine::STATUS_PROCESSED, [
+                'processed_by' => $processor->id,
+                'processed_at' => now(),
+            ]);
+        });
 
         $this->notifyRequester(
             $loan,
@@ -150,6 +184,8 @@ class LoanService
                 'requested_by' => null,
                 'borrower_name' => $validated['borrower_name'],
                 'borrower_document' => $validated['borrower_document'] ?? null,
+                'storeroom_id' => $validated['storeroom_id'] ?? $operator->storeroom_id ?? Storeroom::default()->id,
+                'student_id' => $this->resolveStudentId($validated),
                 'subject' => $validated['subject'],
                 'room' => $validated['room'],
                 'loan_date' => $validated['loan_date'],
@@ -163,7 +199,14 @@ class LoanService
 
             $this->attachItems($loan, $items);
             $loan->load('items');
-            $this->deductStock($loan);
+
+            // Las unidades pedidas se asocian a cada ítem por posición (los ítems se crean en orden).
+            $requested = [];
+            foreach ($loan->items->sortBy('id')->values() as $index => $item) {
+                $requested[$item->id] = $items[$index]['unit_ids'] ?? null;
+            }
+
+            $this->deductStock($loan, $requested, delivered: true);
 
             return $loan;
         });
@@ -189,26 +232,38 @@ class LoanService
     }
 
     /**
-     * Descuenta el stock de los productos del préstamo dentro de la
-     * transacción, bloqueando las filas para evitar stock negativo por
-     * solicitudes concurrentes. También evalúa las alertas de stock (REQ-06).
+     * Descuenta el stock de los productos del préstamo dentro de la transacción.
+     *
+     * Insumos: bloquea el producto y resta la cantidad. Equipos y maquetas: asigna las
+     * unidades indicadas en `$requestedUnits[item_id]` o, si no vienen, unidades `disponible`
+     * automáticas (se bloquean primero las unidades y luego el producto). Evalúa las alertas (REQ-06).
+     *
+     * @param  array<int, array<int, int>|null>  $requestedUnits  unit_ids por id de ítem
      *
      * @throws ValidationException
      */
-    private function deductStock(Loan $loan): void
+    private function deductStock(Loan $loan, array $requestedUnits = [], bool $delivered = false): void
     {
         foreach ($loan->items as $item) {
             if ($item->product_id === null) {
                 continue;
             }
 
-            $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
+            $peek = Product::find($item->product_id);
 
-            if ($product === null) {
+            if ($peek === null) {
                 throw ValidationException::withMessages([
                     'items' => "El producto \"{$item->name}\" ya no existe en el inventario.",
                 ]);
             }
+
+            if ($peek->hasUnits()) {
+                $this->assignUnits($item, $peek, $requestedUnits[$item->id] ?? null, $delivered);
+
+                continue;
+            }
+
+            $product = Product::whereKey($item->product_id)->lockForUpdate()->first();
 
             if ($product->quantity < $item->quantity) {
                 throw ValidationException::withMessages([
@@ -220,8 +275,124 @@ class LoanService
             $product->quantity -= $item->quantity;
             $product->save();
 
+            $item->forceFill(['delivered_quantity' => $delivered ? $item->quantity : 0])->save();
+
             $this->stockAlertService->checkStock($product);
         }
+    }
+
+    /**
+     * Pasa a `prestado` las unidades del ítem y las vincula en `loan_item_units`.
+     *
+     * @param  array<int, int>|null  $unitIds
+     *
+     * @throws ValidationException
+     */
+    private function assignUnits(LoanItem $item, Product $product, ?array $unitIds, bool $delivered): void
+    {
+        $available = EquipmentUnit::where('product_id', $product->id)
+            ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+            ->orderBy('id');
+
+        if ($unitIds) {
+            $unitIds = array_values(array_unique(array_map('intval', $unitIds)));
+
+            if (count($unitIds) !== (int) $item->quantity) {
+                throw ValidationException::withMessages([
+                    'items' => "Debes indicar exactamente {$item->quantity} unidad(es) para \"{$product->name}\".",
+                ]);
+            }
+
+            $units = $available->whereIn('id', $unitIds)->lockForUpdate()->get();
+
+            if ($units->count() !== count($unitIds)) {
+                throw ValidationException::withMessages([
+                    'items' => "Alguna de las unidades indicadas para \"{$product->name}\" no existe, no pertenece al producto o no está disponible.",
+                ]);
+            }
+        } else {
+            $units = $available->limit($item->quantity)->lockForUpdate()->get();
+
+            if ($units->count() < $item->quantity) {
+                throw ValidationException::withMessages([
+                    'items' => "Stock insuficiente para \"{$product->name}\": "
+                        ."se requieren {$item->quantity} y hay {$units->count()} disponibles.",
+                ]);
+            }
+        }
+
+        EquipmentUnit::whereIn('id', $units->pluck('id'))->update(['status' => EquipmentUnit::STATUS_ON_LOAN]);
+        $item->units()->attach($units->pluck('id')->all());
+        $item->forceFill(['delivered_quantity' => $delivered ? $item->quantity : 0])->save();
+
+        $this->equipmentUnits->syncProductCounters($product);
+    }
+
+    /**
+     * Sustituye las unidades asignadas a un ítem por las realmente entregadas.
+     *
+     * @param  array<int, int>  $unitIds
+     *
+     * @throws ValidationException
+     */
+    private function replaceUnits(LoanItem $item, array $unitIds, int $index): void
+    {
+        $unitIds = array_values(array_unique($unitIds));
+
+        if (count($unitIds) !== (int) $item->quantity) {
+            throw ValidationException::withMessages([
+                "items.{$index}.unit_ids" => "Debes indicar exactamente {$item->quantity} unidad(es) para \"{$item->name}\".",
+            ]);
+        }
+
+        $current = $item->units()->pluck('equipment_units.id')->all();
+        $toTake = array_values(array_diff($unitIds, $current));
+        $toRelease = array_values(array_diff($current, $unitIds));
+
+        if ($toTake !== []) {
+            $units = EquipmentUnit::whereIn('id', $toTake)
+                ->where('product_id', $item->product_id)
+                ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+                ->lockForUpdate()
+                ->get();
+
+            if ($units->count() !== count($toTake)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.unit_ids" => 'Alguna de las unidades indicadas no existe, no pertenece al producto o no está disponible.',
+                ]);
+            }
+        }
+
+        if ($toRelease !== []) {
+            EquipmentUnit::whereIn('id', $toRelease)->update(['status' => EquipmentUnit::STATUS_AVAILABLE]);
+            $item->units()->detach($toRelease);
+        }
+
+        if ($toTake !== []) {
+            EquipmentUnit::whereIn('id', $toTake)->update(['status' => EquipmentUnit::STATUS_ON_LOAN]);
+            $item->units()->attach($toTake);
+        }
+
+        $this->equipmentUnits->syncProductCounters(Product::findOrFail($item->product_id));
+    }
+
+    /**
+     * Si el documento del solicitante es un RUT válido, crea o reutiliza el estudiante.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function resolveStudentId(array $validated): ?int
+    {
+        $document = $validated['borrower_document'] ?? null;
+
+        if (! is_string($document) || ! ChileanRut::isValid($document)) {
+            return null;
+        }
+
+        return Student::firstOrCreate(
+            ['rut' => ChileanRut::normalize($document)],
+            ['full_name' => $validated['borrower_name'] ?? null]
+        )->id;
     }
 
     /**
@@ -264,6 +435,18 @@ class LoanService
             }
 
             $requested = (int) $item['quantity'];
+
+            if (! empty($item['unit_ids']) && ! $product->hasUnits()) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.unit_ids" => "El producto \"{$product->name}\" es un insumo y no tiene unidades.",
+                ]);
+            }
+
+            if (! empty($item['unit_ids']) && count(array_unique($item['unit_ids'])) !== $requested) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.unit_ids" => "Debes indicar exactamente {$requested} unidad(es) para \"{$product->name}\".",
+                ]);
+            }
 
             if ($product->quantity < $requested) {
                 throw ValidationException::withMessages([
@@ -310,7 +493,7 @@ class LoanService
     {
         return DB::transaction(function () use ($validated, $operator) {
             $loan = Loan::whereKey($validated['loan_id'])->lockForUpdate()->firstOrFail();
-            $loan->load('items');
+            $loan->load('items.product');
 
             if (! $loan->isProcessed()) {
                 throw ValidationException::withMessages([
@@ -319,6 +502,8 @@ class LoanService
             }
 
             $seen = [];
+            $seenUnits = [];
+            $touchedProducts = [];
 
             foreach ($validated['items'] as $index => $row) {
                 $item = isset($row['item_id'])
@@ -331,6 +516,15 @@ class LoanService
                     ]);
                 }
 
+                $condition = $this->normalizeCondition($row['condition'], (bool) ($row['damaged'] ?? false));
+
+                if ($item->product?->hasUnits()) {
+                    $this->checkinUnits($item, $row['unit_ids'] ?? null, $condition, $operator, $index, $seenUnits);
+                    $touchedProducts[$item->product_id] = $item->product;
+
+                    continue;
+                }
+
                 if ($item->returned_at !== null || in_array($item->id, $seen, true)) {
                     throw ValidationException::withMessages([
                         "items.{$index}" => "El ítem \"{$item->name}\" ya fue devuelto.",
@@ -338,11 +532,18 @@ class LoanService
                 }
 
                 $seen[] = $item->id;
-                $condition = $this->normalizeCondition($row['condition'], (bool) ($row['damaged'] ?? false));
 
                 $this->restoreItem($item, $condition);
 
-                $item->forceFill(['returned_at' => now(), 'return_condition' => $condition])->save();
+                $item->forceFill([
+                    'returned_at' => now(),
+                    'return_condition' => $condition,
+                    'returned_quantity' => $item->quantity,
+                ])->save();
+            }
+
+            foreach ($touchedProducts as $product) {
+                $this->equipmentUnits->syncProductCounters($product);
             }
 
             $attributes = [];
@@ -357,8 +558,95 @@ class LoanService
 
             $loan->forceFill($attributes)->save();
 
-            return $loan->load('items');
+            return $loan->load('items.units');
         });
+    }
+
+    /**
+     * Devuelve unidades de un ítem: las indicadas en `unit_ids` o todas las pendientes.
+     * El ítem queda devuelto cuando todas sus unidades lo están (condición = la peor).
+     *
+     * @param  array<int, int>|null  $unitIds
+     * @param  array<int, int>  $seenUnits  unidades ya devueltas en esta operación
+     *
+     * @throws ValidationException
+     */
+    private function checkinUnits(LoanItem $item, ?array $unitIds, string $condition, User $operator, int $index, array &$seenUnits): void
+    {
+        $pending = DB::table('loan_item_units')
+            ->where('loan_item_id', $item->id)
+            ->whereNull('returned_at')
+            ->lockForUpdate()
+            ->pluck('equipment_unit_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $ids = $unitIds !== null ? array_map('intval', $unitIds) : $pending;
+
+        if ($ids === []) {
+            throw ValidationException::withMessages([
+                "items.{$index}" => "El ítem \"{$item->name}\" ya fue devuelto.",
+            ]);
+        }
+
+        foreach ($ids as $id) {
+            if (in_array($id, $seenUnits, true)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.unit_ids" => 'Una unidad no puede devolverse dos veces en la misma operación.',
+                ]);
+            }
+
+            if (! in_array($id, $pending, true)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.unit_ids" => "La unidad {$id} no está pendiente de devolución en el ítem \"{$item->name}\".",
+                ]);
+            }
+
+            $seenUnits[] = $id;
+        }
+
+        $status = match ($condition) {
+            LoanItem::CONDITION_DAMAGED => EquipmentUnit::STATUS_IN_REPAIR,
+            LoanItem::CONDITION_LOST => EquipmentUnit::STATUS_WRITTEN_OFF,
+            default => EquipmentUnit::STATUS_AVAILABLE,
+        };
+
+        EquipmentUnit::whereIn('id', $ids)->update(['status' => $status, 'updated_by' => $operator->id]);
+        DB::table('loan_item_units')
+            ->where('loan_item_id', $item->id)
+            ->whereIn('equipment_unit_id', $ids)
+            ->update(['returned_at' => now(), 'return_condition' => $condition, 'updated_at' => now()]);
+
+        $returned = (int) $item->returned_quantity + count($ids);
+        $attributes = ['returned_quantity' => $returned];
+
+        if ($returned >= $item->quantity) {
+            $attributes += ['returned_at' => now(), 'return_condition' => $this->worstCondition($item)];
+        }
+
+        $item->forceFill($attributes)->save();
+    }
+
+    /**
+     * La peor condición entre las unidades devueltas: extraviado > danado > regular > bueno.
+     */
+    private function worstCondition(LoanItem $item): string
+    {
+        $order = [LoanItem::CONDITION_GOOD, LoanItem::CONDITION_REGULAR, LoanItem::CONDITION_DAMAGED, LoanItem::CONDITION_LOST];
+
+        $conditions = DB::table('loan_item_units')
+            ->where('loan_item_id', $item->id)
+            ->whereNotNull('return_condition')
+            ->pluck('return_condition')
+            ->all();
+
+        $worst = array_reduce(
+            $conditions,
+            fn (int $carry, string $c) => max($carry, (int) array_search($c, $order, true)),
+            0
+        );
+
+        return $order[$worst];
     }
 
     /**

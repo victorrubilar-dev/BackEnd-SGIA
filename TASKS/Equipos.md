@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (Parte 1 completa; Parte 2: fase 6 hecha).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (Parte 1 completa; Parte 2: fases 6-7 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -192,14 +192,14 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 7 — Préstamos con unidades
 
-- [ ] `deductStock()`: `insumo` como hoy; `equipo` asigna `unit_ids` validados (cantidad = `quantity`, mismo producto, `disponible`, `lockForUpdate`) o `quantity` unidades `disponible` automáticas (`orderBy('id')`); las pasa a `prestado`, crea filas en `loan_item_units`, fija `delivered_quantity` y sincroniza. Sin unidades suficientes → el `422` de stock insuficiente actual.
-- [ ] `POST /loans/checkout`: `items.*.unit_ids` opcional (`array`, `distinct`, `exists:equipment_units,id`); prohibido para insumos. `storeroom_id` opcional (por defecto el del pañolero o el pañol por defecto).
-- [ ] `POST /loans/{loan}/approve`: asignación automática.
-- [ ] `POST /loans/{loan}/deliver`: cuerpo opcional `items: [{item_id, unit_ids}]` para reemplazar la asignación por las unidades realmente entregadas (libera las anteriores a `disponible`). `DeliverLoanRequest`.
-- [ ] `POST /loans/checkin`: las filas actuales (`item_id`/`product_id` + `condition`) aplican a todas las unidades pendientes del ítem; nuevo `items.*.unit_ids` para devolución parcial por unidad (no repetir unidades; ajustar el control `$seen`, hoy por ítem). `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`. Pivote con `returned_at`/`return_condition`; `returned_quantity` del ítem; el `LoanItem` queda devuelto cuando todas sus unidades lo están (`return_condition` = la peor: `extraviado` > `danado` > `regular` > `bueno`). Para `equipo`, `restoreItem()` deja de sumar contadores y sincroniza.
-- [ ] `LoanItemResource`: claves `units` (whenLoaded: `id`, `code`, `serial_number`, `status`, `returned_at`, `return_condition`), `delivered_quantity`, `returned_quantity`; eager loading en `show`, `pending`, `index` y respuestas de checkout/checkin/deliver. `ResourceContractTest`.
-- [ ] Export CSV/PDF de préstamos: códigos de las unidades junto al nombre.
-- [ ] Tests: ampliar `LoanOperationTest`, `LoanReturnTest`, `LoanRequestTest` (asignación automática, `unit_ids` ajenos/no disponibles/de insumo, deliver con reemplazo, devolución total y parcial por unidad, contadores y alertas, dos checkouts por la última unidad: uno falla).
+- [x] `deductStock()`: `insumo` como hoy; `equipo` asigna `unit_ids` validados (cantidad = `quantity`, mismo producto, `disponible`, `lockForUpdate`) o `quantity` unidades `disponible` automáticas (`orderBy('id')`); las pasa a `prestado`, crea filas en `loan_item_units`, fija `delivered_quantity` y sincroniza. Sin unidades suficientes → el `422` de stock insuficiente actual.
+- [x] `POST /loans/checkout`: `items.*.unit_ids` opcional (`array`, `distinct`, `exists:equipment_units,id`); prohibido para insumos. `storeroom_id` opcional (por defecto el del pañolero o el pañol por defecto).
+- [x] `POST /loans/{loan}/approve`: asignación automática.
+- [x] `POST /loans/{loan}/deliver`: cuerpo opcional `items: [{item_id, unit_ids}]` para reemplazar la asignación por las unidades realmente entregadas (libera las anteriores a `disponible`). `DeliverLoanRequest`.
+- [x] `POST /loans/checkin`: las filas actuales (`item_id`/`product_id` + `condition`) aplican a todas las unidades pendientes del ítem; nuevo `items.*.unit_ids` para devolución parcial por unidad (no repetir unidades; ajustar el control `$seen`, hoy por ítem). `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`. Pivote con `returned_at`/`return_condition`; `returned_quantity` del ítem; el `LoanItem` queda devuelto cuando todas sus unidades lo están (`return_condition` = la peor: `extraviado` > `danado` > `regular` > `bueno`). Para `equipo`, `restoreItem()` deja de sumar contadores y sincroniza.
+- [x] `LoanItemResource`: claves `units` (whenLoaded: `id`, `code`, `serial_number`, `status`, `returned_at`, `return_condition`), `delivered_quantity`, `returned_quantity`; eager loading en `show`, `pending`, `index` y respuestas de checkout/checkin/deliver. `ResourceContractTest`.
+- [x] Export CSV/PDF de préstamos: códigos de las unidades junto al nombre.
+- [x] Tests: ampliar `LoanOperationTest`, `LoanReturnTest`, `LoanRequestTest` (asignación automática, `unit_ids` ajenos/no disponibles/de insumo, deliver con reemplazo, devolución total y parcial por unidad, contadores y alertas, dos checkouts por la última unidad: uno falla).
 
 ## Fase 8 — Hoja de vida por unidad
 

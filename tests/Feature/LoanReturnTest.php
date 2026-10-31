@@ -50,7 +50,7 @@ class LoanReturnTest extends TestCase
 
     public function test_full_return_in_good_condition_restocks_and_closes_the_loan(): void
     {
-        $product = Product::factory()->create(['quantity' => 10]);
+        $product = Product::factory()->supply()->create(['quantity' => 10]);
         $loan = $this->deliveredLoan([[$product, 3]]);
 
         Sanctum::actingAs($this->warehouse);
@@ -71,8 +71,8 @@ class LoanReturnTest extends TestCase
 
     public function test_damaged_goes_to_repair_and_lost_goes_to_write_off_without_restocking(): void
     {
-        $damaged = Product::factory()->create(['quantity' => 10]);
-        $lost = Product::factory()->create(['quantity' => 10]);
+        $damaged = Product::factory()->supply()->create(['quantity' => 10]);
+        $lost = Product::factory()->supply()->create(['quantity' => 10]);
         $loan = $this->deliveredLoan([[$damaged, 2], [$lost, 4]]);
 
         Sanctum::actingAs($this->warehouse);
@@ -93,8 +93,8 @@ class LoanReturnTest extends TestCase
 
     public function test_partial_return_keeps_the_loan_open_until_all_items_are_back(): void
     {
-        $a = Product::factory()->create(['quantity' => 5]);
-        $b = Product::factory()->create(['quantity' => 5]);
+        $a = Product::factory()->supply()->create(['quantity' => 5]);
+        $b = Product::factory()->supply()->create(['quantity' => 5]);
         $loan = $this->deliveredLoan([[$a, 1], [$b, 1]]);
 
         Sanctum::actingAs($this->warehouse);
@@ -114,10 +114,10 @@ class LoanReturnTest extends TestCase
 
     public function test_checkin_validations(): void
     {
-        $product = Product::factory()->create(['quantity' => 5]);
+        $product = Product::factory()->supply()->create(['quantity' => 5]);
         $loan = $this->deliveredLoan([[$product, 1]]);
         $pending = Loan::factory()->create();
-        $other = $this->deliveredLoan([[Product::factory()->create(), 1]]);
+        $other = $this->deliveredLoan([[Product::factory()->supply()->create(), 1]]);
 
         Sanctum::actingAs($this->warehouse);
 
@@ -142,7 +142,7 @@ class LoanReturnTest extends TestCase
 
     public function test_only_warehouse_and_admin_can_check_in(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->supply()->create();
         $loan = $this->deliveredLoan([[$product, 1]]);
         $payload = ['loan_id' => $loan->id, 'items' => [['product_id' => $product->id, 'condition' => 'bueno']]];
 
@@ -155,7 +155,7 @@ class LoanReturnTest extends TestCase
 
     public function test_overdue_flag_and_filter(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->supply()->create();
         $late = $this->deliveredLoan([[$product, 1]], ['loan_date' => today()->subDays(5)->toDateString(), 'due_date' => today()->subDays(3)->toDateString()]);
         $onTime = $this->deliveredLoan([[$product, 1]]);
 
@@ -175,7 +175,7 @@ class LoanReturnTest extends TestCase
 
     public function test_due_date_defaults_to_loan_date_and_must_not_precede_it(): void
     {
-        $product = Product::factory()->create(['quantity' => 10]);
+        $product = Product::factory()->supply()->create(['quantity' => 10]);
         Sanctum::actingAs($this->teacher);
 
         $base = ['items' => [['product_id' => $product->id, 'quantity' => 1]], 'subject' => 'Redes', 'room' => 'Sala 1'];
@@ -209,7 +209,7 @@ class LoanReturnTest extends TestCase
 
     public function test_export_as_csv_and_pdf_respects_filters_and_roles(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->supply()->create();
         $this->deliveredLoan([[$product, 2]], ['room' => 'Sala Export 77']);
         $this->deliveredLoan([[$product, 1]], ['room' => 'Otra sala']);
 

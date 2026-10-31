@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\InvalidLoanStatusTransition;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\DeliverLoanRequest;
 use App\Http\Requests\RejectLoanRequest;
 use App\Http\Requests\StoreLoanCheckinRequest;
 use App\Http\Requests\StoreLoanCheckoutRequest;
@@ -50,7 +51,7 @@ class LoanController extends Controller
     public function myRequests(Request $request): AnonymousResourceCollection
     {
         $query = Loan::where('requested_by', $request->user()->id)
-            ->with('items.product')
+            ->with(['items.product', 'items.units'])
             ->orderByDesc('created_at');
 
         $status = $request->input('estado', $request->input('status'));
@@ -85,7 +86,7 @@ class LoanController extends Controller
     {
         Gate::authorize('viewAny', Loan::class);
 
-        $query = Loan::with(['items.product.location', 'requester'])
+        $query = Loan::with(['items.product.location', 'items.units', 'requester'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -104,7 +105,7 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'requester', 'approver', 'processor'])
+            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor'])
         );
     }
 
@@ -120,7 +121,7 @@ class LoanController extends Controller
 
         $query = Loan::where('status', LoanStateMachine::STATUS_PENDING)
             ->where('type', Loan::TYPE_REMOTE)
-            ->with(['items.product.location', 'requester'])
+            ->with(['items.product.location', 'items.units', 'requester'])
             ->orderBy('created_at');
 
         $perPage = $this->perPage($request);
@@ -144,7 +145,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} aprobado: stock descontado y docente notificado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->fresh(['items.product'])),
+            'loan' => new LoanResource($loan->fresh(['items.product', 'items.units'])),
         ]);
     }
 
@@ -170,12 +171,10 @@ class LoanController extends Controller
      * Confirma la entrega material al docente: `en_proceso` -> `procesado`
      * y notifica al solicitante (REQ-10).
      */
-    public function deliver(Request $request, Loan $loan, LoanService $loanService): JsonResponse
+    public function deliver(DeliverLoanRequest $request, Loan $loan, LoanService $loanService): JsonResponse
     {
-        Gate::authorize('deliver', $loan);
-
         try {
-            $loanService->deliver($loan, $request->user());
+            $loanService->deliver($loan, $request->user(), $request->validated('items', []));
         } catch (InvalidLoanStatusTransition $e) {
             return $this->invalidTransitionResponse($e, $loan);
         }
@@ -183,7 +182,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} entregado y marcado como procesado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan),
+            'loan' => new LoanResource($loan->load('items.units')),
         ]);
     }
 
@@ -196,7 +195,7 @@ class LoanController extends Controller
     {
         $loan = $loanService->checkout($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load(['items.product'])))->resolve();
+        $data = (new LoanResource($loan->load(['items.product', 'items.units'])))->resolve();
 
         return response()->json([
             'message' => 'Préstamo presencial registrado y stock descontado.',
@@ -271,7 +270,7 @@ class LoanController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $query = Loan::with(['items', 'requester'])->orderBy('loan_date')->orderBy('id');
+        $query = Loan::with(['items.units', 'requester'])->orderBy('loan_date')->orderBy('id');
         $loanService->applyHistoryFilters($query, $request);
 
         if (! empty($validated['from'])) {
@@ -310,7 +309,7 @@ class LoanController extends Controller
                     ($loan->due_date ?? $loan->loan_date)?->toDateString(),
                     $loan->returned_at?->toDateTimeString(),
                     $loan->isOverdue() ? 'sí' : 'no',
-                    $loan->items->map(fn ($i) => "{$i->name} x{$i->quantity}")->implode('; '),
+                    $loan->items->map(fn ($i) => "{$i->name} x{$i->quantity}".($i->units->isNotEmpty() ? ' ['.$i->units->pluck('code')->implode(', ').']' : ''))->implode('; '),
                 ]);
             }
 

@@ -43,7 +43,7 @@
                         <td>{{ $loan->loan_date?->format('d-m-Y') }}</td>
                         <td class="{{ $loan->isOverdue() ? 'late' : '' }}">{{ ($loan->due_date ?? $loan->loan_date)?->format('d-m-Y') }}</td>
                         <td>{{ $loan->returned_at?->format('d-m-Y H:i') ?? '—' }}</td>
-                        <td>{{ $loan->items->map(fn ($i) => $i->name.' x'.$i->quantity)->implode(', ') }}</td>
+                        <td>{{ $loan->items->map(fn ($i) => $i->name.' x'.$i->quantity.($i->relationLoaded('units') && $i->units->isNotEmpty() ? ' ['.$i->units->pluck('code')->implode(', ').']' : ''))->implode(', ') }}</td>
                     </tr>
                 @endforeach
             </tbody>

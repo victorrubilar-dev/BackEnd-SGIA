@@ -83,7 +83,7 @@ class ResourceContractTest extends TestCase
         $item = LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => 'x', 'quantity' => 1]);
 
         $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,code,created_at,due_date,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,status,status_label,subject,time_block,type,updated_at'));
-        $this->assertKeys(LoanItemResource::class, $item, explode(',', 'available_stock,cajon,id,is_returned,loan_id,location,name,product_id,quantity,return_condition,returned_at'));
+        $this->assertKeys(LoanItemResource::class, $item, explode(',', 'available_stock,cajon,delivered_quantity,id,is_returned,loan_id,location,name,product_id,quantity,return_condition,returned_at,returned_quantity'));
     }
 
     public function test_purchase_and_quotation_resources(): void

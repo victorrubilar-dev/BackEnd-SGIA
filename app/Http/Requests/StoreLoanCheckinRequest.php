@@ -29,6 +29,16 @@ class StoreLoanCheckinRequest extends FormRequest
             'items.*.product_id' => ['required_without:items.*.item_id', 'nullable', 'integer'],
             'items.*.condition' => ['required', 'string', Rule::in(['bueno', 'optimo', 'regular', 'dañado', 'danado', 'extraviado'])],
             'items.*.damaged' => ['nullable', 'boolean'],
+            'items.*.unit_ids' => ['sometimes', 'array', 'min:1'],
+            'items.*.unit_ids.*' => ['integer', 'distinct', 'exists:equipment_units,id'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'items.*.unit_ids.*.distinct' => 'Una unidad no puede devolverse dos veces en la misma operación.',
+            'items.*.unit_ids.*.exists' => 'Una de las unidades indicadas no existe.',
         ];
     }
 }
