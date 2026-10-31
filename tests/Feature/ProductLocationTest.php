@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cajon;
+use App\Models\Category;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
@@ -32,6 +33,7 @@ class ProductLocationTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $response = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Pinza Amperimetrica Digital',
             'quantity' => 10,
             'sala' => 'Lab-E3',

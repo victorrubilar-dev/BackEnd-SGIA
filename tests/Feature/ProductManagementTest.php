@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
@@ -43,6 +45,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $response = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Cautin de Soldar 60W Pro',
             'description' => 'Cautín profesional para laboratorio de electrónica',
             'quantity' => 15,
@@ -81,6 +84,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $responseCreate = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Intento Docente',
             'quantity' => 5,
             'supplier_id' => $this->supplier->id,
@@ -131,6 +135,7 @@ class ProductManagementTest extends TestCase
 
         // Name with invalid special chars (e.g. $, <>, etc.)
         $resName = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Multimetro $$$ <script>',
             'quantity' => 5,
             'supplier_id' => $this->supplier->id,
@@ -140,6 +145,7 @@ class ProductManagementTest extends TestCase
 
         // Negative quantity
         $resNegative = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Multimetro Digital',
             'quantity' => -3,
             'supplier_id' => $this->supplier->id,
@@ -149,6 +155,7 @@ class ProductManagementTest extends TestCase
 
         // Non-existing supplier
         $resSupplier = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Multimetro Digital',
             'quantity' => 10,
             'supplier_id' => 999999,
@@ -190,6 +197,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $id = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Multimetro Digital',
             'quantity' => 3,
             'stock_minimo' => 1,
@@ -215,12 +223,12 @@ class ProductManagementTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $this->postJson('/api/products', ['name' => 'Router Cisco', 'quantity' => 2])
+        $this->postJson('/api/products', ['category_id' => Category::factory()->create()->id, 'name' => 'Router Cisco', 'quantity' => 2])
             ->assertCreated()->assertJsonPath('data.type', 'equipo');
-        $this->postJson('/api/products', ['type' => 'herramienta', 'name' => 'Cable UTP', 'quantity' => 10])
+        $this->postJson('/api/products', ['category_id' => Category::factory()->create()->id, 'type' => 'herramienta', 'name' => 'Cable UTP', 'quantity' => 10])
             ->assertUnprocessable()->assertJsonValidationErrors('type');
 
-        $id = $this->postJson('/api/products', ['type' => 'insumo', 'name' => 'Cable UTP', 'quantity' => 10])
+        $id = $this->postJson('/api/products', ['category_id' => Category::factory()->create()->id, 'type' => 'insumo', 'career_id' => Career::where('code', 'IC')->value('id') ?? Career::factory()->create(['code' => 'IC'])->id, 'name' => 'Cable UTP', 'quantity' => 10])
             ->assertCreated()->assertJsonPath('data.type', 'insumo')->json('data.id');
         $equipment = Product::factory()->create();
 

@@ -19,6 +19,9 @@ class UpdateLocationEntityRequest extends FormRequest
             'nombre' => ['sometimes', 'required', 'string', 'max:100'],
             'tipo' => ['sometimes', 'string', Rule::in(Location::TIPOS)],
             'descripcion' => ['nullable', 'string', 'max:500'],
+            'storeroom_id' => ['sometimes', 'integer', 'exists:storerooms,id'],
+            'building' => ['nullable', 'string', 'max:10'],
+            'floor' => ['nullable', 'integer'],
         ];
     }
 }

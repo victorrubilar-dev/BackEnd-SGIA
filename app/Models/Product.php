@@ -15,7 +15,11 @@ class Product extends Model
 
     public const TYPE_SUPPLY = 'insumo';
 
-    public const TYPES = [self::TYPE_EQUIPMENT, self::TYPE_SUPPLY];
+    public const TYPE_SCALE_MODEL = 'maqueta';
+
+    public const TYPES = [self::TYPE_EQUIPMENT, self::TYPE_SUPPLY, self::TYPE_SCALE_MODEL];
+
+    public const MAINTENANCE_PRIORITIES = ['A', 'B', 'C'];
 
     protected $attributes = [
         'type' => self::TYPE_EQUIPMENT,
@@ -34,6 +38,12 @@ class Product extends Model
         'cajon_id',
         'location_id',
         'area',
+        'category_id',
+        'career_id',
+        'maintenance_priority',
+        'requires_calibration',
+        'maintenance_frequency_months',
+        'reference_price',
         'photo_url',
         'is_active',
         'created_by',
@@ -48,7 +58,28 @@ class Product extends Model
             'quantity_written_off' => 'integer',
             'stock_minimo' => 'integer',
             'is_active' => 'boolean',
+            'requires_calibration' => 'boolean',
+            'maintenance_frequency_months' => 'integer',
+            'reference_price' => 'decimal:2',
         ];
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function career(): BelongsTo
+    {
+        return $this->belongsTo(Career::class);
+    }
+
+    /**
+     * Equipos y maquetas se gestionan por unidades; los insumos solo por cantidad.
+     */
+    public function hasUnits(): bool
+    {
+        return in_array($this->type, [self::TYPE_EQUIPMENT, self::TYPE_SCALE_MODEL], true);
     }
 
     public function supplier(): BelongsTo

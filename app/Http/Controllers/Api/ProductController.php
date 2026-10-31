@@ -14,6 +14,7 @@ use App\Http\Resources\ProductResource;
 use App\Models\Cajon;
 use App\Models\Product;
 use App\Services\BarcodeService;
+use App\Services\CodeSequenceService;
 use App\Services\ProductService;
 use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
@@ -45,13 +46,18 @@ class ProductController extends Controller
         StoreProductRequest $request,
         BarcodeService $barcodeService,
         StockAlertService $stockAlertService,
-        ProductService $products
+        ProductService $products,
+        CodeSequenceService $codes
     ): JsonResponse {
         $validated = $request->validated();
 
         // Generación automática de código de barras único si no se proporciona
         if (empty($validated['barcode'])) {
-            $validated['barcode'] = $barcodeService->generateUniqueCode();
+            $type = $validated['type'] ?? Product::TYPE_EQUIPMENT;
+            // Insumo: PREFIJO-CARRERA-000001 (INS-IC-000001); equipo/maqueta llevan el código en cada unidad.
+            $validated['barcode'] = $type === Product::TYPE_SUPPLY
+                ? $codes->forType($type, $validated['career_id'] ?? null)
+                : $barcodeService->generateUniqueCode();
         }
 
         $validated = $products->resolveLocation($validated, $request->input('descripcion'), $request->user()?->id);

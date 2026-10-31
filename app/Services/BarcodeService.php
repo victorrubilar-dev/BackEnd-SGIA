@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Cajon;
 use App\Models\Product;
 use Picqer\Barcode\BarcodeGeneratorHTML;
 use Picqer\Barcode\BarcodeGeneratorPNG;
@@ -17,7 +18,7 @@ class BarcodeService
         do {
             $randomDigits = str_pad((string) random_int(10000000, 99999999), 8, '0', STR_PAD_LEFT);
             $code = "{$prefix}-{$randomDigits}";
-        } while (Product::where('barcode', $code)->exists());
+        } while (Product::where('barcode', $code)->exists() || Cajon::where('barcode', $code)->exists());
 
         return $code;
     }

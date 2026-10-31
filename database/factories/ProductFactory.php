@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Cajon;
+use App\Models\Category;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Supplier;
@@ -31,9 +32,15 @@ class ProductFactory extends Factory
             'cajon_id' => $cajon->id,
             'location_id' => $location->id,
             'area' => 'Electricidad',
+            'category_id' => Category::factory(),
             'photo_url' => null,
             'is_active' => true,
         ];
+    }
+
+    public function scaleModel(): static
+    {
+        return $this->state(['type' => Product::TYPE_SCALE_MODEL]);
     }
 
     public function supply(): static

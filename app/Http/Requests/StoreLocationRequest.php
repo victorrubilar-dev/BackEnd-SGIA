@@ -19,6 +19,9 @@ class StoreLocationRequest extends FormRequest
             'nombre' => ['required', 'string', 'max:100'],
             'tipo' => ['sometimes', 'string', Rule::in(Location::TIPOS)],
             'descripcion' => ['nullable', 'string', 'max:500'],
+            'storeroom_id' => ['sometimes', 'integer', 'exists:storerooms,id'],
+            'building' => ['nullable', 'string', 'max:10'],
+            'floor' => ['nullable', 'integer'],
         ];
     }
 
@@ -26,6 +29,7 @@ class StoreLocationRequest extends FormRequest
     {
         return [
             'nombre.required' => 'El nombre de la ubicación es obligatorio.',
+            'storeroom_id.exists' => 'El pañol seleccionado no existe.',
             'tipo.in' => 'El tipo de ubicación debe ser sala, panol, taller o bodega.',
         ];
     }

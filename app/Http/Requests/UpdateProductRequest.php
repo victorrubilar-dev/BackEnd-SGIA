@@ -45,6 +45,12 @@ class UpdateProductRequest extends FormRequest
             'cajon' => ['sometimes', 'nullable', 'string', 'max:50'],
             'descripcion' => ['sometimes', 'nullable', 'string', 'max:255'],
             'area' => ['nullable', 'string', 'max:255'],
+            'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
+            'career_id' => ['nullable', 'integer', 'exists:careers,id'],
+            'maintenance_priority' => ['sometimes', 'string', Rule::in(Product::MAINTENANCE_PRIORITIES)],
+            'requires_calibration' => ['sometimes', 'boolean'],
+            'maintenance_frequency_months' => ['nullable', 'integer', 'min:1', 'max:240'],
+            'reference_price' => ['nullable', 'numeric', 'min:0', 'max:9999999999999'],
             'photo_url' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
         ];
@@ -54,7 +60,10 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name.regex' => 'El nombre del producto no debe contener caracteres especiales.',
-            'type.in' => 'El tipo de producto debe ser equipo o insumo.',
+            'type.in' => 'El tipo de producto debe ser equipo, insumo o maqueta.',
+            'category_id.exists' => 'La categoría seleccionada no existe.',
+            'career_id.exists' => 'La carrera seleccionada no existe.',
+            'maintenance_priority.in' => 'La prioridad de mantención debe ser A, B o C.',
             'quantity.min' => 'La cantidad de producto debe ser positiva o cero.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'cajon_id.exists' => 'El cajón seleccionado no existe.',

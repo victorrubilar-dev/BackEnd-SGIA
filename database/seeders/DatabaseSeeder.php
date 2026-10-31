@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             StoreroomSeeder::class,
             CareerSeeder::class,
+            CodeSequenceSeeder::class,
             ChartTemplateSeeder::class,
         ]);
 

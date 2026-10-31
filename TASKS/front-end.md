@@ -168,3 +168,11 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - Productos: selector de `type` en el alta (C1b); usuarios: elegir `area` desde `/api/careers` (C1b).
 - Push: registrar y borrar el token de Expo (B4).
 - Préstamos: usar `checkin`, cancelación, exportación y los campos nuevos (C2); producto: `estado` y `PATCH /products/{id}/condition` (C3).
+
+## Plan Equipos — fase 2 (ubicaciones, categorías y códigos)
+
+- `LocationResource` añade `storeroom_id`, `building`, `floor` (opcionales en `POST/PATCH /api/locations`; `storeroom_id` por defecto el pañol `PAN-TEMUCO`).
+- `CajonResource` añade `barcode` (autogenerado `EST-xxxxxxxx`).
+- `ProductResource` añade `category_id`, `career_id`, `maintenance_priority` (`A`|`B`|`C`), `requires_calibration`, `maintenance_frequency_months`, `reference_price`. `type` acepta además `maqueta`.
+- **422 nuevos:** `POST /api/products` sin `category_id`; insumo sin `barcode` y sin `career_id` (la carrera debe tener `code`); `DELETE /api/locations/{id}` con cajones.
+- Insumos sin `barcode` reciben `INS-{carrera}-000001`.

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Location;
+use App\Models\Storeroom;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,6 +18,7 @@ class LocationFactory extends Factory
         $nombre = 'Sala-'.fake()->unique()->numberBetween(100, 999);
 
         return [
+            'storeroom_id' => fn () => Storeroom::default()->id,
             'nombre' => $nombre,
             'tipo' => fake()->randomElement(['sala', 'panol', 'taller']),
             'sala' => $nombre,

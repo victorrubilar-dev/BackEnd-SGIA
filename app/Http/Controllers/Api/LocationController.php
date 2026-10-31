@@ -90,6 +90,14 @@ class LocationController extends Controller
             return response()->json(['message' => 'No tienes permisos para eliminar ubicaciones.'], 403);
         }
 
+        $cajones = $location->cajones()->count();
+        if ($cajones > 0) {
+            return response()->json([
+                'message' => "No es posible eliminar la ubicación \"{$location->nombre}\" porque tiene {$cajones} cajón(es). Elimínalos o reubícalos primero.",
+                'cajones_count' => $cajones,
+            ], 422);
+        }
+
         $location->delete();
 
         return response()->noContent();

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Supplier;
 use App\Models\User;
 use Aws\Command;
@@ -226,6 +227,7 @@ TXT;
         $supplier = Supplier::factory()->create(['name' => 'Proveedor Confirmado S.A.']);
 
         $response = $this->postJson('/api/products', [
+            'category_id' => Category::factory()->create()->id,
             'name' => 'Generador de Señales Digital Confirmado',
             'quantity' => 8,
             'supplier_id' => $supplier->id,

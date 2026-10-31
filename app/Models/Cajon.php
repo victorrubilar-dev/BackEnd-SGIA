@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BarcodeService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -15,11 +16,19 @@ class Cajon extends Model
 
     protected $fillable = [
         'codigo',
+        'barcode',
         'descripcion',
         'location_id',
         'created_by',
         'updated_by',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Cajon $cajon) {
+            $cajon->barcode ??= app(BarcodeService::class)->generateUniqueCode('EST');
+        });
+    }
 
     public function location(): BelongsTo
     {

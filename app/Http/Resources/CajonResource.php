@@ -17,6 +17,7 @@ class CajonResource extends JsonResource
         return [
             'id' => $this->id,
             'codigo' => $this->codigo,
+            'barcode' => $this->barcode,
             'descripcion' => $this->descripcion,
             'location_id' => $this->location_id,
             'location' => new LocationResource($this->whenLoaded('location')),

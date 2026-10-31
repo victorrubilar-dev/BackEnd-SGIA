@@ -59,8 +59,8 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'category,contact_name,created_at,email,id,is_active,name,phone,updated_at'));
 
         $location = Location::factory()->create();
-        $this->assertKeys(LocationResource::class, $location, explode(',', 'cajon,created_at,created_by,descripcion,id,nombre,sala,tipo,updated_at,updated_by'));
-        $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'codigo,created_at,created_by,descripcion,id,location_id,updated_at,updated_by'));
+        $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,created_at,created_by,descripcion,floor,id,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
+        $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'barcode,codigo,created_at,created_by,descripcion,id,location_id,updated_at,updated_by'));
         $this->assertKeys(CareerResource::class, Career::factory()->create(), explode(',', 'code,created_at,created_by,id,level,level_label,name,updated_at,updated_by'));
     }
 
@@ -68,7 +68,7 @@ class ResourceContractTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $this->assertKeys(ProductResource::class, $product, explode(',', 'area,barcode,cajon_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,name,photo_url,quantity,quantity_in_repair,quantity_written_off,stock_minimo,supplier_id,type,updated_at,updated_by'));
+        $this->assertKeys(ProductResource::class, $product, explode(',', 'area,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,name,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by'));
 
         $alert = StockAlert::create(['product_id' => $product->id, 'alert_type' => 'warning', 'current_stock' => 1, 'stock_minimo' => 1, 'message' => 'm', 'is_resolved' => false]);
         $this->assertKeys(StockAlertResource::class, $alert, explode(',', 'alert_type,created_at,current_stock,id,is_resolved,message,product_barcode,product_id,product_name,stock_minimo'));

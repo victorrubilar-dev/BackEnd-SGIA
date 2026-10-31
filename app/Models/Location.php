@@ -32,9 +32,29 @@ class Location extends Model
         'sala',
         'cajon',
         'descripcion',
+        'storeroom_id',
+        'building',
+        'floor',
         'created_by',
         'updated_by',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (Location $location) {
+            $location->storeroom_id ??= Storeroom::default()->id;
+        });
+    }
+
+    protected function casts(): array
+    {
+        return ['floor' => 'integer'];
+    }
+
+    public function storeroom(): BelongsTo
+    {
+        return $this->belongsTo(Storeroom::class);
+    }
 
     public function creator(): BelongsTo
     {
