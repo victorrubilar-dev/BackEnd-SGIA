@@ -68,9 +68,9 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 
 PREFIJO-CARRERA-CODIGO
 
-IC-MAQ-000001 -> maquetas
+MAQ-IC-000001 -> maquetas
 INS-ISD-000002 -> insumos
-AP-PRO-000003 -> productos
+PRO-AP-000003 -> productos
 
 codigo {
 id int
