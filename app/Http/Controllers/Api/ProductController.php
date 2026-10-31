@@ -15,6 +15,7 @@ use App\Models\Cajon;
 use App\Models\Product;
 use App\Services\BarcodeService;
 use App\Services\CodeSequenceService;
+use App\Services\EquipmentUnitService;
 use App\Services\ProductService;
 use App\Services\StockAlertService;
 use Illuminate\Database\QueryException;
@@ -22,7 +23,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -48,7 +51,8 @@ class ProductController extends Controller
         BarcodeService $barcodeService,
         StockAlertService $stockAlertService,
         ProductService $products,
-        CodeSequenceService $codes
+        CodeSequenceService $codes,
+        EquipmentUnitService $units
     ): JsonResponse {
         $validated = $request->validated();
 
@@ -74,10 +78,34 @@ class ProductController extends Controller
         $validated['created_by'] = $request->user()?->id;
         $validated['updated_by'] = $request->user()?->id;
 
-        $product = Product::create($validated);
+        unset($validated['units']);
+        $type = $validated['type'] ?? Product::TYPE_EQUIPMENT;
+        $createsUnits = $type !== Product::TYPE_SUPPLY && (int) $validated['quantity'] > 0;
 
-        // Disparar chequeo de alertas de stock si corresponde
-        $stockAlertService->checkStock($product);
+        if ($createsUnits && empty($validated['cajon_id'])) {
+            throw ValidationException::withMessages([
+                'cajon_id' => 'Indica el cajón (cajon_id, o sala y cajon) donde se guardarán las unidades.',
+            ]);
+        }
+
+        $product = DB::transaction(function () use ($validated, $createsUnits, $request, $units, $stockAlertService) {
+            $product = Product::create($validated);
+
+            if ($createsUnits) {
+                // Las unidades son la fuente de verdad: recalculan contadores y alertas.
+                $units->createUnits(
+                    $product,
+                    (int) $validated['quantity'],
+                    ['cajon_id' => $validated['cajon_id']],
+                    $request->user()?->id,
+                    array_map(fn ($u) => $u['serial_number'] ?? null, $request->input('units', []))
+                );
+            } else {
+                $stockAlertService->checkStock($product);
+            }
+
+            return $product;
+        });
 
         return (new ProductResource($product->load(['supplier', 'cajon.location', 'location'])))
             ->response()
@@ -101,14 +129,38 @@ class ProductController extends Controller
         UpdateProductRequest $request,
         Product $product,
         StockAlertService $stockAlertService,
-        ProductService $products
+        ProductService $products,
+        EquipmentUnitService $units
     ): ProductResource {
         $validated = $request->validated();
+
+        $newType = $validated['type'] ?? $product->type;
+        $becomesUnitManaged = ! $product->hasUnits() && $newType !== Product::TYPE_SUPPLY;
+
+        if ($product->hasUnits() && $newType === Product::TYPE_SUPPLY && $product->units()->exists()) {
+            throw ValidationException::withMessages([
+                'type' => 'El producto tiene unidades registradas; no puede convertirse en insumo.',
+            ]);
+        }
+
+        if (($product->hasUnits() || $becomesUnitManaged) && $newType !== Product::TYPE_SUPPLY && array_key_exists('quantity', $validated) && ! $becomesUnitManaged) {
+            throw ValidationException::withMessages([
+                'quantity' => 'La cantidad de un equipo se calcula a partir de sus unidades.',
+            ]);
+        }
 
         $validated = $products->resolveLocation($validated, $request->input('descripcion'), $request->user()?->id);
 
         $validated['updated_by'] = $request->user()?->id;
-        $product->update($validated);
+
+        DB::transaction(function () use ($product, $validated, $becomesUnitManaged, $units, $request) {
+            $product->update($validated);
+
+            // insumo -> equipo/maqueta: las unidades nacen de los contadores actuales.
+            if ($becomesUnitManaged && ! $product->units()->exists()) {
+                $units->createUnitsFromCounters($product->fresh(), $request->user()?->id);
+            }
+        });
 
         // Si se actualizó la cantidad o el stock mínimo, evaluar alertas
         if (isset($validated['quantity']) || isset($validated['stock_minimo'])) {
@@ -166,6 +218,12 @@ class ProductController extends Controller
      */
     public function updateCondition(UpdateProductConditionRequest $request, Product $product, ProductService $products): JsonResponse
     {
+        if ($product->hasUnits()) {
+            return response()->json([
+                'message' => 'Los equipos cambian de estado por unidad: usa PATCH /api/equipment-units/{id}/status.',
+            ], 422);
+        }
+
         $product = $products->changeCondition(
             $product,
             $request->input('action'),

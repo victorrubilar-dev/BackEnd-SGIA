@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\Product;
@@ -9,6 +10,7 @@ use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Policies\EquipmentUnitPolicy;
 use App\Policies\IncidentReportPolicy;
 use App\Policies\LoanPolicy;
 use App\Policies\ProductPolicy;
@@ -62,6 +64,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Supplier::class, SupplierPolicy::class);
         Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(Loan::class, LoanPolicy::class);
+        Gate::policy(EquipmentUnit::class, EquipmentUnitPolicy::class);
         Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
 
         // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.

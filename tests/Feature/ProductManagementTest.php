@@ -9,10 +9,12 @@ use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\BuildsProductPayload;
 use Tests\TestCase;
 
 class ProductManagementTest extends TestCase
 {
+    use BuildsProductPayload;
     use DatabaseTransactions;
 
     protected User $warehouse;
@@ -45,7 +47,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $response = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Cautin de Soldar 60W Pro',
             'description' => 'Cautín profesional para laboratorio de electrónica',
             'quantity' => 15,
@@ -84,7 +86,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $responseCreate = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Intento Docente',
             'quantity' => 5,
             'supplier_id' => $this->supplier->id,
@@ -135,7 +137,7 @@ class ProductManagementTest extends TestCase
 
         // Name with invalid special chars (e.g. $, <>, etc.)
         $resName = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Multimetro $$$ <script>',
             'quantity' => 5,
             'supplier_id' => $this->supplier->id,
@@ -145,7 +147,7 @@ class ProductManagementTest extends TestCase
 
         // Negative quantity
         $resNegative = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Multimetro Digital',
             'quantity' => -3,
             'supplier_id' => $this->supplier->id,
@@ -155,7 +157,7 @@ class ProductManagementTest extends TestCase
 
         // Non-existing supplier
         $resSupplier = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Multimetro Digital',
             'quantity' => 10,
             'supplier_id' => 999999,
@@ -168,7 +170,7 @@ class ProductManagementTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $product = Product::factory()->create([
+        $product = Product::factory()->supply()->create([
             'name' => 'Osciloscopio Original',
             'quantity' => 10,
             'is_active' => true,
@@ -197,7 +199,7 @@ class ProductManagementTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $id = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Multimetro Digital',
             'quantity' => 3,
             'stock_minimo' => 1,
@@ -210,7 +212,7 @@ class ProductManagementTest extends TestCase
         $other = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
         Sanctum::actingAs($other);
 
-        $this->patchJson("/api/products/{$id}", ['quantity' => 4])->assertOk();
+        $this->patchJson("/api/products/{$id}", ['description' => 'Actualizado'])->assertOk();
 
         $this->assertDatabaseHas('products', [
             'id' => $id,
@@ -223,7 +225,7 @@ class ProductManagementTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $this->postJson('/api/products', ['category_id' => Category::factory()->create()->id, 'name' => 'Router Cisco', 'quantity' => 2])
+        $this->postJson('/api/products', [...$this->unitPayload(), 'name' => 'Router Cisco', 'quantity' => 2])
             ->assertCreated()->assertJsonPath('data.type', 'equipo');
         $this->postJson('/api/products', ['category_id' => Category::factory()->create()->id, 'type' => 'herramienta', 'name' => 'Cable UTP', 'quantity' => 10])
             ->assertUnprocessable()->assertJsonValidationErrors('type');

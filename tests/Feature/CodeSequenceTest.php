@@ -17,10 +17,12 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\BuildsProductPayload;
 use Tests\TestCase;
 
 class CodeSequenceTest extends TestCase
 {
+    use BuildsProductPayload;
     use DatabaseTransactions;
 
     private function career(string $code): Career
@@ -131,7 +133,7 @@ class CodeSequenceTest extends TestCase
 
         $this->postJson('/api/products', [
             'name' => 'Maqueta Rack', 'type' => 'maqueta', 'quantity' => 1,
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'maintenance_priority' => 'A', 'requires_calibration' => true,
             'maintenance_frequency_months' => 6, 'reference_price' => 15990.5,
         ])->assertCreated()

@@ -26,6 +26,8 @@ class StoreProductRequest extends FormRequest
             'barcode' => ['nullable', 'string', 'max:50', 'unique:products,barcode'],
             'type' => ['sometimes', 'string', Rule::in(Product::TYPES)],
             'quantity' => ['required', 'integer', 'min:0'],
+            'units' => ['sometimes', 'array', 'max:'.max(0, (int) $this->input('quantity'))],
+            'units.*.serial_number' => ['nullable', 'string', 'max:100', 'distinct', 'unique:equipment_units,serial_number'],
             'stock_minimo' => ['sometimes', 'integer', 'min:0'],
             'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'cajon_id' => ['nullable', 'integer', 'exists:cajones,id'],
@@ -35,7 +37,7 @@ class StoreProductRequest extends FormRequest
             'descripcion' => ['sometimes', 'nullable', 'string', 'max:255'],
             'area' => ['nullable', 'string', 'max:255'],
             'category_id' => ['required', 'integer', 'exists:categories,id'],
-            'career_id' => [Rule::requiredIf(fn () => $this->input('type') === Product::TYPE_SUPPLY && empty($this->input('barcode'))), 'nullable', 'integer', Rule::exists('careers', 'id')->whereNotNull('code')],
+            'career_id' => [Rule::requiredIf(fn () => $this->needsGeneratedCode()), 'nullable', 'integer', Rule::exists('careers', 'id')->whereNotNull('code')],
             'maintenance_priority' => ['sometimes', 'string', Rule::in(Product::MAINTENANCE_PRIORITIES)],
             'requires_calibration' => ['sometimes', 'boolean'],
             'maintenance_frequency_months' => ['nullable', 'integer', 'min:1', 'max:240'],
@@ -43,6 +45,18 @@ class StoreProductRequest extends FormRequest
             'photo_url' => ['nullable', 'string', 'max:500'],
             'is_active' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /**
+     * Insumo sin `barcode`, o equipo/maqueta con unidades por crear: el código se genera
+     * con el secuenciador y exige una carrera con código.
+     */
+    private function needsGeneratedCode(): bool
+    {
+        $type = $this->input('type', Product::TYPE_EQUIPMENT);
+
+        return ($type === Product::TYPE_SUPPLY && empty($this->input('barcode')))
+            || ($type !== Product::TYPE_SUPPLY && (int) $this->input('quantity') > 0);
     }
 
     public function messages(): array
@@ -53,7 +67,10 @@ class StoreProductRequest extends FormRequest
             'type.in' => 'El tipo de producto debe ser equipo, insumo o maqueta.',
             'category_id.required' => 'La categoría del producto es obligatoria.',
             'category_id.exists' => 'La categoría seleccionada no existe.',
-            'career_id.required' => 'La carrera es obligatoria para generar el código de barras del insumo.',
+            'career_id.required' => 'La carrera es obligatoria para generar el código de barras.',
+            'units.max' => 'No puedes indicar más series que la cantidad de unidades.',
+            'units.*.serial_number.unique' => 'Uno de los números de serie ya está registrado.',
+            'units.*.serial_number.distinct' => 'Los números de serie no pueden repetirse.',
             'career_id.exists' => 'La carrera seleccionada no existe o no tiene código.',
             'maintenance_priority.in' => 'La prioridad de mantención debe ser A, B o C.',
             'quantity.required' => 'La cantidad de stock es obligatoria.',

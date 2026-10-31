@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Category;
 use App\Models\Supplier;
 use App\Models\User;
 use Aws\Command;
@@ -14,10 +13,12 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\BuildsProductPayload;
 use Tests\TestCase;
 
 class InvoiceScanTest extends TestCase
 {
+    use BuildsProductPayload;
     use DatabaseTransactions;
 
     protected User $admin;
@@ -227,7 +228,7 @@ TXT;
         $supplier = Supplier::factory()->create(['name' => 'Proveedor Confirmado S.A.']);
 
         $response = $this->postJson('/api/products', [
-            'category_id' => Category::factory()->create()->id,
+            ...$this->unitPayload(),
             'name' => 'Generador de Señales Digital Confirmado',
             'quantity' => 8,
             'supplier_id' => $supplier->id,

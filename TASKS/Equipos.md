@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (Parte 1 completa, fases 1-5).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (Parte 1 completa; Parte 2: fase 6 hecha).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -158,17 +158,17 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 ## Fase 6 — Sincronización y endpoints de unidades
 
-- [ ] `EquipmentUnitStateMachine` (estilo `LoanStateMachine`) + `App\Exceptions\InvalidEquipmentUnitStatusTransition` (registrar su render como las otras):
+- [x] `EquipmentUnitStateMachine` (estilo `LoanStateMachine`) + `App\Exceptions\InvalidEquipmentUnitStatusTransition` (registrar su render como las otras):
   - `disponible` → `prestado`, `en_reparacion`, `dado_de_baja`
   - `prestado` → `disponible`, `en_reparacion`, `dado_de_baja` (solo por devolución)
   - `en_reparacion` → `disponible`, `dado_de_baja`
   - `dado_de_baja` → (final)
-- [ ] `App\Services\EquipmentUnitService`:
+- [x] `App\Services\EquipmentUnitService`:
   - `syncProductCounters(Product $product)`: transacción, `lockForUpdate` del producto, `GROUP BY status`, guarda los tres contadores y llama a `StockAlertService::checkStock()`. **Todo cambio de estado o alta/baja de unidades termina aquí.**
   - `createUnits(Product $product, int $count, array $attributes, ?int $userId)`: códigos con `CodeSequenceService::forProduct($product)` (`PRO-{carrera}-…` o `MAQ-{carrera}-…`); sin carrera con código → `422`. Un `code` enviado a mano solo se acepta en el alta individual y debe ser único.
   - `changeStatus(EquipmentUnit $unit, string $to, ?int $userId, bool $fromLoan = false)`: valida con la máquina de estados; `prestado` como origen o destino solo si `$fromLoan` (si no, `422`: "El estado prestado solo se cambia mediante préstamos.").
-- [ ] `BarcodeService::generateUniqueCode()` comprueba unicidad en `products.barcode`, `cajones.barcode` y `equipment_units.code` (un escaneo no puede ser ambiguo).
-- [ ] Rutas (lectura: todos los autenticados; escritura `AD-01`, `DIR-01`, `PAN-01`; borrado `AD-01`, `DIR-01`, como `ProductPolicy`). Middleware `role:` + `EquipmentUnitPolicy`; estáticas antes de `{equipmentUnit}`:
+- [x] `BarcodeService::generateUniqueCode()` comprueba unicidad en `products.barcode`, `cajones.barcode` y `equipment_units.code` (un escaneo no puede ser ambiguo).
+- [x] Rutas (lectura: todos los autenticados; escritura `AD-01`, `DIR-01`, `PAN-01`; borrado `AD-01`, `DIR-01`, como `ProductPolicy`). Middleware `role:` + `EquipmentUnitPolicy`; estáticas antes de `{equipmentUnit}`:
 
 | Método | Ruta | Descripción |
 |---|---|---|
@@ -182,13 +182,13 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 | DELETE | `/equipment-units/{equipmentUnit}` | `204`; `422` si tiene préstamos, mantenciones o informes, o está `prestado` (darla de baja en su lugar). |
 | GET | `/equipment-units/{equipmentUnit}/barcode` | Igual que `/products/{id}/barcode` con `code`. |
 
-- [ ] `EquipmentUnitController` delgado, FormRequests (`Store`, `Update`, `UpdateStatus`) con mensajes en español, `EquipmentUnitResource` (`id`, `product_id`, `product`, `code`, `serial_number`, `status`, `cajon_id`, `cajon`, `location`, `storeroom`, `last_maintenance_at`, `next_maintenance_at`, auditoría y fechas) en `ResourceContractTest`. Filtros en el servicio con eager loading (añadir a `ListQueryPerformanceTest`).
-- [ ] Reglas de producto:
+- [x] `EquipmentUnitController` delgado, FormRequests (`Store`, `Update`, `UpdateStatus`) con mensajes en español, `EquipmentUnitResource` (`id`, `product_id`, `product`, `code`, `serial_number`, `status`, `cajon_id`, `cajon`, `location`, `storeroom`, `last_maintenance_at`, `next_maintenance_at`, auditoría y fechas) en `ResourceContractTest`. Filtros en el servicio con eager loading (añadir a `ListQueryPerformanceTest`).
+- [x] Reglas de producto:
   - `POST /products` `equipo` con `quantity = N` y `cajon_id` crea N unidades. Opcional `units: [{serial_number?}]`.
   - `PATCH /products/{id}` de un `equipo`: `quantity*` prohibidos → `422` ("La cantidad de un equipo se calcula a partir de sus unidades."). `stock_minimo` editable.
   - `type` `equipo` → `insumo` con unidades → `422`; `insumo` → `equipo` genera unidades desde los contadores.
   - `PATCH /products/{id}/condition` de un `equipo` → `422` indicando `PATCH /equipment-units/{id}/status`.
-- [ ] Tests `EquipmentUnitTest` (feliz, `403` por rol, `422`), `StateMachineTest` (mapa nuevo), contadores y alertas tras cada operación. Ajustar `ProductManagementTest` y `ProductConditionTest`.
+- [x] Tests `EquipmentUnitTest` (feliz, `403` por rol, `422`), `StateMachineTest` (mapa nuevo), contadores y alertas tras cada operación. Ajustar `ProductManagementTest` y `ProductConditionTest`.
 
 ## Fase 7 — Préstamos con unidades
 

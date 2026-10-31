@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Services\EquipmentUnitStateMachine;
 use App\Services\LoanStateMachine;
 use App\Services\PurchaseStateMachine;
 use App\Services\QuotationStateMachine;
@@ -29,6 +30,12 @@ class StateMachineTest extends TestCase
                 'pendiente' => ['en_camino'],
                 'en_camino' => ['completa'],
                 'completa' => [],
+            ]],
+            'unidades de equipo' => [EquipmentUnitStateMachine::class, [
+                'disponible' => ['prestado', 'en_reparacion', 'dado_de_baja'],
+                'prestado' => ['disponible', 'en_reparacion', 'dado_de_baja'],
+                'en_reparacion' => ['disponible', 'dado_de_baja'],
+                'dado_de_baja' => [],
             ]],
             'cotizaciones' => [QuotationStateMachine::class, [
                 'pendiente' => ['aceptada', 'rechazada'],
@@ -62,8 +69,9 @@ class StateMachineTest extends TestCase
     {
         $this->assertFalse($machine::isValidStatus('inventado'));
         $this->assertSame([], $machine::allowedFrom('inventado'));
-        $this->assertFalse($machine::canTransition('inventado', 'pendiente'));
-        $this->assertFalse($machine::canTransition('pendiente', 'inventado'));
+        $first = array_key_first($expected);
+        $this->assertFalse($machine::canTransition('inventado', $first));
+        $this->assertFalse($machine::canTransition($first, 'inventado'));
     }
 
     #[DataProvider('machines')]
@@ -72,7 +80,7 @@ class StateMachineTest extends TestCase
         $terminal = array_filter($expected, fn (array $allowed) => $allowed === []);
 
         $this->assertNotEmpty($terminal);
-        $this->assertTrue($machine::isValidStatus('pendiente'));
+        $this->assertTrue($machine::isValidStatus(array_key_first($expected)));
     }
 
     public function test_loan_labels_cover_every_status(): void

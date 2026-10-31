@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cajon;
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -61,6 +62,8 @@ class ListQueryPerformanceTest extends TestCase
             $purchase = Purchase::factory()->create(['supplier_id' => $supplier->id, 'created_by' => $admin->id]);
             $purchase->items()->create(['name' => 'Item', 'quantity' => 2, 'unit_price' => 100]);
 
+            EquipmentUnit::factory()->count(2)->create(['product_id' => $product->id]);
+
             $quotation = Quotation::factory()->create(['created_by' => $admin->id]);
             $quotation->items()->create(['product_id' => $product->id, 'name' => $product->name, 'quantity' => 1]);
             $quotation->suppliers()->create(['supplier_id' => $supplier->id]);
@@ -73,6 +76,7 @@ class ListQueryPerformanceTest extends TestCase
             '/api/purchases', '/api/quotations', '/api/loans', '/api/loans/pending',
             '/api/alerts/critical-stock', '/api/users', '/api/tokens',
             "/api/equipment/{$products[0]->id}/reports",
+            "/api/products/{$products[0]->id}/units", '/api/equipment-units?search=PRO&maintenance_due=1&status=disponible',
         ] as $uri) {
             $this->getJson($uri)->assertOk();
         }

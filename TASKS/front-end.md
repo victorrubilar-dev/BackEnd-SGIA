@@ -187,3 +187,11 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `QuotationResource` añade `career_id` y `title` (opcionales en `POST /api/quotations`).
 - `QuotationSupplierResource` añade `quotation_number` (opcional en la respuesta del proveedor) y `has_backup_file`.
 - **422 nuevos:** `DELETE /api/suppliers/{id}` con cotizaciones (desactívalo); `DELETE /api/products/{id}` referenciado por ofertas o facturas.
+
+## Plan Equipos — fase 6 (unidades de equipo)
+
+- Rutas nuevas: `GET/POST /api/products/{id}/units`, `GET /api/equipment-units`, `GET /api/equipment-units/by-code/{code}`, `GET/PATCH/DELETE /api/equipment-units/{id}`, `PATCH /api/equipment-units/{id}/status`, `GET /api/equipment-units/{id}/barcode`.
+- `EquipmentUnitResource`: `id`, `product_id`, `product`, `code`, `serial_number`, `status` (`disponible`|`prestado`|`en_reparacion`|`dado_de_baja`), `cajon_id`, `cajon`, `location`, `storeroom`, `active_loan` (solo en el detalle), `last_maintenance_at`, `next_maintenance_at`, auditoría y fechas.
+- `POST /api/products` de `equipo`/`maqueta` con `quantity > 0`: exige `career_id` (con código) y `cajon_id` (o `sala` + `cajon`) y crea las unidades con códigos `PRO-{carrera}-000001` / `MAQ-{carrera}-000001`; `units: [{serial_number}]` opcional.
+- **422 nuevos:** `PATCH /api/products/{id}` con `quantity` en un equipo ("La cantidad de un equipo se calcula a partir de sus unidades."); `type` → `insumo` con unidades; `PATCH /api/products/{id}/condition` en un equipo (usar `PATCH /api/equipment-units/{id}/status`); cambiar a `prestado` a mano; `DELETE` de una unidad prestada o con historial.
+- `products.quantity`, `quantity_in_repair` y `quantity_written_off` de un equipo se derivan de las unidades (las `prestado` no suman).

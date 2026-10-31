@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
+use App\Http\Controllers\Api\EquipmentUnitController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LocationController;
@@ -184,4 +185,18 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::patch('/products/{product}/status', [ProductController::class, 'updateStatus']);
     Route::patch('/products/{product}/condition', [ProductController::class, 'updateCondition']);
     Route::apiResource('products', ProductController::class);
+
+    // Unidades de equipo (productos `equipo` y `maqueta`): lectura para todos,
+    // escritura AD-01/DIR-01/PAN-01 y borrado AD-01/DIR-01 (EquipmentUnitPolicy).
+    Route::get('/products/{product}/units', [EquipmentUnitController::class, 'indexForProduct']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->post('/products/{product}/units', [EquipmentUnitController::class, 'storeForProduct']);
+    Route::get('/equipment-units', [EquipmentUnitController::class, 'index']);
+    Route::get('/equipment-units/by-code/{code}', [EquipmentUnitController::class, 'byCode']);
+    Route::get('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'show']);
+    Route::get('/equipment-units/{equipmentUnit}/barcode', [EquipmentUnitController::class, 'barcode']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::patch('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'update']);
+        Route::patch('/equipment-units/{equipmentUnit}/status', [EquipmentUnitController::class, 'updateStatus']);
+    });
+    Route::middleware('role:AD-01,DIR-01')->delete('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'destroy']);
 });

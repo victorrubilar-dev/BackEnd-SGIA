@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Resources\CajonResource;
 use App\Http\Resources\CareerResource;
+use App\Http\Resources\EquipmentUnitResource;
 use App\Http\Resources\IncidentReportResource;
 use App\Http\Resources\LoanItemResource;
 use App\Http\Resources\LoanResource;
@@ -19,6 +20,7 @@ use App\Http\Resources\SupplierResource;
 use App\Http\Resources\UserResource;
 use App\Models\Cajon;
 use App\Models\Career;
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -98,6 +100,11 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,career_id,code,converted_at,created_at,created_by,expires_at,id,notes,purchase_id,status,title,updated_at'));
         $this->assertKeys(QuotationItemResource::class, $quotation->items()->create(['name' => 'a', 'quantity' => 1]), explode(',', 'id,name,product_id,quantity,quotation_id'));
         $this->assertKeys(QuotationSupplierResource::class, $quotation->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'contacted_at,email_error,email_sent_at,has_backup_file,id,notes,offer_total,quotation_id,quotation_number,responded_at,status,supplier_id'));
+    }
+
+    public function test_equipment_unit_resource(): void
+    {
+        $this->assertKeys(EquipmentUnitResource::class, EquipmentUnit::factory()->create(), explode(',', 'cajon_id,code,created_at,created_by,id,last_maintenance_at,next_maintenance_at,product_id,serial_number,status,updated_at,updated_by'));
     }
 
     public function test_incident_report_resource(): void

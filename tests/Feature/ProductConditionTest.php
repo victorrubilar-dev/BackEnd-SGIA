@@ -14,7 +14,7 @@ class ProductConditionTest extends TestCase
 
     public function test_stock_moves_between_available_repair_and_written_off(): void
     {
-        $product = Product::factory()->create(['quantity' => 10]);
+        $product = Product::factory()->supply()->create(['quantity' => 10]);
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]));
 
         $this->patchJson("/api/products/{$product->id}/condition", ['action' => 'send_to_repair', 'quantity' => 4])
@@ -30,7 +30,7 @@ class ProductConditionTest extends TestCase
 
     public function test_cannot_move_more_units_than_available_and_requires_source_for_write_off(): void
     {
-        $product = Product::factory()->create(['quantity' => 2]);
+        $product = Product::factory()->supply()->create(['quantity' => 2]);
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
 
         $this->patchJson("/api/products/{$product->id}/condition", ['action' => 'send_to_repair', 'quantity' => 3])
@@ -42,7 +42,7 @@ class ProductConditionTest extends TestCase
 
     public function test_teacher_cannot_change_condition(): void
     {
-        $product = Product::factory()->create();
+        $product = Product::factory()->supply()->create();
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true]));
 
         $this->patchJson("/api/products/{$product->id}/condition", ['action' => 'send_to_repair', 'quantity' => 1])->assertForbidden();

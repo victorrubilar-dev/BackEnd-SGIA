@@ -58,7 +58,7 @@ class StockAlertTest extends TestCase
     {
         Notification::fake();
 
-        $product = Product::factory()->create([
+        $product = Product::factory()->supply()->create([
             'quantity' => 20,
             'stock_minimo' => 10,
         ]);
@@ -92,7 +92,7 @@ class StockAlertTest extends TestCase
     {
         Notification::fake();
 
-        $product = Product::factory()->create([
+        $product = Product::factory()->supply()->create([
             'quantity' => 15,
             'stock_minimo' => 10,
         ]);
@@ -119,7 +119,7 @@ class StockAlertTest extends TestCase
 
     public function test_alerts_auto_resolve_when_stock_restocked_above_threshold(): void
     {
-        $product = Product::factory()->create([
+        $product = Product::factory()->supply()->create([
             'quantity' => 5,
             'stock_minimo' => 10,
         ]);
@@ -148,7 +148,7 @@ class StockAlertTest extends TestCase
 
     public function test_check_stock_alert_job_runs_correctly(): void
     {
-        $product = Product::factory()->create([
+        $product = Product::factory()->supply()->create([
             'quantity' => 3,
             'stock_minimo' => 5,
         ]);
@@ -168,7 +168,7 @@ class StockAlertTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $product = Product::factory()->create(['name' => 'Tester Multimetro']);
+        $product = Product::factory()->supply()->create(['name' => 'Tester Multimetro']);
 
         StockAlert::create([
             'product_id' => $product->id,
@@ -194,7 +194,7 @@ class StockAlertTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $product = Product::factory()->create();
+        $product = Product::factory()->supply()->create();
 
         $alert = StockAlert::create([
             'product_id' => $product->id,
@@ -225,7 +225,7 @@ class StockAlertTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $alert = StockAlert::create([
-            'product_id' => Product::factory()->create()->id,
+            'product_id' => Product::factory()->supply()->create()->id,
             'alert_type' => StockAlert::TYPE_WARNING,
             'current_stock' => 8,
             'stock_minimo' => 5,
@@ -245,7 +245,7 @@ class StockAlertTest extends TestCase
         Sanctum::actingAs($director);
 
         $alert = StockAlert::create([
-            'product_id' => Product::factory()->create()->id,
+            'product_id' => Product::factory()->supply()->create()->id,
             'alert_type' => StockAlert::TYPE_WARNING,
             'current_stock' => 8,
             'stock_minimo' => 5,
