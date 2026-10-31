@@ -61,7 +61,7 @@ class ResourceContractTest extends TestCase
         $location = Location::factory()->create();
         $this->assertKeys(LocationResource::class, $location, explode(',', 'cajon,created_at,created_by,descripcion,id,nombre,sala,tipo,updated_at,updated_by'));
         $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'codigo,created_at,created_by,descripcion,id,location_id,updated_at,updated_by'));
-        $this->assertKeys(CareerResource::class, Career::factory()->create(), explode(',', 'created_at,created_by,id,level,level_label,name,updated_at,updated_by'));
+        $this->assertKeys(CareerResource::class, Career::factory()->create(), explode(',', 'code,created_at,created_by,id,level,level_label,name,updated_at,updated_by'));
     }
 
     public function test_product_and_stock_alert_resources(): void

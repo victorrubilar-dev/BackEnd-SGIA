@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * Carrera y su nivel. Los usuarios la referencian por nombre en `users.area`.
@@ -22,8 +23,12 @@ class Career extends Model
         self::LEVEL_PROFESSIONAL => 'Profesional',
     ];
 
+    /** Códigos válidos: segmento CARRERA de los códigos de barra. */
+    public const CODES = ['ISD', 'II', 'IC', 'AP'];
+
     protected $fillable = [
         'name',
+        'code',
         'level',
         'created_by',
         'updated_by',
@@ -32,5 +37,10 @@ class Career extends Model
     public function levelLabel(): string
     {
         return self::LEVELS[$this->level] ?? $this->level;
+    }
+
+    public function users(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 }

@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Cajon;
-use App\Models\Career;
 use App\Models\Location;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -16,6 +15,14 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        // Catálogos base: también en producción y antes de crear usuarios.
+        $this->call([
+            RoleSeeder::class,
+            StoreroomSeeder::class,
+            CareerSeeder::class,
+            ChartTemplateSeeder::class,
+        ]);
+
         $password = config('sgia.seed_admin_password')
             ?? (app()->isProduction() ? null : 'Admin1234!');
 
@@ -57,15 +64,6 @@ class DatabaseSeeder extends Seeder
                     'is_active' => true,
                 ]
             );
-        }
-
-        // Carreras del área con su nivel (CAREERS por level en /api/metrics)
-        foreach ([
-            'Ingeniería en Informática' => Career::LEVEL_PROFESSIONAL,
-            'Ingeniería en Ciberseguridad' => Career::LEVEL_PROFESSIONAL,
-            'Analista Programador' => Career::LEVEL_TECHNICIAN,
-        ] as $name => $level) {
-            Career::firstOrCreate(['name' => $name], ['level' => $level, 'created_by' => $admin->id, 'updated_by' => $admin->id]);
         }
 
         // Crear ubicaciones base (Salas y Pañoles)

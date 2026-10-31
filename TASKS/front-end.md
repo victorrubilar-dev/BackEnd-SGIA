@@ -106,7 +106,7 @@ Semántica de la métrica: `COUNT` = registros; `TOTAL` = unidades prestadas; `A
 - `POST` y `PATCH /api/products` aceptan `type` opcional (`equipo` | `insumo`; por defecto `equipo`, otro valor → `422`). Agregar el selector al formulario de alta (web y móvil) y a la confirmación del escaneo de facturas; sin él, todo lo nuevo cuenta como equipo en los dashboards. `ProductResource` trae `type` y `GET /api/products` filtra con `?type=`. Los productos que ya existían quedaron como `equipo`.
 - En `/api/metrics`, `EQUIPMENT` solo cuenta productos `equipo` y `SUPPLIES` solo `insumo` (incluida la rotación). Las tarjetas de `executiveKpis` siguen sumando todos los productos.
 - `CAREERS` acepta `groupBy: "level"`: etiquetas `Técnico de Nivel Superior`, `Profesional` y `Sin nivel` (el `area` del solicitante no coincide con ninguna carrera del catálogo).
-- Nuevo catálogo `GET/POST /api/careers`, `GET/PATCH/DELETE /api/careers/{id}` (lectura `AD-01`/`DIR-01`, escritura `AD-01`): `id`, `name`, `level` (`tecnico` | `profesional`), `level_label`. El `area` del usuario debe escribirse igual que `name` para que cuente: conviene que el formulario de usuarios ofrezca las carreras como opciones.
+- Nuevo catálogo `GET/POST /api/careers`, `GET/PATCH/DELETE /api/careers/{id}` (lectura `AD-01`/`DIR-01`, escritura `AD-01`): `id`, `name`, `code` (`ISD`|`II`|`IC`|`AP`, nullable; opcional en alta/edición, único), `level` (`tecnico` | `profesional`), `level_label`. El `area` del usuario debe escribirse igual que `name` para que cuente: conviene que el formulario de usuarios ofrezca las carreras como opciones.
 
 ### C2. Préstamos: devolución, cancelación, exportación y vencimiento — Pronto (hecho en el backend)
 Ya existen, con el contrato que el cliente esperaba:

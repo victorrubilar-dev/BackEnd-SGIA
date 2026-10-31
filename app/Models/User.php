@@ -6,12 +6,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'last_login_at', 'role', 'area', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'last_login_at', 'role', 'area', 'is_active', 'storeroom_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -33,6 +35,19 @@ class User extends Authenticatable
     ];
 
     /**
+     * `users.role` es la única fuente de escritura: `role_id` se sincroniza solo.
+     */
+    protected static function booted(): void
+    {
+        static::saving(function (User $user) {
+            if ($user->role_id === null || $user->isDirty('role')) {
+                $user->role_id = Role::where('code', $user->role)->value('id')
+                    ?? Role::where('code', self::ROLE_TEACHER)->value('id');
+            }
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -45,6 +60,26 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function roleModel(): BelongsTo
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    public function storeroom(): BelongsTo
+    {
+        return $this->belongsTo(Storeroom::class);
+    }
+
+    public function careers(): BelongsToMany
+    {
+        return $this->belongsToMany(Career::class)->withTimestamps();
+    }
+
+    public function charts(): HasMany
+    {
+        return $this->hasMany(UserChart::class);
     }
 
     public function deviceTokens(): HasMany

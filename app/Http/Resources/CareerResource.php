@@ -17,6 +17,7 @@ class CareerResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'code' => $this->code,
             'level' => $this->level,
             'level_label' => $this->levelLabel(),
             'created_by' => $this->created_by,

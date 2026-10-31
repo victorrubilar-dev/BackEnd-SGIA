@@ -20,6 +20,19 @@ class CareerManagementTest extends TestCase
         return $user;
     }
 
+    public function test_career_code_is_validated_and_unique(): void
+    {
+        $this->actingAsRole(User::ROLE_ADMIN);
+        Career::where('code', 'IC')->update(['code' => null]);
+
+        $this->postJson('/api/careers', ['name' => 'Cod A', 'level' => 'tecnico', 'code' => 'IC'])
+            ->assertCreated()->assertJsonPath('data.code', 'IC');
+        $this->postJson('/api/careers', ['name' => 'Cod B', 'level' => 'tecnico', 'code' => 'IC'])
+            ->assertStatus(422)->assertJsonValidationErrors('code');
+        $this->postJson('/api/careers', ['name' => 'Cod C', 'level' => 'tecnico', 'code' => 'ZZ'])
+            ->assertStatus(422)->assertJsonValidationErrors('code');
+    }
+
     public function test_admin_manages_careers_with_audit_fields(): void
     {
         $admin = $this->actingAsRole(User::ROLE_ADMIN);
