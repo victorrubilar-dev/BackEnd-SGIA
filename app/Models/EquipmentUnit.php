@@ -5,6 +5,8 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOneThrough;
 
 /**
@@ -67,6 +69,28 @@ class EquipmentUnit extends Model
     public function location(): HasOneThrough
     {
         return $this->hasOneThrough(Location::class, Cajon::class, 'id', 'id', 'cajon_id', 'location_id');
+    }
+
+    public function incidentReports(): HasMany
+    {
+        return $this->hasMany(IncidentReport::class);
+    }
+
+    public function maintenanceRecords(): HasMany
+    {
+        return $this->hasMany(MaintenanceRecord::class);
+    }
+
+    public function maintenanceDocuments(): HasMany
+    {
+        return $this->hasMany(MaintenanceDocument::class);
+    }
+
+    public function loanItems(): BelongsToMany
+    {
+        return $this->belongsToMany(LoanItem::class, 'loan_item_units')
+            ->withPivot(['returned_at', 'return_condition'])
+            ->withTimestamps();
     }
 
     public function creator(): BelongsTo

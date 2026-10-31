@@ -40,6 +40,11 @@ class Career extends Model
         return self::LEVELS[$this->level] ?? $this->level;
     }
 
+    public function students(): HasMany
+    {
+        return $this->hasMany(Student::class);
+    }
+
     public function annualBudgets(): HasMany
     {
         return $this->hasMany(AnnualBudget::class);

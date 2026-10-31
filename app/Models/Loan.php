@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class Loan extends Model
@@ -43,6 +44,9 @@ class Loan extends Model
         'room',
         'loan_date',
         'due_date',
+        'expected_return_at',
+        'storeroom_id',
+        'student_id',
         'returned_at',
         'returned_by',
         'return_notes',
@@ -56,11 +60,31 @@ class Loan extends Model
         'notes',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Loan $loan) {
+            $loan->storeroom_id ??= Storeroom::default()->id;
+            $day = $loan->due_date ?? $loan->loan_date;
+            $loan->expected_return_at ??= $day ? Carbon::parse($day)->endOfDay() : null;
+        });
+    }
+
+    public function storeroom(): BelongsTo
+    {
+        return $this->belongsTo(Storeroom::class);
+    }
+
+    public function student(): BelongsTo
+    {
+        return $this->belongsTo(Student::class);
+    }
+
     protected function casts(): array
     {
         return [
             'loan_date' => 'date',
             'due_date' => 'date',
+            'expected_return_at' => 'datetime',
             'returned_at' => 'datetime',
             'approved_at' => 'datetime',
             'processed_at' => 'datetime',

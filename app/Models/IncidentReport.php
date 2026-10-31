@@ -11,6 +11,14 @@ class IncidentReport extends Model
 {
     use HasFactory;
 
+    public const REQUEST_FAILURE = 'falla';
+
+    public const REQUEST_REPLACEMENT = 'reposicion';
+
+    public const REQUEST_MAINTENANCE = 'mantencion';
+
+    public const REQUEST_TYPES = [self::REQUEST_FAILURE, self::REQUEST_REPLACEMENT, self::REQUEST_MAINTENANCE];
+
     public const SEVERITY_LOW = 'leve';
 
     public const SEVERITY_MEDIUM = 'media';
@@ -60,8 +68,15 @@ class IncidentReport extends Model
         self::SEVERITY_HIGH => 'Crítica',
     ];
 
+    protected $attributes = [
+        'request_type' => self::REQUEST_FAILURE,
+    ];
+
     protected $fillable = [
         'product_id',
+        'equipment_unit_id',
+        'request_type',
+        'evidence_photo_path',
         'code',
         'reported_by',
         'title',
@@ -75,6 +90,11 @@ class IncidentReport extends Model
     /**
      * @return array<int, string>
      */
+    public function equipmentUnit(): BelongsTo
+    {
+        return $this->belongsTo(EquipmentUnit::class);
+    }
+
     public function allowedTransitions(): array
     {
         return self::TRANSITIONS[$this->status] ?? [];
