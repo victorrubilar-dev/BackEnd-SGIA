@@ -45,6 +45,11 @@ class Cajon extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    public function equipmentUnits(): HasMany
+    {
+        return $this->hasMany(EquipmentUnit::class);
+    }
+
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);

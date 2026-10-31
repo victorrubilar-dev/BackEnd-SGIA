@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **en implementación (fases 1-2 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **en implementación (fases 1-3 hechas).** Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.
@@ -107,17 +107,17 @@ Correspondencia de columnas ya existentes (no duplicar): `productos.sku` = `prod
 
 Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad va en la Parte 2.
 
-- [ ] `equipment_units`: `id`, `product_id` (FK `products`, **`restrictOnDelete`**), `cajon_id` (FK `cajones`, `restrictOnDelete`, **NOT NULL**: el estante es la ubicación física; la sala y el pañol se derivan por `cajon → location → storeroom`), `code` (string 100, unique; = `codigo_barras`), `serial_number` (string 100, nullable, unique), `status` (string 50, default `disponible`), `last_maintenance_at` (timestamp nullable), `next_maintenance_at` (timestamp nullable), auditoría, timestamps. Índices: `(product_id, status)` y parcial `next_maintenance_at WHERE next_maintenance_at IS NOT NULL` (`DB::statement`).
-- [ ] Modelo `EquipmentUnit` con constantes `STATUS_AVAILABLE = 'disponible'`, `STATUS_ON_LOAN = 'prestado'`, `STATUS_IN_REPAIR = 'en_reparacion'`, `STATUS_WRITTEN_OFF = 'dado_de_baja'`, `STATUSES`; relaciones `product`, `cajon`, `creator`, `updater`; `location()` vía `cajon` (`hasOneThrough` o accesor). `Product::units(): HasMany`, `Cajon::equipmentUnits()`.
-- [ ] **Borrado de productos:** con `restrictOnDelete`, `DELETE /products/{id}` de un producto con unidades lanzaría error de BD. `ProductController::destroy` debe responder `422` ("El producto tiene equipos registrados; dalos de baja en su lugar."). Igual para `DELETE /cajones/{id}` con unidades (la protección actual solo mira productos) y para el borrado masivo.
-- [ ] Migración de datos (con `DB::table`), para cada producto `type = equipo` (todavía no hay maquetas):
+- [x] `equipment_units`: `id`, `product_id` (FK `products`, **`restrictOnDelete`**), `cajon_id` (FK `cajones`, `restrictOnDelete`, **NOT NULL**: el estante es la ubicación física; la sala y el pañol se derivan por `cajon → location → storeroom`), `code` (string 100, unique; = `codigo_barras`), `serial_number` (string 100, nullable, unique), `status` (string 50, default `disponible`), `last_maintenance_at` (timestamp nullable), `next_maintenance_at` (timestamp nullable), auditoría, timestamps. Índices: `(product_id, status)` y parcial `next_maintenance_at WHERE next_maintenance_at IS NOT NULL` (`DB::statement`).
+- [x] Modelo `EquipmentUnit` con constantes `STATUS_AVAILABLE = 'disponible'`, `STATUS_ON_LOAN = 'prestado'`, `STATUS_IN_REPAIR = 'en_reparacion'`, `STATUS_WRITTEN_OFF = 'dado_de_baja'`, `STATUSES`; relaciones `product`, `cajon`, `creator`, `updater`; `location()` vía `cajon` (`hasOneThrough` o accesor). `Product::units(): HasMany`, `Cajon::equipmentUnits()`.
+- [x] **Borrado de productos:** con `restrictOnDelete`, `DELETE /products/{id}` de un producto con unidades lanzaría error de BD. `ProductController::destroy` debe responder `422` ("El producto tiene equipos registrados; dalos de baja en su lugar."). Igual para `DELETE /cajones/{id}` con unidades (la protección actual solo mira productos) y para el borrado masivo.
+- [x] Migración de datos (con `DB::table`), para cada producto `type = equipo` (todavía no hay maquetas):
   - Crear `quantity` unidades `disponible`, `quantity_in_repair` `en_reparacion`, `quantity_written_off` `dado_de_baja`.
   - Por cada `loan_item` de ese producto con préstamo `en_proceso` o `procesado` y `returned_at` nulo: `quantity` unidades `prestado` (se vinculan al préstamo en la fase 5).
   - `cajon_id`: el del producto; si no tiene, un cajón `SIN-ASIGNAR` en una ubicación "Sin asignar" del pañol por defecto (crearlos si no existen).
   - `code`: los productos antiguos no tienen carrera, así que no pueden usar el secuenciador. Se usa `{products.barcode}-{nnn}` (correlativo de 3 dígitos por producto). Quedan como códigos heredados (decisión confirmada; no se asigna carrera por defecto). Si después se les asigna carrera, se pueden reetiquetar a mano con `PATCH /equipment-units/{id}` (fase 6). `CodeSequenceService` y `BarcodeService` deben tratar ambos formatos como válidos al buscar por código.
   - `down()`: borrar la tabla.
-- [ ] `EquipmentUnitFactory` (estados `available()`, `onLoan()`, `inRepair()`, `writtenOff()`).
-- [ ] Tests `EquipmentUnitSchemaTest`: migración de datos (producto 3/1/1 + préstamo procesado sin devolver de 2 → 7 unidades), productos sin cajón quedan en `SIN-ASIGNAR`, borrado de producto/cajón con unidades → `422`.
+- [x] `EquipmentUnitFactory` (estados `available()`, `onLoan()`, `inRepair()`, `writtenOff()`).
+- [x] Tests `EquipmentUnitSchemaTest`: migración de datos (producto 3/1/1 + préstamo procesado sin devolver de 2 → 7 unidades), productos sin cajón quedan en `SIN-ASIGNAR`, borrado de producto/cajón con unidades → `422`.
 
 ## Fase 4 — Finanzas, ingesta OCR y cotizaciones
 

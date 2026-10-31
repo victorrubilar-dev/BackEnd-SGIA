@@ -124,6 +124,13 @@ class ProductController extends Controller
     {
         Gate::authorize('delete', $product);
 
+        if ($product->units()->exists()) {
+            return response()->json([
+                'message' => 'El producto tiene equipos registrados; dalos de baja en su lugar.',
+                'units_count' => $product->units()->count(),
+            ], 422);
+        }
+
         $product->delete();
 
         return response()->noContent();

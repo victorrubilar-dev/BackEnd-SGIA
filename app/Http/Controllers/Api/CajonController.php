@@ -95,6 +95,14 @@ class CajonController extends Controller
             ], 422);
         }
 
+        $units = $cajon->equipmentUnits()->count();
+        if ($units > 0) {
+            return response()->json([
+                'message' => "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$units} equipo(s) asignado(s). Reubícalos primero.",
+                'units_count' => $units,
+            ], 422);
+        }
+
         $cajon->delete();
 
         return response()->noContent();
@@ -109,10 +117,11 @@ class CajonController extends Controller
     {
         $ids = array_values(array_unique($request->validated('ids')));
 
-        $blocked = Cajon::whereIn('id', $ids)->withCount('products')->has('products')->get();
+        $blocked = Cajon::whereIn('id', $ids)->withCount(['products', 'equipmentUnits'])
+            ->where(fn ($q) => $q->has('products')->orHas('equipmentUnits'))->get();
         $blockedIds = $blocked->pluck('id')->all();
         $deletableIds = array_values(array_diff($ids, $blockedIds));
-        $detail = $blocked->map(fn (Cajon $c) => ['id' => $c->id, 'codigo' => $c->codigo, 'products_count' => $c->products_count]);
+        $detail = $blocked->map(fn (Cajon $c) => ['id' => $c->id, 'codigo' => $c->codigo, 'products_count' => $c->products_count, 'units_count' => $c->equipment_units_count]);
 
         if ($blockedIds !== [] && ! $request->boolean('partial')) {
             return response()->json([

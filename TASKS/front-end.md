@@ -176,3 +176,7 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `ProductResource` añade `category_id`, `career_id`, `maintenance_priority` (`A`|`B`|`C`), `requires_calibration`, `maintenance_frequency_months`, `reference_price`. `type` acepta además `maqueta`.
 - **422 nuevos:** `POST /api/products` sin `category_id`; insumo sin `barcode` y sin `career_id` (la carrera debe tener `code`); `DELETE /api/locations/{id}` con cajones.
 - Insumos sin `barcode` reciben `INS-{carrera}-000001`.
+
+## Plan Equipos — fase 3 (unidades)
+
+- **422 nuevos:** `DELETE /api/products/{id}` con unidades ("El producto tiene equipos registrados; dalos de baja en su lugar.", `units_count`); `DELETE /api/cajones/{id}` y `bulk-delete` con unidades (`units_count`).
