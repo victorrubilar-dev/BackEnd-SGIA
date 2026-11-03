@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Http\Resources\AnnualBudgetResource;
 use App\Http\Resources\CajonResource;
 use App\Http\Resources\CareerResource;
 use App\Http\Resources\EquipmentUnitResource;
 use App\Http\Resources\IncidentReportResource;
+use App\Http\Resources\InvoiceIntakeItemResource;
+use App\Http\Resources\InvoiceIntakeResource;
 use App\Http\Resources\LoanItemResource;
 use App\Http\Resources\LoanResource;
 use App\Http\Resources\LocationResource;
@@ -18,10 +21,13 @@ use App\Http\Resources\QuotationSupplierResource;
 use App\Http\Resources\StockAlertResource;
 use App\Http\Resources\SupplierResource;
 use App\Http\Resources\UserResource;
+use App\Models\AnnualBudget;
 use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
+use App\Models\InvoiceIntake;
+use App\Models\InvoiceIntakeItem;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Location;
@@ -64,6 +70,18 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,created_at,created_by,descripcion,floor,id,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
         $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'barcode,codigo,created_at,created_by,descripcion,id,location_id,updated_at,updated_by'));
         $this->assertKeys(CareerResource::class, Career::factory()->create(), explode(',', 'code,created_at,created_by,id,level,level_label,name,updated_at,updated_by'));
+    }
+
+    public function test_budget_and_invoice_intake_resources(): void
+    {
+        $budget = AnnualBudget::factory()->create();
+        $this->assertKeys(AnnualBudgetResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,created_at,created_by,id,initial_amount,updated_at,updated_by,year'));
+
+        $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);
+        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,document_number,has_file,id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
+
+        $item = InvoiceIntakeItem::create(['invoice_intake_id' => $intake->id, 'product_id' => Product::factory()->create()->id, 'quantity' => 1]);
+        $this->assertKeys(InvoiceIntakeItemResource::class, $item, explode(',', 'detected_name,id,invoice_intake_id,product_id,quantity,subtotal,unit_price'));
     }
 
     public function test_product_and_stock_alert_resources(): void

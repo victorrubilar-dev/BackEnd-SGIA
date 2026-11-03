@@ -2,16 +2,20 @@
 
 namespace App\Providers;
 
+use App\Models\AnnualBudget;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
+use App\Models\InvoiceIntake;
 use App\Models\Loan;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Policies\AnnualBudgetPolicy;
 use App\Policies\EquipmentUnitPolicy;
 use App\Policies\IncidentReportPolicy;
+use App\Policies\InvoiceIntakePolicy;
 use App\Policies\LoanPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchasePolicy;
@@ -66,6 +70,8 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Loan::class, LoanPolicy::class);
         Gate::policy(EquipmentUnit::class, EquipmentUnitPolicy::class);
         Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
+        Gate::policy(AnnualBudget::class, AnnualBudgetPolicy::class);
+        Gate::policy(InvoiceIntake::class, InvoiceIntakePolicy::class);
 
         // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
         Gate::define('viewDashboard', function (User $user) {

@@ -218,3 +218,13 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - Entidad nueva `SCALE_MODELS` en `customMetric` (enum `MetricEntity`): mismas métricas y agrupaciones que `EQUIPMENT`, filtrando `products.type = 'maqueta'`. `EQUIPMENT` sigue sin incluir maquetas.
 - `EQUIPMENT`/`SCALE_MODELS` con `groupBy: location` y `physical_condition` cuentan unidades (no productos).
 - `MAINTENANCE` con `groupBy: workshop` usa la sala de la unidad cuando el informe tiene `equipment_unit_id`.
+
+## REQ-16 y REQ-17 — presupuestos e ingresos de facturas
+
+- Rutas nuevas: `GET/POST /api/budgets`, `GET/PATCH/DELETE /api/budgets/{id}`, `GET/POST /api/invoice-intakes`, `GET /api/invoice-intakes/{id}`, `GET /api/invoice-intakes/{id}/file`, `POST /api/invoice-intakes/{id}/confirm`, `POST /api/invoice-intakes/{id}/cancel`.
+- `AnnualBudgetResource`: `id`, `career_id`, `career` (si viene cargada), `year`, `initial_amount`, `available_amount`, `consumed_amount`, `invoice_intakes` (solo en el detalle, confirmados), auditoría y fechas. Los montos son strings con 2 decimales.
+- `InvoiceIntakeResource`: `id`, `user_id`, `annual_budget_id`, `annual_budget`, `document_number`, `status` (`borrador`|`confirmado`|`anulado`), `total_deducted`, `has_file`, `raw_ocr_payload`, `items`, `received_at`, fechas. `InvoiceIntakeItemResource`: `id`, `invoice_intake_id`, `product_id`, `product`, `detected_name`, `quantity`, `unit_price`, `subtotal`.
+- Flujo: subir (`multipart`) → el borrador trae lo detectado en `raw_ocr_payload` (`invoice_number`, `supplier_name`, `supplier_id`, `items[{name, quantity, unit_price, area}]`; puede venir vacío y `ocr_available: false`) → la pantalla deja asociar cada fila a un `product_id` existente (y `cajon_id` si es equipo/maqueta) → `confirm`.
+- **422 nuevos:** presupuesto duplicado (carrera + año); `PATCH` que dejaría el disponible bajo cero; borrar presupuesto con ingresos; confirmar sobre el disponible (error en `items`); confirmar/anular un ingreso que no está en `borrador` (error en `status`); equipo/maqueta sin `cajon_id` (`items.N.cajon_id`).
+- `DIR-01` solo opera sobre presupuestos de sus carreras (`403` en otro caso; los listados ya vienen filtrados).
+- `POST /api/invoices/scan` (y `/products/scan-invoice`) **se mantiene** hasta que el frontend migre a `invoice-intakes`.

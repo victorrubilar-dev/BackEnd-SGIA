@@ -1,6 +1,6 @@
 # Modelos faltantes y unidades de equipo — plan de implementación
 
-Estado: **implementado (fases 1-10).** Pendientes: los endpoints de los modelos nuevos (REQ-15 a REQ-20) y retirar `users.role`. Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
+Estado: **implementado (fases 1-10).** Pendientes: los endpoints de los modelos nuevos (REQ-15, REQ-18 a REQ-20; REQ-16 y REQ-17 hechos) y retirar `users.role`. Fuente del esquema objetivo: `MODELS.MD` (SQL de referencia). Cada fase se cierra con `php artisan test` en verde y `vendor/bin/pint --dirty` limpio, y se commitea por separado. No mezclar fases.
 
 - **Parte 1 (fases 1–5):** crear en BD y como Model las tablas de `MODELS.MD` que no existen, y añadir a las tablas existentes las columnas que esas relaciones necesitan. Solo esquema, modelos, relaciones, factories, seeders y tests de esquema; **sin endpoints nuevos** salvo que se indique.
 - **Parte 2 (fases 6–10):** la funcionalidad de unidades de equipo (un `Product` con varias unidades, cada una con su código y ubicación), préstamos por unidad, hoja de vida y métricas.

@@ -75,7 +75,7 @@
 
 ### Aún sin API (no construir pantallas todavía)
 
-Gráficos por usuario, presupuestos anuales, ingresos de factura (OCR persistido), mantenciones y sus documentos, y estudiantes (REQ-15 a REQ-20). Las tablas existen, pero no hay endpoints.
+Gráficos por usuario, mantenciones y sus documentos, y estudiantes (REQ-15 a REQ-20). Las tablas existen, pero no hay endpoints.
 
 ---
 
@@ -188,6 +188,29 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|:---:|
 | `POST` | `/api/invoices/scan` | `AD-01`, `DIR-01` | Procesa documento o imagen de factura (PDF, PNG, JPG, WEBP de hasta 10MB) y extrae número de factura, proveedor sugerido y lista de borradores de productos con cantidades y precios para su posterior confirmación. Lectura con AWS Textract (`AnalyzeExpense`); si falla, respaldo local con `pdftotext` (PDF digital) o Tesseract (imagen / PDF escaneado), que es heurístico: el borrador puede venir incompleto (`invoice_number`/`supplier_name` nulos, `draft_products` vacío). `503` si Textract y el lector local fallan. | ✅ Implementado |
 | `POST` | `/api/products/scan-invoice` | `AD-01`, `DIR-01` | Alias idéntico de `POST /api/invoices/scan`. | ✅ Implementado |
+
+---
+
+### 4.1 Presupuestos anuales (`FU-03` / `REQ-16`)
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/budgets` | `AD-01`, `DIR-01` | Lista paginada. Filtros `year`, `career_id`, `per_page`. `AD-01` ve todos; `DIR-01` solo los de sus carreras (`career_user`). | ✅ Implementado |
+| `GET` | `/api/budgets/{id}` | `AD-01`, `DIR-01` | Detalle con `career`, `consumed_amount` e `invoice_intakes` (solo confirmados). `403` si es de una carrera ajena (DIR-01). | ✅ Implementado |
+| `POST` | `/api/budgets` | `AD-01` | `career_id`, `year`, `initial_amount` (> 0). `available_amount` arranca igual al inicial. `422` si ya existe esa carrera + año. | ✅ Implementado |
+| `PATCH` | `/api/budgets/{id}` | `AD-01` | `initial_amount`; `available_amount` se recalcula como `initial − consumido`. `422` si quedaría negativo. | ✅ Implementado |
+| `DELETE` | `/api/budgets/{id}` | `AD-01` | `204`. `422` si tiene ingresos de facturas. | ✅ Implementado |
+
+### 4.2 Ingreso de facturas con descuento de presupuesto (`FU-03` / `REQ-17`)
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `POST` | `/api/invoice-intakes` | `AD-01`, `DIR-01` (carreras propias) | `multipart`: `file` (PDF/PNG/JPG/WEBP, 10 MB), `annual_budget_id`. Guarda el archivo en disco privado, corre el OCR y crea el ingreso en `borrador`; los ítems detectados quedan en `raw_ocr_payload.items`. Si el OCR no está disponible el borrador queda sin ítems (`raw_ocr_payload.ocr_available = false`). `201`. Límite 10/min. | ✅ Implementado |
+| `GET` | `/api/invoice-intakes` | `AD-01`, `DIR-01` | Filtros `status` (`borrador`/`confirmado`/`anulado`), `annual_budget_id`, `from`, `to`, `per_page`. DIR-01 solo ve sus carreras. | ✅ Implementado |
+| `GET` | `/api/invoice-intakes/{id}` | `AD-01`, `DIR-01` | Detalle con `annual_budget` e `items` (con `product`). | ✅ Implementado |
+| `GET` | `/api/invoice-intakes/{id}/file` | `AD-01`, `DIR-01` | Descarga autenticada del archivo (disco privado). `404` si no tiene. | ✅ Implementado |
+| `POST` | `/api/invoice-intakes/{id}/confirm` | `AD-01`, `DIR-01` | `document_number`, `items: [{product_id, quantity, unit_price, detected_name?, cajon_id?}]`. En una transacción descuenta el presupuesto e ingresa el stock: `insumo` suma `quantity`; `equipo`/`maqueta` crea `quantity` unidades (`cajon_id` obligatorio). `422` si el total supera `available_amount`, si no está en `borrador` o falta `cajon_id`. | ✅ Implementado |
+| `POST` | `/api/invoice-intakes/{id}/cancel` | `AD-01`, `DIR-01` | `borrador` → `anulado`. `422` si ya está confirmado (se corrige con un ajuste manual de stock). | ✅ Implementado |
 
 ---
 
@@ -329,4 +352,4 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `ca
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (106 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (117 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

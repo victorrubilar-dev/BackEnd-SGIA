@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AnnualBudgetController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\CareerController;
@@ -8,6 +9,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\EquipmentUnitController;
+use App\Http\Controllers\Api\InvoiceIntakeController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LocationController;
@@ -54,6 +56,27 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware(['role:AD-01,DIR-01', 'throttle:sensitive'])->group(function () {
         Route::post('/invoices/scan', [InvoiceScanController::class, 'scan']);
         Route::post('/products/scan-invoice', [InvoiceScanController::class, 'scan']);
+    });
+
+    // REQ-16: Presupuesto anual por carrera (AD-01 administra; DIR-01 consulta las suyas)
+    Route::middleware('role:AD-01,DIR-01')->group(function () {
+        Route::get('/budgets', [AnnualBudgetController::class, 'index']);
+        Route::get('/budgets/{annualBudget}', [AnnualBudgetController::class, 'show']);
+    });
+    Route::middleware('role:AD-01')->group(function () {
+        Route::post('/budgets', [AnnualBudgetController::class, 'store']);
+        Route::patch('/budgets/{annualBudget}', [AnnualBudgetController::class, 'update']);
+        Route::delete('/budgets/{annualBudget}', [AnnualBudgetController::class, 'destroy']);
+    });
+
+    // REQ-17: Ingreso de facturas con descuento de presupuesto (AD-01, DIR-01 de sus carreras)
+    Route::middleware('role:AD-01,DIR-01')->group(function () {
+        Route::post('/invoice-intakes', [InvoiceIntakeController::class, 'store'])->middleware('throttle:sensitive');
+        Route::get('/invoice-intakes', [InvoiceIntakeController::class, 'index']);
+        Route::get('/invoice-intakes/{invoiceIntake}', [InvoiceIntakeController::class, 'show']);
+        Route::get('/invoice-intakes/{invoiceIntake}/file', [InvoiceIntakeController::class, 'file']);
+        Route::post('/invoice-intakes/{invoiceIntake}/confirm', [InvoiceIntakeController::class, 'confirm']);
+        Route::post('/invoice-intakes/{invoiceIntake}/cancel', [InvoiceIntakeController::class, 'cancel']);
     });
 
     // REQ-06: Alertas de stock crítico
