@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\Models\AnnualBudget;
 use App\Models\Cajon;
+use App\Models\EquipmentUnit;
 use App\Models\InvoiceIntake;
+use App\Models\InvoiceIntakeItem;
 use App\Models\Product;
+use App\Models\Purchase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,8 +27,12 @@ class InvoiceIntakeService
      * Guarda el archivo en el disco privado y crea el ingreso en `borrador` con el resultado del OCR.
      * Si el OCR no está disponible el borrador queda sin ítems detectados (ingreso manual).
      */
-    public function createDraft(UploadedFile $file, AnnualBudget $budget, int $userId): InvoiceIntake
+    public function createDraft(UploadedFile $file, AnnualBudget $budget, int $userId, ?Purchase $purchase = null): InvoiceIntake
     {
+        if ($purchase) {
+            $this->assertPurchaseBillable($purchase, $budget);
+        }
+
         $payload = ['invoice_number' => null, 'supplier_name' => null, 'supplier_id' => null, 'items' => []];
         $ocrAvailable = true;
 
@@ -39,6 +46,7 @@ class InvoiceIntakeService
         return InvoiceIntake::create([
             'user_id' => $userId,
             'annual_budget_id' => $budget->id,
+            'purchase_id' => $purchase?->id,
             'pdf_path' => $file->store('invoice-intakes', 'local'),
             'document_number' => $payload['invoice_number'],
             'raw_ocr_payload' => $payload + ['ocr_available' => $ocrAvailable],
@@ -86,19 +94,19 @@ class InvoiceIntakeService
                 $rows[] = [$product, $item, $subtotalCents];
             }
 
-            if ($totalCents > $this->budgets->cents($budget->available_amount)) {
-                throw ValidationException::withMessages([
-                    'items' => 'El total de la factura ($'.number_format($totalCents / 100, 0, ',', '.').') supera el presupuesto disponible ($'.number_format((float) $budget->available_amount, 0, ',', '.').').',
-                ]);
+            $purchase = null;
+
+            if ($locked->purchase_id) {
+                // La factura cierra la reserva de su compra: se libera y se consume el monto real.
+                $purchase = Purchase::whereKey($locked->purchase_id)->lockForUpdate()->firstOrFail();
+                $this->assertPurchaseBillable($purchase, $budget);
+                $this->budgets->releaseReservation($budget, $purchase, $userId, $locked);
             }
 
-            $budget->update([
-                'available_amount' => ($this->budgets->cents($budget->available_amount) - $totalCents) / 100,
-                'updated_by' => $userId,
-            ]);
+            $this->budgets->consume($budget, $totalCents / 100, $locked, $userId, $purchase);
 
             foreach ($rows as [$product, $item, $subtotalCents]) {
-                $locked->items()->create([
+                $intakeItem = $locked->items()->create([
                     'product_id' => $product->id,
                     'detected_name' => $item['detected_name'] ?? null,
                     'quantity' => $item['quantity'],
@@ -106,7 +114,7 @@ class InvoiceIntakeService
                     'subtotal' => $subtotalCents / 100,
                 ]);
 
-                $this->receiveStock($product, $item, $userId);
+                $this->receiveStock($product, $item, $userId, $intakeItem);
             }
 
             $locked->update([
@@ -120,17 +128,23 @@ class InvoiceIntakeService
     }
 
     /**
+     * Anula un ingreso. Un `borrador` solo cambia de estado; uno `confirmado` se revierte entero
+     * (todo o nada): resta el stock de insumos, da de baja las unidades creadas y repone el
+     * monto al presupuesto. Si la factura estaba ligada a una compra, la compra no cambia.
+     *
      * @throws ValidationException
      */
-    public function cancel(InvoiceIntake $intake): InvoiceIntake
+    public function cancel(InvoiceIntake $intake, int $userId): InvoiceIntake
     {
-        return DB::transaction(function () use ($intake) {
+        return DB::transaction(function () use ($intake, $userId) {
             $locked = InvoiceIntake::whereKey($intake->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->status !== InvoiceIntake::STATUS_DRAFT) {
-                throw ValidationException::withMessages([
-                    'status' => 'Solo se puede anular un ingreso en borrador; uno confirmado se corrige con un ajuste manual de stock.',
-                ]);
+            if ($locked->status === InvoiceIntake::STATUS_CANCELLED) {
+                throw ValidationException::withMessages(['status' => 'El ingreso ya está anulado.']);
+            }
+
+            if ($locked->status === InvoiceIntake::STATUS_CONFIRMED) {
+                $this->reverseConfirmed($locked, $userId);
             }
 
             $locked->update(['status' => InvoiceIntake::STATUS_CANCELLED]);
@@ -139,13 +153,92 @@ class InvoiceIntakeService
         });
     }
 
+    private function reverseConfirmed(InvoiceIntake $intake, int $userId): void
+    {
+        $budget = AnnualBudget::whereKey($intake->annual_budget_id)->lockForUpdate()->firstOrFail();
+        $items = $intake->items()->with(['product', 'units'])->get();
+
+        $insumoQuantities = [];
+        $unitsToWriteOff = collect();
+
+        // 1) Validar todo antes de tocar nada.
+        foreach ($items as $item) {
+            $product = $item->product;
+
+            if ($product->hasUnits()) {
+                if ($item->units->count() !== $item->quantity) {
+                    throw ValidationException::withMessages([
+                        'items' => "No se puede anular: las unidades de {$product->name} no son trazables a esta factura (ingreso anterior a la trazabilidad).",
+                    ]);
+                }
+
+                foreach ($item->units as $unit) {
+                    if ($unit->status !== EquipmentUnit::STATUS_AVAILABLE || $unit->loanItems()->exists()) {
+                        throw ValidationException::withMessages([
+                            'items' => "No se puede anular: la unidad {$unit->code} de {$product->name} no está disponible o ya tiene préstamos.",
+                        ]);
+                    }
+                    $unitsToWriteOff->push($unit);
+                }
+
+                continue;
+            }
+
+            $insumoQuantities[$product->id] = ($insumoQuantities[$product->id] ?? 0) + $item->quantity;
+        }
+
+        $lockedProducts = Product::whereIn('id', array_keys($insumoQuantities))->lockForUpdate()->get()->keyBy('id');
+
+        foreach ($insumoQuantities as $productId => $quantity) {
+            $product = $lockedProducts[$productId];
+
+            if ($product->quantity < $quantity) {
+                throw ValidationException::withMessages([
+                    'items' => "No se puede anular: el stock de {$product->name} ({$product->quantity}) es menor que lo ingresado por la factura ({$quantity}).",
+                ]);
+            }
+        }
+
+        // 2) Aplicar la reversa.
+        foreach ($insumoQuantities as $productId => $quantity) {
+            $product = $lockedProducts[$productId];
+            $product->forceFill(['quantity' => $product->quantity - $quantity, 'updated_by' => $userId])->save();
+            $this->stockAlerts->checkStock($product);
+        }
+
+        foreach ($unitsToWriteOff as $unit) {
+            $this->units->changeStatus($unit, EquipmentUnit::STATUS_WRITTEN_OFF, $userId);
+        }
+
+        $this->budgets->restore($budget, $intake->total_deducted ?? 0, $intake, $userId);
+    }
+
+    /**
+     * La compra debe ser del mismo presupuesto, no estar cancelada y conservar su reserva.
+     *
+     * @throws ValidationException
+     */
+    private function assertPurchaseBillable(Purchase $purchase, AnnualBudget $budget): void
+    {
+        if ($purchase->annual_budget_id !== $budget->id) {
+            throw ValidationException::withMessages(['purchase_id' => 'La compra pertenece a otro presupuesto.']);
+        }
+
+        if ($purchase->status === Purchase::STATUS_CANCELLED || $this->budgets->cents($purchase->reserved_amount) === 0) {
+            throw ValidationException::withMessages(['purchase_id' => 'La compra está cancelada o ya fue facturada.']);
+        }
+    }
+
     /**
      * @param  array{quantity: int, cajon_id?: int|null}  $item
      */
-    private function receiveStock(Product $product, array $item, int $userId): void
+    private function receiveStock(Product $product, array $item, int $userId, InvoiceIntakeItem $intakeItem): void
     {
         if ($product->hasUnits()) {
-            $this->units->createUnits($product, $item['quantity'], ['cajon_id' => $item['cajon_id']], $userId);
+            $this->units->createUnits($product, $item['quantity'], [
+                'cajon_id' => $item['cajon_id'],
+                'invoice_intake_item_id' => $intakeItem->id,
+            ], $userId);
 
             return;
         }

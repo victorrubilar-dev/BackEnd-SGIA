@@ -8,7 +8,8 @@ namespace App\Services;
  * La misma definición se reutilizará para las cotizaciones (Quotation) cuando
  * se implemente REQ-07 (TASKS/Cotizaciones.md).
  *
- * Flujo lineal: pendiente -> en_camino -> completa
+ * Flujo lineal: pendiente -> en_camino -> completa. `cancelada` solo se alcanza por
+ * `POST /api/purchases/{purchase}/cancel` (libera la reserva de presupuesto).
  */
 class PurchaseStateMachine
 {
@@ -18,10 +19,24 @@ class PurchaseStateMachine
 
     public const STATUS_COMPLETED = 'completa';
 
+    public const STATUS_CANCELLED = 'cancelada';
+
     /**
      * @var array<int, string>
      */
     public const STATUSES = [
+        self::STATUS_PENDING,
+        self::STATUS_IN_TRANSIT,
+        self::STATUS_COMPLETED,
+        self::STATUS_CANCELLED,
+    ];
+
+    /**
+     * Estados que se pueden fijar con `PATCH /purchases/{id}/status`.
+     *
+     * @var array<int, string>
+     */
+    public const SETTABLE_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_IN_TRANSIT,
         self::STATUS_COMPLETED,
@@ -33,9 +48,10 @@ class PurchaseStateMachine
      * @var array<string, array<int, string>>
      */
     public const TRANSITIONS = [
-        self::STATUS_PENDING => [self::STATUS_IN_TRANSIT],
-        self::STATUS_IN_TRANSIT => [self::STATUS_COMPLETED],
+        self::STATUS_PENDING => [self::STATUS_IN_TRANSIT, self::STATUS_CANCELLED],
+        self::STATUS_IN_TRANSIT => [self::STATUS_COMPLETED, self::STATUS_CANCELLED],
         self::STATUS_COMPLETED => [],
+        self::STATUS_CANCELLED => [],
     ];
 
     /**

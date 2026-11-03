@@ -24,6 +24,8 @@ class PurchaseResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'created_by' => $this->created_by,
             'creator' => new UserResource($this->whenLoaded('creator')),
+            'annual_budget_id' => $this->annual_budget_id,
+            'reserved_amount' => $this->reserved_amount ?? '0.00',
             'quotation_reference' => $this->quotation_reference,
             'quotation_id' => $this->quotation_id,
             'quotation' => new QuotationResource($this->whenLoaded('quotation')),

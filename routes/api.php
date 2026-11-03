@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AnnualBudgetController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BudgetReportController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\CareerController;
 use App\Http\Controllers\Api\DashboardController;
@@ -58,12 +59,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/products/scan-invoice', [InvoiceScanController::class, 'scan']);
     });
 
-    // REQ-16: Presupuesto anual por carrera (AD-01 administra; DIR-01 consulta las suyas)
+    // REQ-16 / REQ-24: Presupuesto anual por carrera (AD-01 todas; DIR-01 solo sus carreras) y reportes
     Route::middleware('role:AD-01,DIR-01')->group(function () {
         Route::get('/budgets', [AnnualBudgetController::class, 'index']);
+        Route::get('/budgets/summary', [BudgetReportController::class, 'summary']);
         Route::get('/budgets/{annualBudget}', [AnnualBudgetController::class, 'show']);
-    });
-    Route::middleware('role:AD-01')->group(function () {
+        Route::get('/budgets/{annualBudget}/movements', [BudgetReportController::class, 'movements']);
+        Route::get('/budgets/{annualBudget}/spending', [BudgetReportController::class, 'spending']);
+        Route::get('/budgets/{annualBudget}/monthly', [BudgetReportController::class, 'monthly']);
         Route::post('/budgets', [AnnualBudgetController::class, 'store']);
         Route::patch('/budgets/{annualBudget}', [AnnualBudgetController::class, 'update']);
         Route::delete('/budgets/{annualBudget}', [AnnualBudgetController::class, 'destroy']);
@@ -89,6 +92,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
         Route::patch('/purchases/{purchase}/status', [PurchaseController::class, 'updateStatus']);
         Route::post('/purchases/{purchase}/arrival-scan', [PurchaseController::class, 'arrivalScan'])->middleware('throttle:sensitive');
+        Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel']);
         Route::get('/purchases/{purchase}/arrival-document', [PurchaseController::class, 'arrivalDocument']);
     });
     Route::middleware('role:AD-01,DIR-01')->group(function () {

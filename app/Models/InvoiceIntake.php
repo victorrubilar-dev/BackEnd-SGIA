@@ -23,7 +23,7 @@ class InvoiceIntake extends Model
     public const STATUSES = [self::STATUS_DRAFT, self::STATUS_CONFIRMED, self::STATUS_CANCELLED];
 
     protected $fillable = [
-        'user_id', 'annual_budget_id', 'pdf_path', 'document_number',
+        'user_id', 'annual_budget_id', 'purchase_id', 'pdf_path', 'document_number',
         'total_deducted', 'raw_ocr_payload', 'status', 'received_at',
     ];
 
@@ -44,6 +44,11 @@ class InvoiceIntake extends Model
     public function annualBudget(): BelongsTo
     {
         return $this->belongsTo(AnnualBudget::class);
+    }
+
+    public function purchase(): BelongsTo
+    {
+        return $this->belongsTo(Purchase::class);
     }
 
     public function items(): HasMany

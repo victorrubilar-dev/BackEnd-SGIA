@@ -8,6 +8,7 @@ use App\Http\Requests\StoreInvoiceIntakeRequest;
 use App\Http\Resources\InvoiceIntakeResource;
 use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
+use App\Models\Purchase;
 use App\Services\InvoiceIntakeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -62,7 +63,9 @@ class InvoiceIntakeController extends Controller
         $budget = AnnualBudget::findOrFail($request->integer('annual_budget_id'));
         Gate::authorize('create', [InvoiceIntake::class, $budget]);
 
-        $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id);
+        $purchase = $request->filled('purchase_id') ? Purchase::findOrFail($request->integer('purchase_id')) : null;
+
+        $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id, $purchase);
 
         return (new InvoiceIntakeResource($intake->load(['annualBudget', 'items'])))->response()->setStatusCode(201);
     }
@@ -101,11 +104,11 @@ class InvoiceIntakeController extends Controller
         return new InvoiceIntakeResource($intake->load(['annualBudget', 'items.product']));
     }
 
-    public function cancel(InvoiceIntake $invoiceIntake, InvoiceIntakeService $service): InvoiceIntakeResource
+    public function cancel(Request $request, InvoiceIntake $invoiceIntake, InvoiceIntakeService $service): InvoiceIntakeResource
     {
         $invoiceIntake->load('annualBudget');
         Gate::authorize('update', $invoiceIntake);
 
-        return new InvoiceIntakeResource($service->cancel($invoiceIntake)->load('annualBudget'));
+        return new InvoiceIntakeResource($service->cancel($invoiceIntake, $request->user()->id)->load('annualBudget'));
     }
 }

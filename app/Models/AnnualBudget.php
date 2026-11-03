@@ -14,7 +14,7 @@ class AnnualBudget extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['career_id', 'year', 'initial_amount', 'available_amount', 'created_by', 'updated_by'];
+    protected $fillable = ['career_id', 'year', 'initial_amount', 'available_amount', 'reserved_amount', 'created_by', 'updated_by'];
 
     protected function casts(): array
     {
@@ -22,6 +22,7 @@ class AnnualBudget extends Model
             'year' => 'integer',
             'initial_amount' => 'decimal:2',
             'available_amount' => 'decimal:2',
+            'reserved_amount' => 'decimal:2',
         ];
     }
 
@@ -33,6 +34,16 @@ class AnnualBudget extends Model
     public function invoiceIntakes(): HasMany
     {
         return $this->hasMany(InvoiceIntake::class);
+    }
+
+    public function movements(): HasMany
+    {
+        return $this->hasMany(BudgetMovement::class);
+    }
+
+    public function purchases(): HasMany
+    {
+        return $this->hasMany(Purchase::class);
     }
 
     public function creator(): BelongsTo

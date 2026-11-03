@@ -83,10 +83,25 @@ class AnnualBudgetTest extends TestCase
             $this->postJson('/api/budgets', $payload)->assertForbidden();
         }
 
+        // DIR-01 sobre una carrera que no tiene asignada.
         Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
         $this->postJson('/api/budgets', $payload)->assertForbidden();
         $this->patchJson("/api/budgets/{$budget->id}", ['initial_amount' => 5])->assertForbidden();
         $this->deleteJson("/api/budgets/{$budget->id}")->assertForbidden();
+    }
+
+    public function test_director_manages_budgets_of_own_careers(): void
+    {
+        $director = $this->user(User::ROLE_DIRECTOR);
+        $career = Career::factory()->create();
+        $director->careers()->attach($career->id);
+        Sanctum::actingAs($director);
+
+        $id = $this->postJson('/api/budgets', ['career_id' => $career->id, 'year' => 2045, 'initial_amount' => 100000])
+            ->assertCreated()->json('data.id');
+        $this->patchJson("/api/budgets/$id", ['initial_amount' => 150000])
+            ->assertOk()->assertJsonPath('data.available_amount', '150000.00');
+        $this->deleteJson("/api/budgets/$id")->assertNoContent();
     }
 
     public function test_director_only_sees_own_careers(): void

@@ -40,6 +40,7 @@ class EquipmentUnit extends Model
         'cajon_id',
         'code',
         'serial_number',
+        'invoice_intake_item_id',
         'status',
         'last_maintenance_at',
         'next_maintenance_at',

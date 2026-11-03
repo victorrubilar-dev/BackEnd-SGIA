@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Http\Resources\AnnualBudgetResource;
+use App\Http\Resources\BudgetMovementResource;
+use App\Http\Resources\BudgetSummaryResource;
 use App\Http\Resources\CajonResource;
 use App\Http\Resources\CareerResource;
 use App\Http\Resources\EquipmentUnitResource;
@@ -22,6 +24,7 @@ use App\Http\Resources\StockAlertResource;
 use App\Http\Resources\SupplierResource;
 use App\Http\Resources\UserResource;
 use App\Models\AnnualBudget;
+use App\Models\BudgetMovement;
 use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\EquipmentUnit;
@@ -75,10 +78,14 @@ class ResourceContractTest extends TestCase
     public function test_budget_and_invoice_intake_resources(): void
     {
         $budget = AnnualBudget::factory()->create();
-        $this->assertKeys(AnnualBudgetResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,created_at,created_by,id,initial_amount,updated_at,updated_by,year'));
+        $this->assertKeys(AnnualBudgetResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,created_at,created_by,id,initial_amount,reserved_amount,updated_at,updated_by,year'));
 
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);
-        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,document_number,has_file,id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
+        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,document_number,has_file,id,purchase_id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
+
+        $this->assertKeys(BudgetSummaryResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,execution_percent,id,initial_amount,reserved_amount,year'));
+        $movement = BudgetMovement::create(['annual_budget_id' => $budget->id, 'type' => BudgetMovement::TYPE_INITIAL, 'amount' => 1, 'user_id' => User::factory()->create()->id]);
+        $this->assertKeys(BudgetMovementResource::class, $movement, explode(',', 'amount,annual_budget_id,created_at,id,invoice_intake_id,notes,purchase_id,type,user_id'));
 
         $item = InvoiceIntakeItem::create(['invoice_intake_id' => $intake->id, 'product_id' => Product::factory()->create()->id, 'quantity' => 1]);
         $this->assertKeys(InvoiceIntakeItemResource::class, $item, explode(',', 'detected_name,id,invoice_intake_id,product_id,quantity,subtotal,unit_price'));
@@ -111,7 +118,7 @@ class ResourceContractTest extends TestCase
 
         $purchase = Purchase::factory()->create(['created_by' => $user->id]);
         $purchaseItem = $purchase->items()->create(['name' => 'a', 'quantity' => 1, 'unit_price' => 1]);
-        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,id,invoice_number,notes,quotation_id,quotation_reference,received_at,status,supplier_id,total,updated_at'));
+        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,annual_budget_id,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,id,invoice_number,notes,quotation_id,quotation_reference,received_at,reserved_amount,status,supplier_id,total,updated_at'));
         $this->assertKeys(PurchaseItemResource::class, $purchaseItem, explode(',', 'id,name,product_id,purchase_id,quantity,unit_price'));
 
         $quotation = Quotation::factory()->create(['created_by' => $user->id]);

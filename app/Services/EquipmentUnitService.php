@@ -76,6 +76,7 @@ class EquipmentUnitService
                     'product_id' => $product->id,
                     'cajon_id' => $attributes['cajon_id'],
                     'code' => $manualCode ?: $this->codes->forProduct($product),
+                    'invoice_intake_item_id' => $attributes['invoice_intake_item_id'] ?? null,
                     'serial_number' => $count === 1
                         ? ($attributes['serial_number'] ?? ($serialNumbers[0] ?? null))
                         : ($serialNumbers[$i] ?? null),

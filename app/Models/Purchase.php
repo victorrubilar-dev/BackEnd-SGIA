@@ -19,11 +19,9 @@ class Purchase extends Model
 
     public const STATUS_COMPLETED = PurchaseStateMachine::STATUS_COMPLETED;
 
-    public const STATUSES = [
-        self::STATUS_PENDING,
-        self::STATUS_IN_TRANSIT,
-        self::STATUS_COMPLETED,
-    ];
+    public const STATUS_CANCELLED = PurchaseStateMachine::STATUS_CANCELLED;
+
+    public const STATUSES = PurchaseStateMachine::STATUSES;
 
     protected $fillable = [
         'code',
@@ -32,8 +30,10 @@ class Purchase extends Model
         'quotation_id',
         'status',
         'quotation_reference',
+        'annual_budget_id',
         'expected_at',
         'total',
+        'reserved_amount',
         'notes',
         'guide_number',
         'invoice_number',
@@ -46,6 +46,7 @@ class Purchase extends Model
         return [
             'expected_at' => 'date',
             'total' => 'float',
+            'reserved_amount' => 'decimal:2',
             'received_at' => 'datetime',
         ];
     }
@@ -53,6 +54,11 @@ class Purchase extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function annualBudget(): BelongsTo
+    {
+        return $this->belongsTo(AnnualBudget::class);
     }
 
     public function creator(): BelongsTo

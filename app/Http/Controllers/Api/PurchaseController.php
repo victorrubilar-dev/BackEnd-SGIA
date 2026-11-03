@@ -8,6 +8,7 @@ use App\Http\Requests\ScanArrivalRequest;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseStatusRequest;
 use App\Http\Resources\PurchaseResource;
+use App\Models\AnnualBudget;
 use App\Models\Purchase;
 use App\Services\InvoiceOcrService;
 use App\Services\PurchaseService;
@@ -50,6 +51,8 @@ class PurchaseController extends Controller
      */
     public function store(StorePurchaseRequest $request, QuotationService $quotationService, PurchaseService $purchaseService): JsonResponse
     {
+        Gate::authorize('useBudget', [Purchase::class, AnnualBudget::findOrFail($request->integer('annual_budget_id'))]);
+
         $purchase = $purchaseService->create($request->validated(), $request->user(), $quotationService);
 
         return (new PurchaseResource($purchase->load(['supplier', 'items', 'quotation'])))
@@ -90,6 +93,22 @@ class PurchaseController extends Controller
             'allowed_transitions' => PurchaseStateMachine::allowedFrom($purchase->status),
             'purchase' => new PurchaseResource($purchase->load(['supplier', 'items'])),
         ]);
+    }
+
+    /**
+     * Cancela la compra (`pendiente` o `en_camino`) y libera su reserva de presupuesto.
+     */
+    public function cancel(Request $request, Purchase $purchase, PurchaseService $purchaseService): JsonResponse|PurchaseResource
+    {
+        Gate::authorize('cancel', $purchase);
+
+        try {
+            $purchaseService->cancel($purchase, $request->user());
+        } catch (InvalidPurchaseStatusTransition $e) {
+            return $this->invalidTransitionResponse($e, $purchase);
+        }
+
+        return new PurchaseResource($purchase->refresh()->load(['supplier', 'items']));
     }
 
     /**

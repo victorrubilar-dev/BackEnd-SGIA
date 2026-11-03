@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnnualBudget;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\User;
@@ -20,6 +21,8 @@ class PurchaseStatusTest extends TestCase
 
     protected User $director;
 
+    protected AnnualBudget $budget;
+
     protected User $warehouse;
 
     protected User $teacher;
@@ -33,6 +36,9 @@ class PurchaseStatusTest extends TestCase
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
+
+        $this->budget = AnnualBudget::factory()->create();
+        $this->director->careers()->attach($this->budget->career_id);
 
         $this->warehouse = User::factory()->create([
             'email' => 'panol_compra_'.uniqid().'@inacap.cl',
@@ -61,6 +67,7 @@ class PurchaseStatusTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'supplier_id' => $supplier->id,
             'notes' => 'Compra de materiales para taller',
             'items' => [
@@ -92,6 +99,7 @@ class PurchaseStatusTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'supplier_id' => $supplier->id,
             'items' => [],
         ]);
@@ -105,6 +113,7 @@ class PurchaseStatusTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'supplier_id' => Supplier::factory()->create()->id,
             'items' => [['name' => 'Multímetro', 'quantity' => 2]],
         ]);
@@ -170,7 +179,7 @@ class PurchaseStatusTest extends TestCase
         $response->assertJsonPath('data.id', $purchase->id);
         $response->assertJsonPath('data.status', Purchase::STATUS_PENDING);
         $response->assertJsonPath('data.items.0.name', 'Tornillería variada');
-        $response->assertJsonPath('data.allowed_transitions', [Purchase::STATUS_IN_TRANSIT]);
+        $response->assertJsonPath('data.allowed_transitions', [Purchase::STATUS_IN_TRANSIT, Purchase::STATUS_CANCELLED]);
     }
 
     public function test_valid_transition_from_pending_to_in_transit(): void
@@ -201,7 +210,7 @@ class PurchaseStatusTest extends TestCase
 
         $response->assertStatus(422);
         $response->assertJsonPath('current_status', Purchase::STATUS_PENDING);
-        $response->assertJsonPath('allowed_transitions', [Purchase::STATUS_IN_TRANSIT]);
+        $response->assertJsonPath('allowed_transitions', [Purchase::STATUS_IN_TRANSIT, Purchase::STATUS_CANCELLED]);
 
         $this->assertEquals(Purchase::STATUS_PENDING, $purchase->fresh()->status);
     }

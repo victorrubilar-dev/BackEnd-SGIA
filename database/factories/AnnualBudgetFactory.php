@@ -20,6 +20,7 @@ class AnnualBudgetFactory extends Factory
             'year' => fake()->unique()->numberBetween(2000, 2099),
             'initial_amount' => 1000000,
             'available_amount' => 1000000,
+            'reserved_amount' => 0,
         ];
     }
 }

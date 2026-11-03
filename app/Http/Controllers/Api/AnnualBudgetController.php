@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -54,15 +55,9 @@ class AnnualBudgetController extends Controller
         ]));
     }
 
-    public function store(StoreAnnualBudgetRequest $request): JsonResponse
+    public function store(StoreAnnualBudgetRequest $request, AnnualBudgetService $service): JsonResponse
     {
-        $data = $request->validated();
-
-        $budget = AnnualBudget::create($data + [
-            'available_amount' => $data['initial_amount'],
-            'created_by' => $request->user()->id,
-            'updated_by' => $request->user()->id,
-        ]);
+        $budget = $service->create($request->validated(), $request->user()->id);
 
         return (new AnnualBudgetResource($budget->load('career')))->response()->setStatusCode(201);
     }
@@ -78,13 +73,17 @@ class AnnualBudgetController extends Controller
     {
         Gate::authorize('delete', $annualBudget);
 
-        if ($annualBudget->invoiceIntakes()->exists()) {
+        if ($annualBudget->invoiceIntakes()->exists() || $annualBudget->purchases()->exists()) {
             throw ValidationException::withMessages([
-                'annual_budget' => 'No se puede eliminar un presupuesto que tiene ingresos de facturas.',
+                'annual_budget' => 'No se puede eliminar un presupuesto que tiene ingresos de facturas o compras.',
             ]);
         }
 
-        $annualBudget->delete();
+        // Sin facturas ni compras solo queda la asignación inicial / ajustes del ledger.
+        DB::transaction(function () use ($annualBudget) {
+            $annualBudget->movements()->delete();
+            $annualBudget->delete();
+        });
 
         return response()->noContent();
     }

@@ -27,9 +27,10 @@ class StateMachineTest extends TestCase
                 'rechazado' => [],
             ]],
             'compras' => [PurchaseStateMachine::class, [
-                'pendiente' => ['en_camino'],
-                'en_camino' => ['completa'],
+                'pendiente' => ['en_camino', 'cancelada'],
+                'en_camino' => ['completa', 'cancelada'],
                 'completa' => [],
+                'cancelada' => [],
             ]],
             'unidades de equipo' => [EquipmentUnitStateMachine::class, [
                 'disponible' => ['prestado', 'en_reparacion', 'dado_de_baja'],

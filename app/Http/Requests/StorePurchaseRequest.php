@@ -17,6 +17,7 @@ class StorePurchaseRequest extends FormRequest
         return [
             // Se puede crear desde cero (proveedor + ítems) o partir de una
             // cotización aceptada (REQ-07 -> REQ-08) que aporte ambos datos.
+            'annual_budget_id' => ['required', 'integer', 'exists:annual_budgets,id'],
             'quotation_id' => ['nullable', 'integer', 'exists:quotations,id'],
             'supplier_id' => ['required_without:quotation_id', 'integer', 'exists:suppliers,id'],
             'quotation_reference' => ['nullable', 'string', 'max:100'],
@@ -26,13 +27,16 @@ class StorePurchaseRequest extends FormRequest
             'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.unit_price' => ['nullable', 'numeric', 'min:0'],
+            'items.*.unit_price' => ['required_with:items', 'numeric', 'min:0', 'max:9999999999'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'annual_budget_id.required' => 'El presupuesto es obligatorio.',
+            'annual_budget_id.exists' => 'El presupuesto no existe.',
+            'items.*.unit_price.required_with' => 'Cada producto de la orden debe tener precio unitario.',
             'supplier_id.required_without' => 'El proveedor es obligatorio si no indicas una cotización aprobada.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'quotation_id.exists' => 'La cotización seleccionada no existe en el sistema.',

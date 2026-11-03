@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AnnualBudget;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
@@ -25,6 +26,8 @@ class QuotationPurchaseFlowTest extends TestCase
 
     protected User $director;
 
+    protected AnnualBudget $budget;
+
     protected User $warehouse;
 
     protected Supplier $supplier;
@@ -42,6 +45,9 @@ class QuotationPurchaseFlowTest extends TestCase
             'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
+
+        $this->budget = AnnualBudget::factory()->create();
+        $this->director->careers()->attach($this->budget->career_id);
 
         $this->warehouse = User::factory()->create([
             'email' => 'panol_flow_'.uniqid().'@inacap.cl',
@@ -73,7 +79,12 @@ class QuotationPurchaseFlowTest extends TestCase
         ]);
 
         foreach ([$this->supplier, $this->otherSupplier, ...$extraSuppliers] as $supplier) {
-            $quotation->suppliers()->create(['supplier_id' => $supplier->id]);
+            $contact = $quotation->suppliers()->create(['supplier_id' => $supplier->id]);
+            $contact->offerItems()->create([
+                'product_id' => $this->product->id,
+                'requested_quantity' => 6,
+                'offered_unit_price' => 90000,
+            ]);
         }
 
         return $quotation;
@@ -90,6 +101,7 @@ class QuotationPurchaseFlowTest extends TestCase
         Sanctum::actingAs($this->director);
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
             'expected_at' => now()->addWeek()->toDateString(),
         ]);
@@ -132,6 +144,7 @@ class QuotationPurchaseFlowTest extends TestCase
         Sanctum::actingAs($this->director);
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
         ]);
 
@@ -149,6 +162,7 @@ class QuotationPurchaseFlowTest extends TestCase
         Sanctum::actingAs($this->director);
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
             'supplier_id' => $stranger->id,
         ]);
@@ -174,6 +188,7 @@ class QuotationPurchaseFlowTest extends TestCase
         Sanctum::actingAs($this->director);
 
         $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
             'items' => [
                 ['name' => 'Cable THW 2.5mm', 'quantity' => 30, 'unit_price' => 900],
@@ -193,7 +208,7 @@ class QuotationPurchaseFlowTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $this->postJson('/api/purchases', ['quotation_id' => $emptyQuotation->id])
+        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $emptyQuotation->id])
             ->assertStatus(422)
             ->assertJsonValidationErrors('items');
 
@@ -205,7 +220,7 @@ class QuotationPurchaseFlowTest extends TestCase
             'quantity' => 3,
         ]);
 
-        $this->postJson('/api/purchases', ['quotation_id' => $withoutSuppliers->id])
+        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $withoutSuppliers->id])
             ->assertStatus(422)
             ->assertJsonValidationErrors('supplier_id');
     }
@@ -229,6 +244,7 @@ class QuotationPurchaseFlowTest extends TestCase
 
         // 2. Orden de compra generada desde la cotización
         $purchaseResponse = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
         ]);
         $purchaseResponse->assertStatus(201);

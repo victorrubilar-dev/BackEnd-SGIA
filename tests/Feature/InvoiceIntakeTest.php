@@ -178,7 +178,7 @@ TXT;
         $this->assertSame('borrador', $intake->fresh()->status);
     }
 
-    public function test_cancel_only_from_draft(): void
+    public function test_cancel_draft_and_second_cancel_is_rejected(): void
     {
         $intake = $this->draft();
         Sanctum::actingAs($this->admin);
@@ -186,8 +186,6 @@ TXT;
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertOk()->assertJsonPath('data.status', 'anulado');
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertStatus(422);
 
-        $confirmed = InvoiceIntake::factory()->create(['status' => InvoiceIntake::STATUS_CONFIRMED]);
-        $this->postJson("/api/invoice-intakes/{$confirmed->id}/cancel")->assertStatus(422);
     }
 
     public function test_list_filters_show_and_file_download(): void

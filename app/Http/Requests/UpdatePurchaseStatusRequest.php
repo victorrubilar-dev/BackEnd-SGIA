@@ -26,7 +26,7 @@ class UpdatePurchaseStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'string', Rule::in(PurchaseStateMachine::STATUSES)],
+            'status' => ['required', 'string', Rule::in(PurchaseStateMachine::SETTABLE_STATUSES)],
         ];
     }
 
@@ -34,7 +34,7 @@ class UpdatePurchaseStatusRequest extends FormRequest
     {
         return [
             'status.required' => 'El estado de la orden es obligatorio.',
-            'status.in' => 'El estado debe ser: pendiente, en_camino o completa.',
+            'status.in' => 'El estado debe ser: pendiente, en_camino o completa (para cancelar usa POST /purchases/{id}/cancel).',
         ];
     }
 }
