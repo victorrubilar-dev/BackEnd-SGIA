@@ -96,8 +96,29 @@
                             <td>{{ $record->responsible?->name ?? '—' }}</td>
                             <td>{{ $record->started_at?->format('d-m-Y') }}</td>
                             <td>{{ $record->finished_at?->format('d-m-Y') ?? '—' }}</td>
-                            <td>{{ str_replace('_', ' ', $record->status) }}</td>
+                            <td>{{ str_replace('_', ' ', $record->status) }}{{ $record->result ? ' ('.$record->result.')' : '' }}</td>
                             <td>{{ number_format((float) $record->repair_cost, 0, ',', '.') }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @endif
+    </div>
+
+    <div class="section">
+        <h2>Documentos vigentes ({{ $unit->maintenanceDocuments->count() }})</h2>
+        @if ($unit->maintenanceDocuments->isEmpty())
+            <p class="empty">La unidad no tiene documentos de mantenimiento vigentes.</p>
+        @else
+            <table class="list">
+                <thead><tr><th>Tipo</th><th>Título</th><th>Vigente hasta</th><th>Subido</th></tr></thead>
+                <tbody>
+                    @foreach ($unit->maintenanceDocuments as $document)
+                        <tr>
+                            <td>{{ str_replace('_', ' ', $document->document_type) }}</td>
+                            <td>{{ $document->title }}</td>
+                            <td>{{ $document->valid_until?->format('d-m-Y') ?? 'Sin vencimiento' }}</td>
+                            <td>{{ $document->created_at?->format('d-m-Y') }}</td>
                         </tr>
                     @endforeach
                 </tbody>

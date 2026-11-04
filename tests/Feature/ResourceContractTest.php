@@ -14,6 +14,8 @@ use App\Http\Resources\InvoiceIntakeResource;
 use App\Http\Resources\LoanItemResource;
 use App\Http\Resources\LoanResource;
 use App\Http\Resources\LocationResource;
+use App\Http\Resources\MaintenanceDocumentResource;
+use App\Http\Resources\MaintenanceRecordResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\PurchaseItemResource;
 use App\Http\Resources\PurchaseResource;
@@ -35,6 +37,8 @@ use App\Models\InvoiceIntakeItem;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Location;
+use App\Models\MaintenanceDocument;
+use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
@@ -144,5 +148,20 @@ class ResourceContractTest extends TestCase
     public function test_student_resource(): void
     {
         $this->assertKeys(StudentResource::class, Student::factory()->create(), explode(',', 'career_id,created_at,email,full_name,id,registered_at,rut,updated_at'));
+    }
+
+    public function test_maintenance_resources(): void
+    {
+        $record = MaintenanceRecord::factory()->create();
+        $this->assertKeys(MaintenanceRecordResource::class, $record, explode(',', 'allowed_transitions,applies_recf,checklist_complete,created_at,created_by,equipment_unit_id,execution_mode,external_supplier_id,finished_at,id,incident_report_id,maintenance_type,pfg_approved,repair_cost,requires_additional_maintenance,responsible_id,result,rev_a_approved,rev_b_approved,rev_c_approved,spare_parts_used,started_at,status,technical_notes,updated_at,updated_by'));
+
+        $document = MaintenanceDocument::create([
+            'equipment_unit_id' => $record->equipment_unit_id,
+            'uploaded_by' => $record->responsible_id,
+            'document_type' => MaintenanceDocument::TYPE_MANUAL,
+            'title' => 'Manual',
+            'file_path' => 'maintenance-documents/x.pdf',
+        ]);
+        $this->assertKeys(MaintenanceDocumentResource::class, $document, explode(',', 'created_at,document_type,equipment_unit_id,file_url,id,is_expired,maintenance_record_id,original_name,size_bytes,title,updated_at,uploaded_by,valid_until'));
     }
 }

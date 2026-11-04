@@ -58,19 +58,28 @@ class EquipmentPdfService
     }
 
     /**
-     * Hoja de vida de una unidad: producto, ubicación, mantenciones, préstamos e informes.
+     * Hoja de vida de una unidad: producto, ubicación, mantenciones, documentos vigentes, préstamos e informes.
      */
     public function unitTechnicalSheet(EquipmentUnit $unit): string
+    {
+        return $this->render($this->unitTechnicalSheetView($unit));
+    }
+
+    /**
+     * Vista de la hoja de vida con sus relaciones cargadas (sin renderizar a PDF).
+     */
+    public function unitTechnicalSheetView(EquipmentUnit $unit): View
     {
         $unit->load([
             'product.category',
             'cajon.location.storeroom',
             'loanItems.loan',
             'maintenanceRecords.responsible',
+            'maintenanceDocuments' => fn ($q) => $q->current()->orderBy('document_type'),
             'incidentReports',
         ]);
 
-        return $this->render(view('equipment.unit-technical-sheet', ['unit' => $unit]));
+        return view('equipment.unit-technical-sheet', ['unit' => $unit]);
     }
 
     /**

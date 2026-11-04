@@ -9,12 +9,14 @@ use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Location;
+use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\StockAlert;
 use App\Models\User;
 use App\Services\EquipmentUnitService;
 use App\Services\MetricsService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Testing\TestResponse;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -94,6 +96,8 @@ class MetricsGraphQLTest extends TestCase
 
     public function test_every_entity_metric_and_groupby_combination_resolves(): void
     {
+        // Las combinaciones superan el límite de 120 consultas por minuto de `throttle:metrics`.
+        $this->withoutMiddleware(ThrottleRequests::class);
         $this->seedActivity();
         $combos = 0;
 
@@ -243,6 +247,18 @@ class MetricsGraphQLTest extends TestCase
 
         $this->assertEquals(1, $points['Sala Métrica B']);
         $this->assertArrayNotHasKey('Sala Métrica A', $points->all());
+    }
+
+    public function test_maintenance_by_type_counts_maintenance_records_without_cancelled(): void
+    {
+        $before = collect($this->metric(['entity' => 'MAINTENANCE', 'metric' => 'COUNT', 'groupBy' => 'maintenance_type'])->json('data.customMetric.points'))->pluck('value', 'label');
+
+        MaintenanceRecord::factory()->count(2)->create(['maintenance_type' => 'calibracion', 'started_at' => now()]);
+        MaintenanceRecord::factory()->create(['maintenance_type' => 'calibracion', 'status' => 'anulada', 'started_at' => now()]);
+
+        $after = collect($this->metric(['entity' => 'MAINTENANCE', 'metric' => 'COUNT', 'groupBy' => 'maintenance_type'])->json('data.customMetric.points'))->pluck('value', 'label');
+
+        $this->assertEquals(2, ($after['Calibración'] ?? 0) - ($before['Calibración'] ?? 0));
     }
 
     public function test_kpis_match_the_unit_counts_of_a_product(): void

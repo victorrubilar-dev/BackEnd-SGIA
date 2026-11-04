@@ -178,7 +178,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `PATCH` | `/api/equipment-units/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado con la máquina de estados; `prestado` solo por préstamos (`422`). **Body:** `status`. | ✅ Implementado |
 | `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
-| `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones e informes. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 
 ---
@@ -330,6 +330,31 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|:---:|
 | `GET` | `/api/equipment/{id}/technical-sheet` | Todos (`auth`) | Descarga la ficha técnica en PDF: datos del equipo, proveedor, ubicación física e historial de novedades. | ✅ Implementado |
 | `GET` | `/api/equipment/{id}/reports` | Todos (`auth`) | Informes de novedades del equipo, paginados en JSON o en PDF con `?format=pdf`.<br>**Query Params:** `severity` (`leve`, `media`, `critica`), `status`, `per_page` (1-100). | ✅ Implementado |
+
+### 12.1 Mantenciones (`FU-05` / `REQ-18`)
+
+> Máquina de estados (`App\Services\MaintenanceRecordStateMachine`): **`en_curso` → `finalizada` | `anulada`** (ambas finales). Lectura `AD-01`, `DIR-01`, `PAN-01`; escritura `AD-01`, `PAN-01`; `PRO-01` → `403`. Mientras hay una mantención `en_curso`, la unidad está `en_reparacion` y `PATCH /api/equipment-units/{id}/status` responde `422`.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/maintenance-records` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado, ordenado por prioridad de mantención del producto (`A` primero) y fecha de inicio (reciente primero). Incluye `equipment_unit.product`, `responsible`, `external_supplier`.<br>**Query Params:** `equipment_unit_id`, `product_id`, `status`, `maintenance_type`, `execution_mode`, `from`, `to` (fecha de inicio), `per_page`. | ✅ Implementado |
+| `GET` | `/api/maintenance-records/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle con unidad (cajón, sala, pañol), responsable, proveedor, informe asociado y `documents`. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/maintenance-records` | `AD-01`, `DIR-01`, `PAN-01` | Historial de la unidad (más reciente primero), con `documents`. | ✅ Implementado |
+| `POST` | `/api/equipment-units/{id}/maintenance-records` | `AD-01`, `PAN-01` | Abre una mantención `en_curso`; la unidad pasa a `en_reparacion` y el informe asociado a `en_reparacion`.<br>**Body:** `maintenance_type` (`preventiva` \| `correctiva` \| `calibracion`), `execution_mode` (`medios_propios` por defecto \| `externa`), `external_supplier_id` (obligatorio si `externa`), `incident_report_id` (opcional, de la misma unidad y no cerrado), `responsible_id` (opcional, por defecto el usuario autenticado), `technical_notes`. `201`.<br>`422` si la unidad está `prestado` o `dado_de_baja`, o ya tiene una mantención `en_curso` (error en `equipment_unit_id`). | ✅ Implementado |
+| `PATCH` | `/api/maintenance-records/{id}` | `AD-01`, `PAN-01` | Checklist y cierre técnico (solo `en_curso`; si no, `422` en `status`).<br>**Body:** `rev_a_approved`, `rev_b_approved`, `rev_c_approved` (`null` = no aplica), `pfg_approved`, `requires_additional_maintenance`, `applies_recf`, `repair_cost`, `spare_parts_used`, `technical_notes`. | ✅ Implementado |
+| `POST` | `/api/maintenance-records/{id}/finish` | `AD-01`, `PAN-01` | **Body:** `result` (`operativo` \| `baja`), `technical_notes` opcional. `operativo` exige REV-A, REV-B y PFG aprobadas (y REV-C si no es `null`; si no, `422` en `checklist`) y deja la unidad `disponible`; `baja` la deja `dado_de_baja`. Fija `finished_at`, `last_maintenance_at` y `next_maintenance_at` (según `maintenance_frequency_months`; nula si `baja`), cierra el informe asociado (`reparado` / `dado_de_baja`) y recalcula los contadores del producto. | ✅ Implementado |
+| `POST` | `/api/maintenance-records/{id}/cancel` | `AD-01`, `PAN-01` | `anulada`. **Body:** `reason` opcional (se agrega a `technical_notes`). La unidad y el informe vuelven al estado que tenían al abrir la mantención. | ✅ Implementado |
+
+### 12.2 Documentos de mantenimiento (`FU-05` / `REQ-19`)
+
+> PDF por unidad en disco privado; descarga solo por endpoint autenticado (usar `getBlob()`). Lectura y descarga `AD-01`, `DIR-01`, `PAN-01`; subida y borrado `AD-01`, `PAN-01`.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/equipment-units/{id}/maintenance-documents` | `AD-01`, `DIR-01`, `PAN-01` | Documentos de la unidad (más reciente primero).<br>**Query Params:** `document_type`, `expiring_within_days` (vigentes que vencen en N días), `current=1` (vigentes o sin vencimiento), `per_page`. Cada documento trae `is_expired` y `file_url`. | ✅ Implementado |
+| `POST` | `/api/equipment-units/{id}/maintenance-documents` | `AD-01`, `PAN-01` | `multipart/form-data`: `document_type` (`certificado_calibracion` \| `informe_tecnico` \| `manual` \| `garantia` \| `otro`), `title`, `file` (PDF, máx. 10 MB), `valid_until` (opcional), `maintenance_record_id` (opcional, de la misma unidad). `uploaded_by` = usuario autenticado. `201`. Límite 10/min. | ✅ Implementado |
+| `GET` | `/api/maintenance-documents/{id}/file` | `AD-01`, `DIR-01`, `PAN-01` | Descarga autenticada del PDF (nombre original). `404` si el archivo no existe. | ✅ Implementado |
+| `DELETE` | `/api/maintenance-documents/{id}` | `AD-01`, `PAN-01` | `204`; borra también el archivo. | ✅ Implementado |
 
 ---
 

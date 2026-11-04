@@ -6,6 +6,7 @@ use App\Exceptions\InvalidEquipmentUnitStatusTransition;
 use App\Models\Cajon;
 use App\Models\EquipmentUnit;
 use App\Models\Location;
+use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Storeroom;
 use Illuminate\Database\Eloquent\Builder;
@@ -93,19 +94,26 @@ class EquipmentUnitService
     }
 
     /**
-     * Cambia el estado validando la máquina de estados. `prestado` solo cambia por préstamos.
+     * Cambia el estado validando la máquina de estados. `prestado` solo cambia por préstamos y,
+     * con una mantención en curso, el estado solo lo cambia la mantención (REQ-18).
      *
      * @throws InvalidEquipmentUnitStatusTransition|ValidationException
      */
-    public function changeStatus(EquipmentUnit $unit, string $to, ?int $userId, bool $fromLoan = false): EquipmentUnit
+    public function changeStatus(EquipmentUnit $unit, string $to, ?int $userId, bool $fromLoan = false, bool $fromMaintenance = false): EquipmentUnit
     {
-        return DB::transaction(function () use ($unit, $to, $userId, $fromLoan) {
+        return DB::transaction(function () use ($unit, $to, $userId, $fromLoan, $fromMaintenance) {
             $locked = EquipmentUnit::whereKey($unit->id)->lockForUpdate()->firstOrFail();
             $from = $locked->status;
 
             if (! $fromLoan && ($from === EquipmentUnit::STATUS_ON_LOAN || $to === EquipmentUnit::STATUS_ON_LOAN)) {
                 throw ValidationException::withMessages([
                     'status' => 'El estado prestado solo se cambia mediante préstamos.',
+                ]);
+            }
+
+            if (! $fromLoan && ! $fromMaintenance && $locked->maintenanceRecords()->where('status', MaintenanceRecord::STATUS_IN_PROGRESS)->exists()) {
+                throw ValidationException::withMessages([
+                    'status' => 'La unidad tiene una mantención en curso; finalízala o anúlala para cambiar su estado.',
                 ]);
             }
 

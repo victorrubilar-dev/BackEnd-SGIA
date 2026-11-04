@@ -40,7 +40,7 @@ class MetricsService
         'EQUIPMENT' => ['hardware_category', 'location', 'physical_condition'],
         'SCALE_MODELS' => ['hardware_category', 'location', 'physical_condition'],
         'ALERTS' => ['criticality', 'specialty_area'],
-        'MAINTENANCE' => ['equipment', 'failure_type', 'workshop'],
+        'MAINTENANCE' => ['equipment', 'failure_type', 'workshop', 'maintenance_type'],
         'CAREERS' => ['specialty', 'level'],
         'TEACHERS' => ['subject', 'department'],
     ];
@@ -54,6 +54,7 @@ class MetricsService
     private const VALUE_LABELS = [
         'criticality' => ['critical' => 'Crítica', 'warning' => 'Advertencia'],
         'failure_type' => ['leve' => 'Leve', 'media' => 'Media', 'critica' => 'Crítica'],
+        'maintenance_type' => ['preventiva' => 'Preventiva', 'correctiva' => 'Correctiva', 'calibracion' => 'Calibración'],
         'level' => Career::LEVELS,
     ];
 
@@ -448,6 +449,14 @@ class MetricsService
         return match ($groupBy) {
             null => $this->series($this->daily($base(), 'incident_reports.created_at'), $period, hasTotal: false),
             'failure_type' => $this->groups($base()->groupBy('severity')->selectRaw('severity as label, count(*) as c')->get()->all(), 'failure_type', false),
+            // Registros de mantención (REQ-18) iniciados en el período, por tipo.
+            'maintenance_type' => $this->groups(
+                DB::table('maintenance_records')
+                    ->whereBetween('started_at', [$period->from->startOfDay(), $period->to->endOfDay()])
+                    ->where('status', '!=', 'anulada')
+                    ->groupBy('maintenance_type')->selectRaw('maintenance_type as label, count(*) as c')->get()->all(),
+                'maintenance_type', false
+            ),
             'equipment' => $this->groups(
                 $base()->join('products', 'products.id', '=', 'incident_reports.product_id')
                     ->groupBy('products.id', 'products.name')->selectRaw('products.name as label, count(*) as c')->get()->all(),

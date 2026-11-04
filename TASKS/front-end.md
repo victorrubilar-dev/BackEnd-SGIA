@@ -90,7 +90,7 @@ Implementado con los dos documentos exactos de `packages/api-client/src/services
 | `EQUIPMENT` | ranking de productos más solicitados; `secondaryValue` = stock | `hardware_category` (alias `category`), `location` (**unidades** por sala del cajón, sin las dadas de baja), `physical_condition` (**unidades** disponible / en taller / dado de baja) |
 | `SCALE_MODELS` | igual que `EQUIPMENT`, solo productos `maqueta` | `hardware_category` (alias `category`), `location`, `physical_condition` |
 | `ALERTS` | serie en el tiempo | `criticality`, `specialty_area` |
-| `MAINTENANCE` | serie en el tiempo | `equipment`, `failure_type` (= gravedad del informe), `workshop` (sala de la unidad del informe, o la del producto si el informe no tiene unidad) |
+| `MAINTENANCE` | serie en el tiempo | `equipment`, `failure_type` (= gravedad del informe), `workshop` (sala de la unidad del informe, o la del producto si el informe no tiene unidad), `maintenance_type` (registros de mantención por tipo, sin anuladas) |
 | `CAREERS` | préstamos por carrera (área del solicitante) | `specialty` |
 | `TEACHERS` | ranking de docentes | `subject`, `department` (= área del docente) |
 
@@ -246,3 +246,15 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `StudentResource`: `id`, `rut` (normalizado `12345678-K`, DV en mayúscula), `full_name`, `email`, `career_id`, `career` (si viene cargada), `loans_count` (en listados y detalle), `registered_at`, fechas.
 - `POST /api/loans/checkout` acepta `student_id` **o** `student_rut` (no ambos). Con cualquiera de los dos, `borrower_name` pasa a opcional: el préstamo toma nombre y RUT del estudiante. Si el RUT no existe se crea el estudiante (con `borrower_name` si viene, o solo con el RUT). Sigue funcionando el flujo anterior (`borrower_name` + `borrower_document` con RUT).
 - `LoanResource`: nuevo `student_id`; `student` (StudentResource) en el detalle, el listado y la respuesta del checkout.
+
+## REQ-18 y REQ-19 — mantenciones y documentos
+
+- Rutas nuevas, lectura `AD-01`/`DIR-01`/`PAN-01`, escritura `AD-01`/`PAN-01` (`PRO-01` → `403` en todo): `GET /api/maintenance-records`, `GET /api/maintenance-records/{id}`, `GET/POST /api/equipment-units/{id}/maintenance-records`, `PATCH /api/maintenance-records/{id}`, `POST /api/maintenance-records/{id}/finish`, `POST /api/maintenance-records/{id}/cancel`.
+- `MaintenanceRecordResource`: `id`, `equipment_unit_id`, `equipment_unit`, `maintenance_type` (`preventiva`|`correctiva`|`calibracion`), `execution_mode` (`medios_propios`|`externa`), `external_supplier_id`, `external_supplier`, `incident_report_id`, `incident_report` (detalle), `responsible_id`, `responsible`, `rev_a_approved`, `rev_b_approved`, `rev_c_approved` (`null` = no aplica), `pfg_approved`, `checklist_complete`, `requires_additional_maintenance`, `applies_recf`, `repair_cost` (string 2 decimales), `spare_parts_used`, `technical_notes`, `status` (`en_curso`|`finalizada`|`anulada`), `result` (`operativo`|`baja`|null), `allowed_transitions`, `documents` (detalle e historial de la unidad), `started_at`, `finished_at`, auditoría y fechas.
+- Flujo: abrir (la unidad pasa a `en_reparacion`, el informe asociado también) → editar checklist con `PATCH` → `finish` con `result`. `operativo` exige REV-A, REV-B, PFG (y REV-C si no es `null`): si no, `422` en `checklist`. `baja` deja la unidad `dado_de_baja` sin checklist. `cancel` (`reason` opcional) devuelve unidad e informe a su estado previo.
+- `422`: unidad prestada o de baja, ya con mantención en curso, `externa` sin `external_supplier_id`, informe de otra unidad o cerrado (`incident_report_id`), editar/finalizar/anular algo que no está `en_curso` (`status`, con `allowed_transitions`).
+- **Rompe flujo:** con una mantención `en_curso`, `PATCH /api/equipment-units/{id}/status` responde `422`; el estado lo cambian `finish`/`cancel`.
+- Documentos: `GET/POST /api/equipment-units/{id}/maintenance-documents` (`multipart`: `document_type` `certificado_calibracion`|`informe_tecnico`|`manual`|`garantia`|`otro`, `title`, `file` PDF ≤ 10 MB, `valid_until?`, `maintenance_record_id?` de la misma unidad; límite 10/min), filtros `document_type`, `expiring_within_days`, `current=1`. `GET /api/maintenance-documents/{id}/file` (descarga con token: `getBlob()`), `DELETE /api/maintenance-documents/{id}` (`204`, borra el archivo; solo `AD-01`/`PAN-01`).
+- `MaintenanceDocumentResource`: `id`, `equipment_unit_id`, `maintenance_record_id`, `document_type`, `title`, `original_name`, `size_bytes`, `valid_until`, `is_expired`, `file_url`, `uploaded_by`, `uploader`, fechas.
+- La hoja de vida PDF de la unidad lista sus documentos vigentes y el resultado de cada mantención.
+- Métricas: `MAINTENANCE` acepta `groupBy: maintenance_type`.

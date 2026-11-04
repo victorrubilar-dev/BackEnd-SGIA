@@ -10,7 +10,7 @@
 - [x] Capa GraphQL `POST /api/metrics` con `executiveKpis` y `customMetric` (entidades `LOANS`, `SUPPLIES`, `EQUIPMENT`, `ALERTS`, `MAINTENANCE`, `CAREERS`, `TEACHERS`; métricas `COUNT`, `TOTAL`, `AVERAGE`, `RATE`; períodos incluidos `SEMESTER_PREVIOUS`, `YEAR_TO_DATE` y `CUSTOM`).
 - [x] `CAREERS` con `groupBy: "level"` desde el catálogo `careers` (`/api/careers`, unido por nombre con `users.area`).
 - [x] `EQUIPMENT` y `SUPPLIES` separados por `products.type` (`equipo` / `insumo`).
-- [ ] `MAINTENANCE.failure_type` sin dato propio: se usa la gravedad del informe.
+- [x] `MAINTENANCE.failure_type` sigue siendo la gravedad del informe; `groupBy: maintenance_type` (nuevo) cuenta los registros de mantención por tipo (`preventiva`/`correctiva`/`calibracion`, sin anuladas) (`MetricsGraphQLTest`).
 
 ### REQ-15 — Dashboard personalizado por usuario (FU-06, DIR-01 y AD-01)
 Modelos `ChartTemplate` y `UserChart` (`TASKS/Equipos.md`, fase 1). Cada usuario arma su panel con hasta 5 gráficos.

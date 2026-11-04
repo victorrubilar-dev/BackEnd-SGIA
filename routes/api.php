@@ -15,6 +15,8 @@ use App\Http\Controllers\Api\InvoiceIntakeController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
 use App\Http\Controllers\Api\LocationController;
+use App\Http\Controllers\Api\MaintenanceDocumentController;
+use App\Http\Controllers\Api\MaintenanceRecordController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
@@ -244,4 +246,27 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::patch('/equipment-units/{equipmentUnit}/status', [EquipmentUnitController::class, 'updateStatus']);
     });
     Route::middleware('role:AD-01,DIR-01')->delete('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'destroy']);
+
+    // REQ-18: Registro de mantenciones (FU-05, PAN-01 y AD-01; DIR-01 lectura)
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/maintenance-records', [MaintenanceRecordController::class, 'index']);
+        Route::get('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'show']);
+        Route::get('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'unitIndex']);
+    });
+    Route::middleware('role:AD-01,PAN-01')->group(function () {
+        Route::post('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'store']);
+        Route::patch('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'update']);
+        Route::post('/maintenance-records/{maintenanceRecord}/finish', [MaintenanceRecordController::class, 'finish']);
+        Route::post('/maintenance-records/{maintenanceRecord}/cancel', [MaintenanceRecordController::class, 'cancel']);
+    });
+
+    // REQ-19: Documentos de mantenimiento (FU-05, PAN-01 y AD-01; DIR-01 lectura y descarga)
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/equipment-units/{equipmentUnit}/maintenance-documents', [MaintenanceDocumentController::class, 'index']);
+        Route::get('/maintenance-documents/{maintenanceDocument}/file', [MaintenanceDocumentController::class, 'file']);
+    });
+    Route::middleware('role:AD-01,PAN-01')->group(function () {
+        Route::post('/equipment-units/{equipmentUnit}/maintenance-documents', [MaintenanceDocumentController::class, 'store'])->middleware('throttle:sensitive');
+        Route::delete('/maintenance-documents/{maintenanceDocument}', [MaintenanceDocumentController::class, 'destroy']);
+    });
 });

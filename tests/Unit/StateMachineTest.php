@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Services\EquipmentUnitStateMachine;
 use App\Services\LoanStateMachine;
+use App\Services\MaintenanceRecordStateMachine;
 use App\Services\PurchaseStateMachine;
 use App\Services\QuotationStateMachine;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -43,6 +44,11 @@ class StateMachineTest extends TestCase
                 'aceptada' => ['convertida', 'rechazada'],
                 'rechazada' => [],
                 'convertida' => [],
+            ]],
+            'mantenciones' => [MaintenanceRecordStateMachine::class, [
+                'en_curso' => ['finalizada', 'anulada'],
+                'finalizada' => [],
+                'anulada' => [],
             ]],
         ];
     }

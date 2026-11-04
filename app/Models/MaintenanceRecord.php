@@ -37,6 +37,12 @@ class MaintenanceRecord extends Model
 
     public const STATUSES = [self::STATUS_IN_PROGRESS, self::STATUS_FINISHED, self::STATUS_CANCELLED];
 
+    public const RESULT_OPERATIONAL = 'operativo';
+
+    public const RESULT_WRITE_OFF = 'baja';
+
+    public const RESULTS = [self::RESULT_OPERATIONAL, self::RESULT_WRITE_OFF];
+
     protected $attributes = [
         'execution_mode' => self::MODE_OWN,
         'status' => self::STATUS_IN_PROGRESS,
@@ -64,6 +70,15 @@ class MaintenanceRecord extends Model
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Checklist para dejar la unidad operativa: REV-A, REV-B y PFG aprobadas; REV-C solo si aplica
+     * (`null` = no aplica).
+     */
+    public function checklistComplete(): bool
+    {
+        return $this->rev_a_approved && $this->rev_b_approved && $this->pfg_approved && $this->rev_c_approved !== false;
     }
 
     /**
@@ -112,6 +127,11 @@ class MaintenanceRecord extends Model
     public function incidentReport(): BelongsTo
     {
         return $this->belongsTo(IncidentReport::class);
+    }
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 
     public function documents(): HasMany

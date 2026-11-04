@@ -208,7 +208,7 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 - [x] `GET /equipment-units/{equipmentUnit}/reports` (JSON paginado o `?format=pdf`).
 - [x] `GET /equipment-units/{equipmentUnit}/technical-sheet`: PDF con producto (categoría, prioridad, calibración), código, serie, estado, ubicación (pañol/sala/estante), fechas de mantención, historial de préstamos, mantenciones e informes de la unidad. Método nuevo en `EquipmentPdfService` y vista en `resources/views/equipment/`.
 - [x] La ficha del producto (`/equipment/{product}/technical-sheet`) añade la tabla de sus unidades.
-- [ ] Endpoints de mantención y documentos: REQ-18 y REQ-19 en `Fichas tecnicas.md` (se implementan después de esta fase).
+- [x] Endpoints de mantención y documentos: REQ-18 y REQ-19 en `Fichas tecnicas.md` (`MaintenanceRecordTest`, `MaintenanceDocumentTest`).
 - [x] Tests: ampliar `IncidentReportTest` y `TechnicalSheetTest`.
 
 ## Fase 9 — Dashboards y métricas
