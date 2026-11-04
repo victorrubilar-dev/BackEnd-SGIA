@@ -1759,12 +1759,6 @@ parameters:
 			path: app/Observers/UserAuditObserver.php
 
 		-
-			message: '#^Parameter \#2 \$budget of method App\\Policies\\InvoiceIntakePolicy\:\:operatesOn\(\) expects App\\Models\\AnnualBudget, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Policies/InvoiceIntakePolicy.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Loan\:\:\$area\.$#'
 			identifier: property.notFound
 			count: 3

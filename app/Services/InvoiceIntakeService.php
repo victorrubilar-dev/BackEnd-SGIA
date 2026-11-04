@@ -27,9 +27,11 @@ class InvoiceIntakeService
      * Guarda el archivo en el disco privado y crea el ingreso en `borrador` con el resultado del OCR.
      * Si el OCR no está disponible el borrador queda sin ítems detectados (ingreso manual).
      */
-    public function createDraft(UploadedFile $file, AnnualBudget $budget, int $userId, ?Purchase $purchase = null): InvoiceIntake
+    public function createDraft(UploadedFile $file, ?AnnualBudget $budget, int $userId, ?Purchase $purchase = null): InvoiceIntake
     {
         if ($purchase) {
+            // Sin presupuesto explícito se usa el de la compra.
+            $budget ??= $purchase->annual_budget_id ? AnnualBudget::find($purchase->annual_budget_id) : null;
             $this->assertPurchaseBillable($purchase, $budget);
         }
 
@@ -45,7 +47,7 @@ class InvoiceIntakeService
 
         return InvoiceIntake::create([
             'user_id' => $userId,
-            'annual_budget_id' => $budget->id,
+            'annual_budget_id' => $budget?->id,
             'purchase_id' => $purchase?->id,
             'pdf_path' => $file->store('invoice-intakes', 'local'),
             'document_number' => $payload['invoice_number'],
@@ -72,7 +74,9 @@ class InvoiceIntakeService
                 ]);
             }
 
-            $budget = AnnualBudget::whereKey($locked->annual_budget_id)->lockForUpdate()->firstOrFail();
+            $budget = $locked->annual_budget_id
+                ? AnnualBudget::whereKey($locked->annual_budget_id)->lockForUpdate()->firstOrFail()
+                : null;
             $products = Product::whereIn('id', array_column($items, 'product_id'))->get()->keyBy('id');
 
             $rows = [];
@@ -96,14 +100,16 @@ class InvoiceIntakeService
 
             $purchase = null;
 
-            if ($locked->purchase_id) {
+            if ($locked->purchase_id && $budget) {
                 // La factura cierra la reserva de su compra: se libera y se consume el monto real.
                 $purchase = Purchase::whereKey($locked->purchase_id)->lockForUpdate()->firstOrFail();
                 $this->assertPurchaseBillable($purchase, $budget);
                 $this->budgets->releaseReservation($budget, $purchase, $userId, $locked);
             }
 
-            $this->budgets->consume($budget, $totalCents / 100, $locked, $userId, $purchase);
+            if ($budget) {
+                $this->budgets->consume($budget, $totalCents / 100, $locked, $userId, $purchase);
+            }
 
             foreach ($rows as [$product, $item, $subtotalCents]) {
                 $intakeItem = $locked->items()->create([
@@ -155,7 +161,9 @@ class InvoiceIntakeService
 
     private function reverseConfirmed(InvoiceIntake $intake, int $userId): void
     {
-        $budget = AnnualBudget::whereKey($intake->annual_budget_id)->lockForUpdate()->firstOrFail();
+        $budget = $intake->annual_budget_id
+            ? AnnualBudget::whereKey($intake->annual_budget_id)->lockForUpdate()->firstOrFail()
+            : null;
         $items = $intake->items()->with(['product', 'units'])->get();
 
         $insumoQuantities = [];
@@ -210,7 +218,9 @@ class InvoiceIntakeService
             $this->units->changeStatus($unit, EquipmentUnit::STATUS_WRITTEN_OFF, $userId);
         }
 
-        $this->budgets->restore($budget, $intake->total_deducted ?? 0, $intake, $userId);
+        if ($budget) {
+            $this->budgets->restore($budget, $intake->total_deducted ?? 0, $intake, $userId);
+        }
     }
 
     /**
@@ -218,9 +228,9 @@ class InvoiceIntakeService
      *
      * @throws ValidationException
      */
-    private function assertPurchaseBillable(Purchase $purchase, AnnualBudget $budget): void
+    private function assertPurchaseBillable(Purchase $purchase, ?AnnualBudget $budget): void
     {
-        if ($purchase->annual_budget_id !== $budget->id) {
+        if ($purchase->annual_budget_id !== $budget?->id) {
             throw ValidationException::withMessages(['purchase_id' => 'La compra pertenece a otro presupuesto.']);
         }
 

@@ -56,7 +56,7 @@ class InvoiceIntakeController extends Controller
 
     public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service): JsonResponse
     {
-        $budget = AnnualBudget::findOrFail($request->integer('annual_budget_id'));
+        $budget = $request->filled('annual_budget_id') ? AnnualBudget::findOrFail($request->integer('annual_budget_id')) : null;
         Gate::authorize('create', [InvoiceIntake::class, $budget]);
 
         $purchase = $request->filled('purchase_id') ? Purchase::findOrFail($request->integer('purchase_id')) : null;

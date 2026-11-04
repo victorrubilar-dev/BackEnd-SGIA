@@ -15,23 +15,23 @@ class InvoiceIntakePolicy
 
     public function view(User $user, InvoiceIntake $intake): bool
     {
-        return $this->operatesOn($user, $intake->loadMissing('annualBudget')->annualBudget);
+        return $this->operatesOn($user);
     }
 
     /**
-     * Subir una factura contra un presupuesto: AD-01 y DIR-01 (cualquier carrera del área).
+     * Subir una factura (presupuesto y compra opcionales): AD-01 y DIR-01 (cualquier carrera del área).
      */
-    public function create(User $user, AnnualBudget $budget): bool
+    public function create(User $user, ?AnnualBudget $budget = null): bool
     {
-        return $this->operatesOn($user, $budget);
+        return $this->operatesOn($user);
     }
 
     public function update(User $user, InvoiceIntake $intake): bool
     {
-        return $this->operatesOn($user, $intake->loadMissing('annualBudget')->annualBudget);
+        return $this->operatesOn($user);
     }
 
-    private function operatesOn(User $user, AnnualBudget $budget): bool
+    private function operatesOn(User $user): bool
     {
         return $this->viewAny($user) && $user->managesBudgets();
     }

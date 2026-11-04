@@ -127,6 +127,29 @@ TXT;
         $this->assertDatabaseHas('invoice_intake_items', ['invoice_intake_id' => $intake->id, 'product_id' => $supply->id, 'subtotal' => '15000.00']);
     }
 
+    public function test_invoice_without_budget_or_purchase_uploads_confirms_and_cancels(): void
+    {
+        Process::fake(['*pdftotext*' => Process::result(self::INVOICE_TEXT)]);
+        $supply = Product::factory()->supply()->create(['quantity' => 3, 'stock_minimo' => 1]);
+        Sanctum::actingAs($this->admin);
+
+        $id = $this->postJson('/api/invoice-intakes', [
+            'file' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
+        ])->assertCreated()
+            ->assertJsonPath('data.annual_budget_id', null)
+            ->assertJsonPath('data.annual_budget', null)
+            ->json('data.id');
+
+        $this->postJson("/api/invoice-intakes/$id/confirm", [
+            'document_number' => 'F-200',
+            'items' => [['product_id' => $supply->id, 'quantity' => 4, 'unit_price' => 1000]],
+        ])->assertOk()->assertJsonPath('data.status', 'confirmado');
+        $this->assertSame(7, $supply->fresh()->quantity);
+
+        $this->postJson("/api/invoice-intakes/$id/cancel")->assertOk();
+        $this->assertSame(3, $supply->fresh()->quantity);
+    }
+
     public function test_confirm_fails_when_budget_is_insufficient_and_changes_nothing(): void
     {
         $budget = AnnualBudget::factory()->create(['initial_amount' => 1000, 'available_amount' => 1000]);
