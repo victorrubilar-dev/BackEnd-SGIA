@@ -6,6 +6,7 @@ use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\Product;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\DashboardPeriod;
 use Carbon\Exceptions\InvalidFormatException;
@@ -513,7 +514,7 @@ class MetricsService
      */
     private function teachers(?string $groupBy, DashboardPeriod $period): array
     {
-        $teachers = "users.role = '".User::ROLE_TEACHER."'";
+        $teachers = 'users.role_id = '.Role::idFor(User::ROLE_TEACHER);
 
         $expr = match ($groupBy) {
             'subject' => "coalesce(loans.subject, 'Sin asignatura')",

@@ -71,7 +71,7 @@ class StockAlertService
      */
     protected function notifyStaff(StockAlert $alert): void
     {
-        $recipients = User::whereIn('role', [User::ROLE_ADMIN, User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
+        $recipients = User::withRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
             ->where('is_active', true)
             ->get();
 

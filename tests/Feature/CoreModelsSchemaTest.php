@@ -14,6 +14,7 @@ use Database\Seeders\RoleSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class CoreModelsSchemaTest extends TestCase
@@ -32,6 +33,25 @@ class CoreModelsSchemaTest extends TestCase
         $user->update(['role' => User::ROLE_WAREHOUSE]);
         $this->assertSame(User::ROLE_WAREHOUSE, $user->fresh()->roleModel->code);
         $this->assertTrue(Role::where('code', User::ROLE_WAREHOUSE)->firstOrFail()->users->contains($user));
+    }
+
+    public function test_users_role_column_is_retired_in_favor_of_role_id(): void
+    {
+        $this->assertFalse(Schema::hasColumn('users', 'role'));
+
+        $user = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $this->assertSame(Role::idFor(User::ROLE_ADMIN), $user->fresh()->role_id);
+        $this->assertSame(User::ROLE_ADMIN, $user->fresh()->role);
+        $this->assertTrue($user->fresh()->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR]));
+
+        // Sin rol explícito, docente.
+        $this->assertSame(User::ROLE_TEACHER, User::factory()->create()->fresh()->role);
+
+        $this->assertTrue(User::withRole(User::ROLE_ADMIN)->whereKey($user->id)->exists());
+        $this->assertFalse(User::withRole([User::ROLE_TEACHER, User::ROLE_WAREHOUSE])->whereKey($user->id)->exists());
+
+        $this->expectException(\InvalidArgumentException::class);
+        Role::idFor('XX-99');
     }
 
     public function test_role_seeder_is_idempotent(): void

@@ -102,7 +102,7 @@ class PurchaseService
      */
     protected function notifyWarehouseArrival(Purchase $purchase): void
     {
-        $recipients = User::whereIn('role', [User::ROLE_WAREHOUSE, User::ROLE_ADMIN])
+        $recipients = User::withRole([User::ROLE_WAREHOUSE, User::ROLE_ADMIN])
             ->where('is_active', true)
             ->get();
 

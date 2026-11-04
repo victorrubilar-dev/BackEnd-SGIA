@@ -10,5 +10,5 @@ Decisión: `storeroom_id` del usuario es informativo (pañol por defecto del che
 - [x] `GET /api/roles`: catálogo para el formulario de usuarios (sin CRUD: los roles son fijos).
 - [x] `POST`/`PATCH /api/users` aceptan `storeroom_id?` y `career_ids?` (sincroniza `career_user`); `UserResource` añade `storeroom_id` y `careers` (`ResourceContractTest`, `front-end.md`).
 - [x] `GET /api/storerooms` (todos los autenticados) y `POST`/`PATCH /api/storerooms` (`AD-01`); `DELETE` `204`, `422` si tiene salas, usuarios o préstamos.
-- [ ] Retirar `users.role`: middleware `role:` y `User::hasRole()` pasan a `role_id` vía `Role.code`, la API sigue recibiendo y devolviendo el código (`AD-01`…), y se elimina la columna. Tarea aparte, después de la fase 1.
+- [x] Retirar `users.role`: middleware `role:` y `User::hasRole()` pasan a `role_id` vía `Role.code`, la API sigue recibiendo y devolviendo el código (`AD-01`…), y se elimina la columna (migración `2026_11_09_000000_drop_role_column_from_users`; atributo `User::role` y scope `withRole()`; `CoreModelsSchemaTest`).
 - [x] Tests en `UserManagementTest` (pañol y carreras del usuario) y `StoreroomTest`.

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\Location;
+use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -19,7 +20,7 @@ class DatabaseSeederTest extends TestCase
     {
         $this->seed();
 
-        $this->assertDatabaseHas('users', ['email' => 'admin@sgia.cl', 'role' => User::ROLE_ADMIN]);
+        $this->assertDatabaseHas('users', ['email' => 'admin@sgia.cl', 'role_id' => Role::idFor(User::ROLE_ADMIN)]);
         $this->assertGreaterThan(0, Location::count());
         $this->assertGreaterThan(0, Cajon::count());
         $this->assertDatabaseHas('careers', ['name' => 'Analista Programador', 'level' => Career::LEVEL_TECHNICIAN]);

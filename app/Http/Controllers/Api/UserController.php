@@ -36,7 +36,7 @@ class UserController extends Controller
         }
 
         if ($request->filled('role')) {
-            $query->where('role', $request->string('role'));
+            $query->withRole($request->string('role')->toString());
         }
 
         if ($request->filled('area')) {
