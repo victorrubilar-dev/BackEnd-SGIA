@@ -52,7 +52,7 @@ class DatabaseSeeder extends Seeder
         // Un usuario de prueba por rol (misma contraseña que el admin)
         foreach ([
             'director@sgia.cl' => ['Director de Carrera', User::ROLE_DIRECTOR],
-            'panolero@sgia.cl' => ['Pañolero', User::ROLE_WAREHOUSE],
+            'panol@sgia.cl' => ['Pañolero', User::ROLE_WAREHOUSE],
             'docente@sgia.cl' => ['Docente', User::ROLE_TEACHER],
         ] as $email => [$name, $role]) {
             User::updateOrCreate(

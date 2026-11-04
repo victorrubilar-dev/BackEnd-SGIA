@@ -117,8 +117,9 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/careers` | `AD-01`, `DIR-01` | Listado paginado.<br>**Query Params:** `level`, `search` (nombre), `per_page`. Cada carrera: `id`, `name`, `code`, `level`, `level_label`, auditoría. | ✅ Implementado |
-| `GET` | `/api/careers/{id}` | `AD-01`, `DIR-01` | Detalle de una carrera. | ✅ Implementado |
+| `GET` | `/api/categories` | `AD-01`, `DIR-01`, `PAN-01` | Categorías para elegir `category_id` en el alta de producto.<br>**Query Params:** `search`, `per_page`. Cada una: `id`, `name`, `description`. | ✅ Implementado |
+| `GET` | `/api/careers` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado.<br>**Query Params:** `level`, `search` (nombre), `per_page`. Cada carrera: `id`, `name`, `code`, `level`, `level_label`, auditoría. | ✅ Implementado |
+| `GET` | `/api/careers/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Detalle de una carrera. | ✅ Implementado |
 | `POST` | `/api/careers` | `AD-01` | Crea una carrera.<br>**Body:** `name` (único), `level` (`tecnico` \| `profesional`), `code` (opcional: `ISD`, `II`, `IC`, `AP`; único). | ✅ Implementado |
 | `PATCH` | `/api/careers/{id}` | `AD-01` | Cambia nombre o nivel. | ✅ Implementado |
 | `DELETE` | `/api/careers/{id}` | `AD-01` | Elimina la carrera (204). Los usuarios conservan su `area`; sus préstamos pasan a "Sin nivel". | ✅ Implementado |

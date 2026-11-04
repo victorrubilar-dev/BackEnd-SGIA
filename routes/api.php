@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetReportController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\CareerController;
+use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
@@ -43,9 +44,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-14: Catálogo de carreras y su nivel (dashboards CAREERS por level)
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::get('/careers', [CareerController::class, 'index']);
         Route::get('/careers/{career}', [CareerController::class, 'show']);
+        // Catálogo para el alta de productos (`category_id`).
+        Route::get('/categories', [CategoryController::class, 'index']);
     });
     Route::middleware('role:AD-01')->group(function () {
         Route::post('/careers', [CareerController::class, 'store']);

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Career;
+use App\Models\Category;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
@@ -65,12 +66,23 @@ class CareerManagementTest extends TestCase
         $this->deleteJson("/api/careers/{$career->id}")->assertForbidden();
     }
 
-    public function test_warehouse_and_teacher_cannot_access(): void
+    public function test_teacher_cannot_access(): void
     {
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
-            $this->actingAsRole($role);
-            $this->getJson('/api/careers')->assertForbidden();
-        }
+        $this->actingAsRole(User::ROLE_TEACHER);
+        $this->getJson('/api/careers')->assertForbidden();
+        $this->getJson('/api/categories')->assertForbidden();
+    }
+
+    public function test_warehouse_can_list_careers_and_categories_for_product_creation(): void
+    {
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        Category::factory()->create(['name' => 'Pilas de prueba']);
+
+        $this->getJson('/api/careers')->assertOk();
+        $this->getJson('/api/categories?search=Pilas de prueba')
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Pilas de prueba')
+            ->assertJsonStructure(['data' => [['id', 'name', 'description']]]);
     }
 
     public function test_validation(): void
