@@ -20,7 +20,7 @@ class UserChartFactory extends Factory
             'user_id' => User::factory(),
             'chart_template_id' => ChartTemplate::factory(),
             'custom_title' => fake()->words(3, true),
-            'type' => 'bar',
+            'type' => 'BAR',
             'position' => 1,
             'entity' => 'EQUIPMENT',
             'metric' => 'COUNT',

@@ -385,6 +385,20 @@ Todos: `DIR-01`, `AD-01`. Aceptan `limit` (1-50, por defecto 10; no aplica a `ca
 | `GET` | `/api/dashboard/top-teachers` | Docentes con más solicitudes. | ✅ Implementado |
 | `GET` | `/api/dashboard/loans-by-teacher` | Préstamos y unidades por docente y asignatura. | ✅ Implementado |
 
+### 14.1 Dashboard personalizado (`FU-06` / `REQ-15`)
+
+> Hasta 5 gráficos por usuario (`position` 1–5, una por gráfico). Roles: `DIR-01`, `AD-01`; cada usuario solo ve los suyos (uno ajeno responde `404`). `entity`, `metric`, `period` y `type` aceptan los mismos valores que `customMetric` (enums `MetricEntity`, `MetricAggregation`, `TimeRange`, `ChartType`); `group_by` los de la tabla de entidades de `TASKS/front-end.md` (C1) o vacío. Cada gráfico trae `metric_input`, listo para `customMetric(input:)`.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/chart-templates` | `DIR-01`, `AD-01` | Plantillas sembradas (sin paginar): `code`, `name`, `visualization_type` y la consulta por defecto (`chart_type`, `entity`, `metric`, `group_by`, `period`; nulos en las genéricas `bar`, `line`, `pie`, `kpi`). | ✅ Implementado |
+| `GET` | `/api/me/charts` | `DIR-01`, `AD-01` | Gráficos propios ordenados por `position`, con `template`. `?active=1` solo los visibles. | ✅ Implementado |
+| `POST` | `/api/me/charts` | `DIR-01`, `AD-01` | **Body:** `chart_template_id` (obligatorio), `custom_title`, `type`, `position`, `entity`, `metric`, `group_by`, `period`, `date_from`/`date_to` (solo `CUSTOM`), `is_active`. Lo no enviado se hereda de la plantilla; `position` por defecto = primera libre. `201`. `422` si la posición está ocupada, ya tiene 5 o la combinación no es válida. | ✅ Implementado |
+| `PUT` | `/api/me/charts/positions` | `DIR-01`, `AD-01` | Reordena en bloque en una transacción (permite intercambiar).<br>**Body:** `positions: [{id, position}]`. `422` si un id no es propio o dos quedarían en la misma posición. Responde la lista ordenada. | ✅ Implementado |
+| `GET` | `/api/me/charts/{id}` | `DIR-01`, `AD-01` | Detalle de un gráfico propio. | ✅ Implementado |
+| `PATCH` | `/api/me/charts/{id}` | `DIR-01`, `AD-01` | Edita cualquier campo salvo `user_id` (`422`); `is_active: false` lo oculta sin borrarlo. Cambiar `chart_template_id` toma la consulta de la nueva plantilla. Una posición ocupada → `422`. | ✅ Implementado |
+| `DELETE` | `/api/me/charts/{id}` | `DIR-01`, `AD-01` | `204`. | ✅ Implementado |
+
 ---
 
 ## 🟡 Endpoints Pendientes (Por Implementar)

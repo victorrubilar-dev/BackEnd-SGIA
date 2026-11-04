@@ -33,7 +33,16 @@ use Illuminate\Validation\ValidationException;
  */
 class MetricsService
 {
-    /** @var array<string, array<int, string>> */
+    /** Métricas (`MetricAggregation`). @var array<int, string> */
+    public const METRICS = ['TOTAL', 'AVERAGE', 'COUNT', 'RATE'];
+
+    /** Períodos (`TimeRange`); CUSTOM exige `dateFrom`. @var array<int, string> */
+    public const TIME_RANGES = ['LAST_7_DAYS', 'LAST_30_DAYS', 'SEMESTER_CURRENT', 'SEMESTER_PREVIOUS', 'YEAR_TO_DATE', 'CUSTOM'];
+
+    /** Tipos de gráfico (`ChartType`). @var array<int, string> */
+    public const CHART_TYPES = ['BAR', 'LINE', 'DOUGHNUT', 'POLAR_AREA'];
+
+    /** Entidad => dimensiones (`groupBy`) aceptadas; las claves son `MetricEntity`. @var array<string, array<int, string>> */
     public const GROUP_BY = [
         'LOANS' => ['status', 'teacher', 'subject', 'item_type'],
         'SUPPLIES' => ['career', 'category', 'turnover'],
@@ -44,6 +53,16 @@ class MetricsService
         'CAREERS' => ['specialty', 'level'],
         'TEACHERS' => ['subject', 'department'],
     ];
+
+    /**
+     * Entidades (`MetricEntity`).
+     *
+     * @return array<int, string>
+     */
+    public static function entities(): array
+    {
+        return array_keys(self::GROUP_BY);
+    }
 
     private const ENTITY_LABELS = [
         'LOANS' => 'Préstamos', 'SUPPLIES' => 'Insumos', 'EQUIPMENT' => 'Equipos', 'SCALE_MODELS' => 'Maquetas', 'ALERTS' => 'Alertas de stock',

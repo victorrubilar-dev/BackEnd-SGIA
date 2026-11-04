@@ -18,12 +18,23 @@ use GraphQL\Validator\Rules\QueryDepth;
  */
 class MetricsGraphQL
 {
-    public const SDL = <<<'GRAPHQL'
-        enum MetricEntity { EQUIPMENT SCALE_MODELS SUPPLIES LOANS ALERTS MAINTENANCE CAREERS TEACHERS }
-        enum MetricAggregation { TOTAL AVERAGE COUNT RATE }
-        enum TimeRange { LAST_7_DAYS LAST_30_DAYS SEMESTER_CURRENT SEMESTER_PREVIOUS YEAR_TO_DATE CUSTOM }
-        enum ChartType { BAR LINE DOUGHNUT POLAR_AREA }
+    /**
+     * SDL con los enums generados desde las constantes de MetricsService (misma fuente que valida
+     * los gráficos guardados de REQ-15).
+     */
+    public static function sdl(): string
+    {
+        $enum = fn (string $name, array $values) => "enum {$name} { ".implode(' ', $values).' }';
 
+        return implode("\n", [
+            $enum('MetricEntity', MetricsService::entities()),
+            $enum('MetricAggregation', MetricsService::METRICS),
+            $enum('TimeRange', MetricsService::TIME_RANGES),
+            $enum('ChartType', MetricsService::CHART_TYPES),
+        ])."\n".self::SDL;
+    }
+
+    private const SDL = <<<'GRAPHQL'
         input MetricQueryInput {
           entity: MetricEntity!
           metric: MetricAggregation!
@@ -93,7 +104,7 @@ class MetricsGraphQL
         }
 
         $result = GraphQL::executeQuery(
-            BuildSchema::build(self::SDL),
+            BuildSchema::build(self::sdl()),
             $query,
             $root,
             null,

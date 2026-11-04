@@ -14,15 +14,16 @@
 
 ### REQ-15 — Dashboard personalizado por usuario (FU-06, DIR-01 y AD-01)
 Modelos `ChartTemplate` y `UserChart` (`TASKS/Equipos.md`, fase 1). Cada usuario arma su panel con hasta 5 gráficos.
-- [ ] `GET /api/chart-templates`: plantillas disponibles (sembradas; sin CRUD por ahora).
-- [ ] `GET /api/me/charts`: gráficos del usuario autenticado, ordenados por `position`, con su plantilla.
-- [ ] `POST /api/me/charts`: `chart_template_id`, `custom_title`, `type`, `position` (1–5), `entity`, `metric`, `group_by`, `period`. `entity`, `metric`, `group_by` y `period` se validan contra los mismos valores que acepta `customMetric` de `/api/metrics` (incluida `SCALE_MODELS`; constantes compartidas con `MetricsService`/`DashboardPeriod`, sin duplicar listas). `422` si la posición está ocupada o ya tiene 5.
-- [ ] `PATCH /api/me/charts/{userChart}`: editar cualquier campo salvo `user_id`; `is_active` para ocultarlo sin borrarlo.
-- [ ] `PUT /api/me/charts/positions`: reordenar en bloque (`[{id, position}]`) en una transacción. Requiere que `unique(user_id, position)` sea `DEFERRABLE INITIALLY DEFERRED` (fase 1) para poder intercambiar posiciones.
-- [ ] `DELETE /api/me/charts/{userChart}`: `204`.
-- [ ] `UserChartPolicy`: solo el dueño ve y modifica sus gráficos (otro usuario → `404`, para no revelar ids).
-- [ ] `UserChartResource` y `ChartTemplateResource` en `ResourceContractTest`; `front-end.md` y `ENDPOINTS.md`.
-- [ ] Test Feature `UserChartTest`: caso feliz, `403` para PAN-01/PRO-01, `422` (posición 6, posición ocupada, sexto gráfico, entidad inválida), reordenar intercambiando dos posiciones, aislamiento entre usuarios.
+Decisiones: la plantilla trae `chart_type`, `entity`, `metric`, `group_by` y `period` por defecto (las genéricas `bar`, `line`, `pie`, `kpi` solo la visualización) y el gráfico hereda lo que no envía. `type` usa `ChartType` (`BAR`, `LINE`, `DOUGHNUT`, `POLAR_AREA`); `group_by` vacío = serie en el tiempo; `CUSTOM` exige `date_from`. Los inactivos ocupan posición y cuentan para el máximo. Los enums del esquema GraphQL se generan de `MetricsService::entities()`, `METRICS`, `TIME_RANGES` y `CHART_TYPES` (misma fuente que la validación).
+- [x] `GET /api/chart-templates`: plantillas disponibles (sembradas; sin CRUD por ahora).
+- [x] `GET /api/me/charts`: gráficos del usuario autenticado, ordenados por `position`, con su plantilla.
+- [x] `POST /api/me/charts`: `chart_template_id`, `custom_title`, `type`, `position` (1–5), `entity`, `metric`, `group_by`, `period`. `entity`, `metric`, `group_by` y `period` se validan contra los mismos valores que acepta `customMetric` de `/api/metrics` (incluida `SCALE_MODELS`; constantes compartidas con `MetricsService`/`DashboardPeriod`, sin duplicar listas). `422` si la posición está ocupada o ya tiene 5.
+- [x] `PATCH /api/me/charts/{userChart}`: editar cualquier campo salvo `user_id`; `is_active` para ocultarlo sin borrarlo.
+- [x] `PUT /api/me/charts/positions`: reordenar en bloque (`[{id, position}]`) en una transacción. Requiere que `unique(user_id, position)` sea `DEFERRABLE INITIALLY DEFERRED` (fase 1) para poder intercambiar posiciones.
+- [x] `DELETE /api/me/charts/{userChart}`: `204`.
+- [x] `UserChartPolicy`: solo el dueño ve y modifica sus gráficos (otro usuario → `404`, para no revelar ids).
+- [x] `UserChartResource` y `ChartTemplateResource` en `ResourceContractTest`; `front-end.md` y `ENDPOINTS.md`.
+- [x] Test Feature `UserChartTest`: caso feliz, `403` para PAN-01/PRO-01, `422` (posición 6, posición ocupada, sexto gráfico, entidad inválida), reordenar intercambiando dos posiciones, aislamiento entre usuarios.
 
 ## Referencia para el cliente (`apps/web`, no es trabajo de este repo)
 

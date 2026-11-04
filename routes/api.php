@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\StockAlertController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SupplierController;
+use App\Http\Controllers\Api\UserChartController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -201,6 +202,18 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/dashboard/loans-by-teacher', [DashboardController::class, 'loansByTeacher']);
         Route::get('/dashboard/kpis', [DashboardController::class, 'kpis']);
         Route::post('/metrics', MetricsController::class)->middleware('throttle:metrics');
+    });
+
+    // REQ-15: Dashboard personalizado (FU-06, DIR-01/AD-01; cada uno solo ve sus gráficos)
+    Route::middleware('role:DIR-01,AD-01')->group(function () {
+        Route::get('/chart-templates', [UserChartController::class, 'templates']);
+        Route::get('/me/charts', [UserChartController::class, 'index']);
+        Route::post('/me/charts', [UserChartController::class, 'store']);
+        // Estática: antes de /me/charts/{userChart}
+        Route::put('/me/charts/positions', [UserChartController::class, 'reorder']);
+        Route::get('/me/charts/{userChart}', [UserChartController::class, 'show']);
+        Route::patch('/me/charts/{userChart}', [UserChartController::class, 'update']);
+        Route::delete('/me/charts/{userChart}', [UserChartController::class, 'destroy']);
     });
 
     // REQ-12: Fichas técnicas de equipos (FU-05)

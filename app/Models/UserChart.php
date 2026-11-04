@@ -17,12 +17,31 @@ class UserChart extends Model
 
     protected $fillable = [
         'user_id', 'chart_template_id', 'custom_title', 'type', 'position',
-        'entity', 'metric', 'group_by', 'period', 'is_active',
+        'entity', 'metric', 'group_by', 'period', 'date_from', 'date_to', 'is_active',
     ];
 
     protected function casts(): array
     {
-        return ['position' => 'integer', 'is_active' => 'boolean'];
+        return ['position' => 'integer', 'is_active' => 'boolean', 'date_from' => 'date', 'date_to' => 'date'];
+    }
+
+    /**
+     * Variables de `customMetric` (`MetricQueryInput`) para `POST /api/metrics`.
+     *
+     * @return array<string, mixed>
+     */
+    public function metricInput(): array
+    {
+        return array_filter([
+            'entity' => $this->entity,
+            'metric' => $this->metric,
+            'timeRange' => $this->period,
+            'chartType' => $this->type,
+            'title' => $this->custom_title,
+            'groupBy' => $this->group_by,
+            'dateFrom' => $this->date_from?->toDateString(),
+            'dateTo' => $this->date_to?->toDateString(),
+        ], fn ($value) => $value !== null);
     }
 
     public function user(): BelongsTo

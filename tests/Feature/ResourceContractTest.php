@@ -7,6 +7,7 @@ use App\Http\Resources\BudgetMovementResource;
 use App\Http\Resources\BudgetSummaryResource;
 use App\Http\Resources\CajonResource;
 use App\Http\Resources\CareerResource;
+use App\Http\Resources\ChartTemplateResource;
 use App\Http\Resources\EquipmentUnitResource;
 use App\Http\Resources\IncidentReportResource;
 use App\Http\Resources\InvoiceIntakeItemResource;
@@ -25,11 +26,13 @@ use App\Http\Resources\QuotationSupplierResource;
 use App\Http\Resources\StockAlertResource;
 use App\Http\Resources\StudentResource;
 use App\Http\Resources\SupplierResource;
+use App\Http\Resources\UserChartResource;
 use App\Http\Resources\UserResource;
 use App\Models\AnnualBudget;
 use App\Models\BudgetMovement;
 use App\Models\Cajon;
 use App\Models\Career;
+use App\Models\ChartTemplate;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
@@ -46,6 +49,7 @@ use App\Models\StockAlert;
 use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Models\UserChart;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -163,5 +167,12 @@ class ResourceContractTest extends TestCase
             'file_path' => 'maintenance-documents/x.pdf',
         ]);
         $this->assertKeys(MaintenanceDocumentResource::class, $document, explode(',', 'created_at,document_type,equipment_unit_id,file_url,id,is_expired,maintenance_record_id,original_name,size_bytes,title,updated_at,uploaded_by,valid_until'));
+    }
+
+    public function test_chart_resources(): void
+    {
+        $template = ChartTemplate::factory()->create();
+        $this->assertKeys(ChartTemplateResource::class, $template, explode(',', 'chart_type,code,description,entity,group_by,id,metric,name,period,visualization_type'));
+        $this->assertKeys(UserChartResource::class, UserChart::factory()->create(['chart_template_id' => $template->id]), explode(',', 'chart_template_id,created_at,custom_title,date_from,date_to,entity,group_by,id,is_active,metric,metric_input,period,position,type,updated_at,user_id'));
     }
 }
