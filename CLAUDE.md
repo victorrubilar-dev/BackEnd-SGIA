@@ -22,7 +22,7 @@ Antes de dar una tarea por terminada: `php artisan test` en verde y `pint --dirt
 | Código | Rol | Puede |
 |---|---|---|
 | `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
-| `DIR-01` | Director de Carrera | Facturas, cotizaciones, compras, dashboards |
+| `DIR-01` | Director de Carrera (de área) | Facturas, cotizaciones, compras, dashboards; presupuestos de todas las carreras del Área de Informática |
 | `PAN-01` | Pañolero | Productos, ubicaciones, préstamos, informes |
 | `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 

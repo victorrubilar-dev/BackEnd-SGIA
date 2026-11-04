@@ -38,7 +38,6 @@ class PurchaseStatusTest extends TestCase
         ]);
 
         $this->budget = AnnualBudget::factory()->create();
-        $this->director->careers()->attach($this->budget->career_id);
 
         $this->warehouse = User::factory()->create([
             'email' => 'panol_compra_'.uniqid().'@inacap.cl',

@@ -40,16 +40,15 @@ class PurchasePolicy
     }
 
     /**
-     * Comprometer presupuesto: AD-01, o DIR-01 si la carrera del presupuesto es suya.
+     * Comprometer presupuesto: AD-01 y DIR-01 (cualquier carrera del área).
      */
     public function useBudget(User $user, AnnualBudget $budget): bool
     {
-        return $this->create($user)
-            && ($user->isAdmin() || $user->careers()->whereKey($budget->career_id)->exists());
+        return $this->create($user) && $user->managesBudgets();
     }
 
     /**
-     * Cancelar una compra: AD-01, o DIR-01 de la carrera de su presupuesto.
+     * Cancelar una compra: AD-01 siempre; DIR-01 si la compra tiene presupuesto.
      */
     public function cancel(User $user, Purchase $purchase): bool
     {
@@ -57,11 +56,7 @@ class PurchasePolicy
             return false;
         }
 
-        if ($user->isAdmin() || $purchase->annual_budget_id === null) {
-            return $user->isAdmin();
-        }
-
-        return $user->careers()->whereKey($purchase->loadMissing('annualBudget')->annualBudget->career_id)->exists();
+        return $user->isAdmin() || ($purchase->annual_budget_id !== null && $user->managesBudgets());
     }
 
     /**

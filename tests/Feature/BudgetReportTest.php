@@ -147,7 +147,7 @@ class BudgetReportTest extends TestCase
         $this->assertSame(['0.00'], collect($empty)->pluck('consumed')->unique()->values()->all());
     }
 
-    public function test_roles_and_career_scope_are_enforced(): void
+    public function test_roles_are_enforced_and_area_director_sees_all_careers(): void
     {
         $paths = ['/api/budgets/summary', "/api/budgets/{$this->budget->id}/movements", "/api/budgets/{$this->budget->id}/spending", "/api/budgets/{$this->budget->id}/monthly"];
 
@@ -158,16 +158,14 @@ class BudgetReportTest extends TestCase
             }
         }
 
-        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
-        $mine = AnnualBudget::factory()->create(['career_id' => Career::factory()->create()->id]);
-        $director->careers()->attach($mine->career_id);
-        Sanctum::actingAs($director);
+        $other = AnnualBudget::factory()->create(['career_id' => Career::factory()->create()->id]);
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
 
         $ids = collect($this->getJson('/api/budgets/summary')->assertOk()->json('data'))->pluck('id');
-        $this->assertSame([$mine->id], $ids->all());
+        $this->assertTrue($ids->contains($this->budget->id));
+        $this->assertTrue($ids->contains($other->id));
         foreach (array_slice($paths, 1) as $path) {
-            $this->getJson($path)->assertForbidden();
+            $this->getJson($path)->assertOk();
         }
-        $this->getJson("/api/budgets/{$mine->id}/movements")->assertOk();
     }
 }

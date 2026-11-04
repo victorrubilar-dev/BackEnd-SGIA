@@ -204,7 +204,7 @@ TXT;
         $this->getJson("/api/invoice-intakes/{$other->id}/file")->assertNotFound();
     }
 
-    public function test_roles_and_foreign_career_are_forbidden(): void
+    public function test_roles_are_enforced_and_area_director_operates(): void
     {
         $intake = $this->draft();
         $file = UploadedFile::fake()->create('f.pdf', 10, 'application/pdf');
@@ -217,16 +217,9 @@ TXT;
             $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertForbidden();
         }
 
-        $director = $this->user(User::ROLE_DIRECTOR);
-        Sanctum::actingAs($director);
-        $this->postJson('/api/invoice-intakes', ['file' => $file, 'annual_budget_id' => $intake->annual_budget_id])->assertForbidden();
-        $this->getJson("/api/invoice-intakes/{$intake->id}")->assertForbidden();
-        $this->get("/api/invoice-intakes/{$intake->id}/file", ['Accept' => 'application/json'])->assertForbidden();
-        $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", ['document_number' => 'x', 'items' => [['product_id' => 1, 'quantity' => 1, 'unit_price' => 1]]])->assertForbidden();
-        $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertForbidden();
-        $this->assertCount(0, $this->getJson('/api/invoice-intakes')->assertOk()->json('data'));
-
-        $director->careers()->attach($intake->annualBudget->career_id);
+        // DIR-01 es director de área: opera sin carreras asignadas.
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
+        $this->assertNotEmpty($this->getJson('/api/invoice-intakes')->assertOk()->json('data'));
         $this->getJson("/api/invoice-intakes/{$intake->id}")->assertOk();
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertOk();
     }

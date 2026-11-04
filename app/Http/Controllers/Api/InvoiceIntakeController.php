@@ -35,10 +35,6 @@ class InvoiceIntakeController extends Controller
 
         $query = InvoiceIntake::query()->with('annualBudget');
 
-        if (! $request->user()->isAdmin()) {
-            $query->whereHas('annualBudget', fn ($q) => $q->whereIn('career_id', $request->user()->careers()->select('careers.id')));
-        }
-
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
         }

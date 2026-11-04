@@ -10,12 +10,7 @@ class StoreAnnualBudgetRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        $user = $this->user();
-
-        // DIR-01 solo crea para sus carreras; un career_id inexistente lo reporta la validación.
-        return $user !== null
-            && $user->can('create', AnnualBudget::class)
-            && ($user->isAdmin() || $user->can('createFor', [AnnualBudget::class, (int) $this->input('career_id')]));
+        return $this->user()?->can('create', AnnualBudget::class) ?? false;
     }
 
     public function rules(): array

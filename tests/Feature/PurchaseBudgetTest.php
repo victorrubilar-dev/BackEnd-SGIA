@@ -33,7 +33,6 @@ class PurchaseBudgetTest extends TestCase
         Storage::fake('local');
         $this->budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 1000000]);
         $this->director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
-        $this->director->careers()->attach($this->budget->career_id);
     }
 
     private function payload(array $override = []): array
@@ -85,8 +84,9 @@ class PurchaseBudgetTest extends TestCase
         $this->postJson('/api/purchases', $this->payload(['annual_budget_id' => null]))
             ->assertStatus(422)->assertJsonValidationErrors('annual_budget_id');
 
-        $foreign = AnnualBudget::factory()->create();
-        $this->postJson('/api/purchases', $this->payload(['annual_budget_id' => $foreign->id]))->assertForbidden();
+        // DIR-01 es director de área: puede usar el presupuesto de cualquier carrera.
+        $other = AnnualBudget::factory()->create();
+        $this->postJson('/api/purchases', $this->payload(['annual_budget_id' => $other->id]))->assertCreated();
     }
 
     public function test_roles_cannot_create_or_cancel(): void
@@ -101,7 +101,7 @@ class PurchaseBudgetTest extends TestCase
 
         $otherDirector = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
         Sanctum::actingAs($otherDirector);
-        $this->postJson("/api/purchases/{$purchase->id}/cancel")->assertForbidden();
+        $this->postJson("/api/purchases/{$purchase->id}/cancel")->assertOk();
     }
 
     public function test_cancel_releases_the_reservation_and_final_states_are_rejected(): void
@@ -200,7 +200,6 @@ class PurchaseBudgetTest extends TestCase
     {
         $purchase = $this->purchase();
         $other = AnnualBudget::factory()->create();
-        $this->director->careers()->attach($other->career_id);
 
         $this->postJson('/api/invoice-intakes', [
             'file' => UploadedFile::fake()->create('f.pdf', 10, 'application/pdf'),

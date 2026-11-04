@@ -82,20 +82,13 @@ class AnnualBudgetTest extends TestCase
             $this->getJson("/api/budgets/{$budget->id}")->assertForbidden();
             $this->postJson('/api/budgets', $payload)->assertForbidden();
         }
-
-        // DIR-01 sobre una carrera que no tiene asignada.
-        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
-        $this->postJson('/api/budgets', $payload)->assertForbidden();
-        $this->patchJson("/api/budgets/{$budget->id}", ['initial_amount' => 5])->assertForbidden();
-        $this->deleteJson("/api/budgets/{$budget->id}")->assertForbidden();
     }
 
-    public function test_director_manages_budgets_of_own_careers(): void
+    public function test_area_director_manages_budgets_of_any_career(): void
     {
-        $director = $this->user(User::ROLE_DIRECTOR);
+        // DIR-01 es director de área: no necesita carreras asignadas en career_user.
         $career = Career::factory()->create();
-        $director->careers()->attach($career->id);
-        Sanctum::actingAs($director);
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
 
         $id = $this->postJson('/api/budgets', ['career_id' => $career->id, 'year' => 2045, 'initial_amount' => 100000])
             ->assertCreated()->json('data.id');
@@ -104,20 +97,19 @@ class AnnualBudgetTest extends TestCase
         $this->deleteJson("/api/budgets/$id")->assertNoContent();
     }
 
-    public function test_director_only_sees_own_careers(): void
+    public function test_area_director_sees_all_careers(): void
     {
-        $director = $this->user(User::ROLE_DIRECTOR);
-        $mine = AnnualBudget::factory()->create();
-        $other = AnnualBudget::factory()->create();
-        $director->careers()->attach($mine->career_id);
-        Sanctum::actingAs($director);
+        $first = AnnualBudget::factory()->create();
+        $second = AnnualBudget::factory()->create();
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
 
-        $ids = collect($this->getJson('/api/budgets')->assertOk()->json('data'))->pluck('id');
-        $this->assertTrue($ids->contains($mine->id));
-        $this->assertFalse($ids->contains($other->id));
+        $ids = collect($this->getJson('/api/budgets?per_page=100')->assertOk()->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($first->id));
+        $this->assertTrue($ids->contains($second->id));
 
-        $this->getJson("/api/budgets/{$mine->id}")->assertOk();
-        $this->getJson("/api/budgets/{$other->id}")->assertForbidden();
+        $this->getJson("/api/budgets/{$first->id}")->assertOk();
+        $this->getJson("/api/budgets/{$second->id}")->assertOk();
+        $this->patchJson("/api/budgets/{$second->id}", ['initial_amount' => 5000])->assertOk();
     }
 
     public function test_show_lists_only_confirmed_intakes(): void

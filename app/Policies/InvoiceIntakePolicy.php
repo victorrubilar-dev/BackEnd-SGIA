@@ -19,7 +19,7 @@ class InvoiceIntakePolicy
     }
 
     /**
-     * Subir una factura contra un presupuesto: AD-01, o DIR-01 si la carrera es suya.
+     * Subir una factura contra un presupuesto: AD-01 y DIR-01 (cualquier carrera del área).
      */
     public function create(User $user, AnnualBudget $budget): bool
     {
@@ -33,10 +33,6 @@ class InvoiceIntakePolicy
 
     private function operatesOn(User $user, AnnualBudget $budget): bool
     {
-        if (! $this->viewAny($user)) {
-            return false;
-        }
-
-        return $user->isAdmin() || $user->careers()->whereKey($budget->career_id)->exists();
+        return $this->viewAny($user) && $user->managesBudgets();
     }
 }

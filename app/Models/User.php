@@ -111,6 +111,17 @@ class User extends Authenticatable
         return $this->hasRole(self::ROLE_ADMIN);
     }
 
+    /**
+     * Gestiona presupuestos (crear, editar, borrar, comprometer en compras, facturas y reportes).
+     * DIR-01 es director de área y el sistema hoy solo cubre el Área de Informática, así que
+     * opera sobre todas sus carreras (ISD, II, IC, AP), igual que AD-01. Si se agregan áreas,
+     * aquí va el filtro por área.
+     */
+    public function managesBudgets(): bool
+    {
+        return $this->is_active && $this->hasRole([self::ROLE_ADMIN, self::ROLE_DIRECTOR]);
+    }
+
     public function isDirector(): bool
     {
         return $this->hasRole(self::ROLE_DIRECTOR);

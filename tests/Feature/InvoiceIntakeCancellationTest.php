@@ -110,7 +110,7 @@ class InvoiceIntakeCancellationTest extends TestCase
         $this->assertSame('confirmado', $intake->fresh()->status);
     }
 
-    public function test_roles_and_foreign_career_are_forbidden(): void
+    public function test_roles_are_forbidden(): void
     {
         [$intake] = $this->confirmedIntake();
 
@@ -118,8 +118,5 @@ class InvoiceIntakeCancellationTest extends TestCase
             Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
             $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertForbidden();
         }
-
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
-        $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertForbidden();
     }
 }

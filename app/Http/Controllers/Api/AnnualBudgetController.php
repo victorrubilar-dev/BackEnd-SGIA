@@ -20,17 +20,13 @@ use Illuminate\Validation\ValidationException;
 class AnnualBudgetController extends Controller
 {
     /**
-     * Query params: year, career_id, per_page. DIR-01 solo ve las carreras que tiene asignadas.
+     * Query params: year, career_id, per_page. AD-01 y DIR-01 ven todas las carreras del área.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', AnnualBudget::class);
 
         $query = AnnualBudget::query()->with('career');
-
-        if (! $request->user()->isAdmin()) {
-            $query->whereIn('career_id', $request->user()->careers()->select('careers.id'));
-        }
 
         if ($request->filled('year')) {
             $query->where('year', $request->integer('year'));

@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Reportes de ejecución presupuestaria (REQ-24). DIR-01 solo ve las carreras que tiene asignadas.
+ * Reportes de ejecución presupuestaria (REQ-24). AD-01 y DIR-01 ven todas las carreras del área.
  */
 class BudgetReportController extends Controller
 {
@@ -29,10 +29,6 @@ class BudgetReportController extends Controller
         $request->validate(['year' => ['sometimes', 'integer'], 'career_id' => ['sometimes', 'integer']]);
 
         $query = AnnualBudget::query()->with('career');
-
-        if (! $request->user()->isAdmin()) {
-            $query->whereIn('career_id', $request->user()->careers()->select('careers.id'));
-        }
 
         if ($request->filled('year')) {
             $query->where('year', $request->integer('year'));

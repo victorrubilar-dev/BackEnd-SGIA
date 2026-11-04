@@ -62,7 +62,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/products/scan-invoice', [InvoiceScanController::class, 'scan']);
     });
 
-    // REQ-16 / REQ-24: Presupuesto anual por carrera (AD-01 todas; DIR-01 solo sus carreras) y reportes
+    // REQ-16 / REQ-24: Presupuesto anual por carrera (AD-01 y DIR-01, director del área: todas las carreras) y reportes
     Route::middleware('role:AD-01,DIR-01')->group(function () {
         Route::get('/budgets', [AnnualBudgetController::class, 'index']);
         Route::get('/budgets/summary', [BudgetReportController::class, 'summary']);
@@ -75,7 +75,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/budgets/{annualBudget}', [AnnualBudgetController::class, 'destroy']);
     });
 
-    // REQ-17: Ingreso de facturas con descuento de presupuesto (AD-01, DIR-01 de sus carreras)
+    // REQ-17: Ingreso de facturas con descuento de presupuesto (AD-01 y DIR-01)
     Route::middleware('role:AD-01,DIR-01')->group(function () {
         Route::post('/invoice-intakes', [InvoiceIntakeController::class, 'store'])->middleware('throttle:sensitive');
         Route::get('/invoice-intakes', [InvoiceIntakeController::class, 'index']);
