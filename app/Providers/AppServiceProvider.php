@@ -17,6 +17,9 @@ use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\UserChart;
+use App\Observers\InventoryAuditObserver;
+use App\Observers\PurchasingAuditObserver;
+use App\Observers\UserAuditObserver;
 use App\Policies\AnnualBudgetPolicy;
 use App\Policies\EquipmentUnitPolicy;
 use App\Policies\IncidentReportPolicy;
@@ -87,6 +90,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(MaintenanceDocument::class, MaintenanceDocumentPolicy::class);
         Gate::policy(UserChart::class, UserChartPolicy::class);
         Gate::policy(Storeroom::class, StoreroomPolicy::class);
+
+        // REQ-NF-01: auditoría de eventos críticos.
+        User::observe(UserAuditObserver::class);
+        EquipmentUnit::observe(InventoryAuditObserver::class);
+        Product::observe(InventoryAuditObserver::class);
+        Purchase::observe(PurchasingAuditObserver::class);
+        InvoiceIntake::observe(PurchasingAuditObserver::class);
 
         // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
         Gate::define('viewDashboard', function (User $user) {

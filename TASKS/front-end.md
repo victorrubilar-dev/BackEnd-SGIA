@@ -275,3 +275,9 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `UserResource`: nuevos `storeroom_id` y `careers` (CareerResource; en el listado, el detalle, el alta/edición y `GET /api/me`).
 - Pañoles: `GET /api/storerooms` (todos los autenticados; paginado, `search`), `GET /api/storerooms/{id}`, `POST`/`PATCH` (`AD-01`: `name`, `code` en mayúsculas con letras, números y guiones, único; `general_location`), `DELETE` (`AD-01`, `204`; `422` con `errors.storeroom` si tiene salas, usuarios o préstamos). `StoreroomResource`: `id`, `name`, `code`, `general_location`, `locations_count`, `users_count` (listado/detalle), auditoría y fechas (también dentro de `EquipmentUnit.storeroom`).
 - Informativo: la columna `users.role` se retiró (el rol vive en `role_id`). El contrato no cambia: `role` sigue llegando y enviándose como código (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`) y `GET /api/users?role=` sigue filtrando por código.
+
+## REQ-NF-01 — auditoría
+
+- `GET /api/audit-logs` (`AD-01`; otros roles `403`): paginado, más reciente primero. Filtros `action` (exacta, o prefijo terminado en punto: `user.`), `auditable_type` (`user`|`equipment_unit`|`product`|`purchase`|`invoice_intake`), `auditable_id`, `user_id` (autor), `from`, `to`.
+- `AuditLogResource`: `id`, `action`, `auditable_type`, `auditable_id`, `old_values`, `new_values` (objetos con solo los campos que cambiaron; nunca contraseñas), `user_id`, `user` (autor; `null` = sistema), `ip_address`, `user_agent`, `created_at`.
+- Acciones: `user.created`, `user.updated`, `user.role_changed`, `user.activated`, `user.deactivated`, `user.password_changed`, `user.deleted`, `equipment_unit.written_off`, `product.written_off`, `purchase.created`, `purchase.status_changed`, `purchase.cancelled`, `invoice_intake.confirmed`, `invoice_intake.cancelled`.

@@ -5,7 +5,7 @@
 - [x] Validación con `FormRequest` dedicados.
 - [x] `$fillable` explícito en los modelos.
 - [x] Contraseñas con `Hash::make()`.
-- [ ] Registro de eventos críticos (usuarios, cambios de rol, bajas, aprobación de compras) en una tabla `audit_logs`. No existe.
+- [x] Registro de eventos críticos en `audit_logs` (observers en `app/Observers`): usuarios (alta, datos, rol, activación, contraseña, borrado), bajas (unidad `dado_de_baja`, insumo dado de baja), compras (alta, cambios de estado, cancelación) e ingresos de facturas (confirmación, anulación). Consulta `GET /api/audit-logs` (`AD-01`, solo lectura) (`AuditLogTest`).
 
 ### REQ-NF-03 — Accesibilidad de la API
 - [x] Códigos HTTP semánticos (200, 201, 204, 401, 403, 404, 422, 429). Las eliminaciones responden 204.

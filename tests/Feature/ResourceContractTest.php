@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Resources\AnnualBudgetResource;
+use App\Http\Resources\AuditLogResource;
 use App\Http\Resources\BudgetMovementResource;
 use App\Http\Resources\BudgetSummaryResource;
 use App\Http\Resources\CajonResource;
@@ -29,6 +30,7 @@ use App\Http\Resources\SupplierResource;
 use App\Http\Resources\UserChartResource;
 use App\Http\Resources\UserResource;
 use App\Models\AnnualBudget;
+use App\Models\AuditLog;
 use App\Models\BudgetMovement;
 use App\Models\Cajon;
 use App\Models\Career;
@@ -174,5 +176,11 @@ class ResourceContractTest extends TestCase
         $template = ChartTemplate::factory()->create();
         $this->assertKeys(ChartTemplateResource::class, $template, explode(',', 'chart_type,code,description,entity,group_by,id,metric,name,period,visualization_type'));
         $this->assertKeys(UserChartResource::class, UserChart::factory()->create(['chart_template_id' => $template->id]), explode(',', 'chart_template_id,created_at,custom_title,date_from,date_to,entity,group_by,id,is_active,metric,metric_input,period,position,type,updated_at,user_id'));
+    }
+
+    public function test_audit_log_resource(): void
+    {
+        $log = AuditLog::create(['action' => 'user.created', 'auditable_type' => 'user', 'auditable_id' => 1]);
+        $this->assertKeys(AuditLogResource::class, $log->fresh(), explode(',', 'action,auditable_id,auditable_type,created_at,id,ip_address,new_values,old_values,user_agent,user_id'));
     }
 }

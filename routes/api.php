@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AnnualBudgetController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetReportController;
 use App\Http\Controllers\Api\CajonController;
@@ -49,6 +50,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::apiResource('users', UserController::class);
         // Catálogo fijo de roles para el formulario de usuarios.
         Route::get('/roles', [RoleController::class, 'index']);
+        // REQ-NF-01: registro de eventos críticos (solo lectura).
+        Route::get('/audit-logs', [AuditLogController::class, 'index']);
     });
 
     // Pañoles: lectura para todos, escritura solo AD-01

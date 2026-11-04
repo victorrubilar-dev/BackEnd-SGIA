@@ -112,6 +112,12 @@ Gráficos por usuario, mantenciones y sus documentos, y estudiantes (REQ-15 a RE
 | `GET` | `/api/roles` | `AD-01` | Catálogo fijo de roles (`id`, `code`, `name`) para el formulario de usuarios. | ✅ Implementado |
 | `PATCH` | `/api/users/{id}/status` | `AD-01` | Activa o desactiva la cuenta sin borrarla. Si se desactiva (`is_active = false`), se revocan de inmediato todas sus sesiones activas.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
 
+### 2.0b Auditoría (`REQ-NF-01`)
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/audit-logs` | `AD-01` | Registro de eventos críticos (solo lectura, más reciente primero) con su autor (`user`).<br>**Query Params:** `action` (exacta o prefijo con punto: `user.`), `auditable_type` (`user`, `equipment_unit`, `product`, `purchase`, `invoice_intake`), `auditable_id`, `user_id` (autor), `from`, `to`, `per_page`.<br>Acciones: `user.created`, `user.updated`, `user.role_changed`, `user.activated`, `user.deactivated`, `user.password_changed`, `user.deleted`, `equipment_unit.written_off`, `product.written_off`, `purchase.created`, `purchase.status_changed`, `purchase.cancelled`, `invoice_intake.confirmed`, `invoice_intake.cancelled`. | ✅ Implementado |
+
 ### 2.0a Pañoles
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
