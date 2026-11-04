@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Student;
+use App\Rules\ChileanRut;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -14,8 +15,10 @@ class StudentFactory extends Factory
 
     public function definition(): array
     {
+        $body = (string) fake()->unique()->numberBetween(10000000, 29999999);
+
         return [
-            'rut' => fake()->unique()->numerify('########').'-'.fake()->randomElement(['0', '1', '2', 'K']),
+            'rut' => $body.'-'.ChileanRut::checkDigit($body),
             'full_name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
         ];

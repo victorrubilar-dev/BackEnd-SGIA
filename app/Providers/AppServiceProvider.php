@@ -7,20 +7,30 @@ use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
 use App\Models\Loan;
+use App\Models\MaintenanceDocument;
+use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
+use App\Models\Storeroom;
+use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Models\UserChart;
 use App\Policies\AnnualBudgetPolicy;
 use App\Policies\EquipmentUnitPolicy;
 use App\Policies\IncidentReportPolicy;
 use App\Policies\InvoiceIntakePolicy;
 use App\Policies\LoanPolicy;
+use App\Policies\MaintenanceDocumentPolicy;
+use App\Policies\MaintenanceRecordPolicy;
 use App\Policies\ProductPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\QuotationPolicy;
+use App\Policies\StoreroomPolicy;
+use App\Policies\StudentPolicy;
 use App\Policies\SupplierPolicy;
+use App\Policies\UserChartPolicy;
 use App\Policies\UserPolicy;
 use Aws\Textract\TextractClient;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -72,6 +82,11 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(IncidentReport::class, IncidentReportPolicy::class);
         Gate::policy(AnnualBudget::class, AnnualBudgetPolicy::class);
         Gate::policy(InvoiceIntake::class, InvoiceIntakePolicy::class);
+        Gate::policy(Student::class, StudentPolicy::class);
+        Gate::policy(MaintenanceRecord::class, MaintenanceRecordPolicy::class);
+        Gate::policy(MaintenanceDocument::class, MaintenanceDocumentPolicy::class);
+        Gate::policy(UserChart::class, UserChartPolicy::class);
+        Gate::policy(Storeroom::class, StoreroomPolicy::class);
 
         // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
         Gate::define('viewDashboard', function (User $user) {

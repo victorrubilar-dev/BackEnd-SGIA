@@ -178,14 +178,16 @@ class LoanService
         $this->assertItemsAvailable($items);
 
         return DB::transaction(function () use ($validated, $operator, $items) {
+            $student = $this->resolveStudent($validated);
+
             $loan = Loan::create([
                 'code' => Loan::generateUniqueCode(Loan::TYPE_DIRECT),
                 'type' => Loan::TYPE_DIRECT,
                 'requested_by' => null,
-                'borrower_name' => $validated['borrower_name'],
-                'borrower_document' => $validated['borrower_document'] ?? null,
+                'borrower_name' => $student?->full_name ?? $validated['borrower_name'] ?? $student?->rut,
+                'borrower_document' => $student?->rut ?? $validated['borrower_document'] ?? null,
                 'storeroom_id' => $validated['storeroom_id'] ?? $operator->storeroom_id ?? Storeroom::default()->id,
-                'student_id' => $this->resolveStudentId($validated),
+                'student_id' => $student?->id,
                 'subject' => $validated['subject'],
                 'room' => $validated['room'],
                 'loan_date' => $validated['loan_date'],
@@ -377,22 +379,34 @@ class LoanService
     }
 
     /**
-     * Si el documento del solicitante es un RUT válido, crea o reutiliza el estudiante.
+     * Estudiante del préstamo presencial (REQ-20): por `student_id`, por `student_rut` (si no
+     * existe se crea con `borrower_name`) o, como antes, por un `borrower_document` que sea RUT.
      *
      * @param  array<string, mixed>  $validated
      */
-    private function resolveStudentId(array $validated): ?int
+    private function resolveStudent(array $validated): ?Student
     {
-        $document = $validated['borrower_document'] ?? null;
+        if (! empty($validated['student_id'])) {
+            return Student::findOrFail($validated['student_id']);
+        }
 
-        if (! is_string($document) || ! ChileanRut::isValid($document)) {
+        $rut = $validated['student_rut'] ?? $validated['borrower_document'] ?? null;
+
+        if (! is_string($rut) || ! ChileanRut::isValid($rut)) {
             return null;
         }
 
-        return Student::firstOrCreate(
-            ['rut' => ChileanRut::normalize($document)],
+        $student = Student::firstOrCreate(
+            ['rut' => ChileanRut::normalize($rut)],
             ['full_name' => $validated['borrower_name'] ?? null]
-        )->id;
+        );
+
+        // Completa el nombre de un estudiante registrado solo con su RUT.
+        if ($student->full_name === null && ! empty($validated['borrower_name'])) {
+            $student->update(['full_name' => $validated['borrower_name']]);
+        }
+
+        return $student;
     }
 
     /**

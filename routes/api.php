@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\StockAlertController;
+use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -154,6 +155,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/loans', [LoanController::class, 'index']);
         Route::get('/loans/{loan}', [LoanController::class, 'show']);
     });
+
+    // REQ-20: Registro de estudiantes (FU-04, PAN-01 y AD-01; borrado solo AD-01)
+    Route::middleware('role:PAN-01,AD-01')->group(function () {
+        Route::get('/students', [StudentController::class, 'index']);
+        Route::get('/students/by-rut/{rut}', [StudentController::class, 'byRut']);
+        Route::post('/students', [StudentController::class, 'store']);
+        Route::get('/students/{student}', [StudentController::class, 'show']);
+        Route::patch('/students/{student}', [StudentController::class, 'update']);
+        Route::get('/students/{student}/loans', [StudentController::class, 'loans']);
+    });
+    Route::middleware('role:AD-01')->delete('/students/{student}', [StudentController::class, 'destroy']);
 
     // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
     Route::get('/locations', [LocationController::class, 'index']);

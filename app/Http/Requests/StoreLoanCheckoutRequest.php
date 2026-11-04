@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Loan;
+use App\Rules\ChileanRut;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLoanCheckoutRequest extends FormRequest
@@ -33,8 +34,11 @@ class StoreLoanCheckoutRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'borrower_name' => ['required', 'string', 'max:255'],
+            // Con `student_id` o `student_rut` el nombre y el documento salen del estudiante.
+            'borrower_name' => ['required_without_all:student_id,student_rut', 'nullable', 'string', 'max:255'],
             'borrower_document' => ['nullable', 'string', 'max:50'],
+            'student_id' => ['nullable', 'integer', 'exists:students,id', 'prohibits:student_rut'],
+            'student_rut' => ['nullable', 'string', new ChileanRut],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
@@ -53,7 +57,9 @@ class StoreLoanCheckoutRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'borrower_name.required' => 'El nombre del profesor o estudiante que recibe el material es obligatorio.',
+            'borrower_name.required_without_all' => 'El nombre del profesor o estudiante que recibe el material es obligatorio (o indica student_id / student_rut).',
+            'student_id.exists' => 'El estudiante seleccionado no existe.',
+            'student_id.prohibits' => 'Indica student_id o student_rut, no ambos.',
             'borrower_document.max' => 'La credencial no puede superar los 50 caracteres.',
             'items.required' => 'El préstamo debe incluir al menos un producto entregado.',
             'items.array' => 'El campo items debe ser una lista.',

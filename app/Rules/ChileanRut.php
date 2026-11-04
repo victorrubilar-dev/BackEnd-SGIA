@@ -17,6 +17,25 @@ class ChileanRut implements ValidationRule
         return strlen($clean) > 1 ? substr($clean, 0, -1).'-'.substr($clean, -1) : $clean;
     }
 
+    /**
+     * Dígito verificador (`0`-`9` o `K`) del cuerpo numérico de un RUT.
+     */
+    public static function checkDigit(string $body): string
+    {
+        $sum = 0;
+        $factor = 2;
+        foreach (array_reverse(str_split($body)) as $digit) {
+            $sum += (int) $digit * $factor;
+            $factor = $factor === 7 ? 2 : $factor + 1;
+        }
+
+        return match ($expected = 11 - ($sum % 11)) {
+            11 => '0',
+            10 => 'K',
+            default => (string) $expected,
+        };
+    }
+
     public static function isValid(string $rut): bool
     {
         if (! preg_match('/^\d{1,2}(\.?\d{3}){2}-?[\dkK]$|^\d{7,8}-?[\dkK]$/', trim($rut))) {
@@ -25,20 +44,7 @@ class ChileanRut implements ValidationRule
 
         [$body, $dv] = explode('-', self::normalize($rut));
 
-        $sum = 0;
-        $factor = 2;
-        foreach (array_reverse(str_split($body)) as $digit) {
-            $sum += (int) $digit * $factor;
-            $factor = $factor === 7 ? 2 : $factor + 1;
-        }
-        $expected = 11 - ($sum % 11);
-        $expected = match ($expected) {
-            11 => '0',
-            10 => 'K',
-            default => (string) $expected,
-        };
-
-        return $dv === $expected;
+        return $dv === self::checkDigit($body);
     }
 
     public function validate(string $attribute, mixed $value, Closure $fail): void

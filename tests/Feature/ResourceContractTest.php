@@ -21,6 +21,7 @@ use App\Http\Resources\QuotationItemResource;
 use App\Http\Resources\QuotationResource;
 use App\Http\Resources\QuotationSupplierResource;
 use App\Http\Resources\StockAlertResource;
+use App\Http\Resources\StudentResource;
 use App\Http\Resources\SupplierResource;
 use App\Http\Resources\UserResource;
 use App\Models\AnnualBudget;
@@ -38,6 +39,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\StockAlert;
+use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -107,7 +109,7 @@ class ResourceContractTest extends TestCase
         $loan = Loan::factory()->create();
         $item = LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => 'x', 'quantity' => 1]);
 
-        $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,code,created_at,due_date,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,status,status_label,subject,time_block,type,updated_at'));
+        $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,code,created_at,due_date,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,status,status_label,student_id,subject,time_block,type,updated_at'));
         $this->assertKeys(LoanItemResource::class, $item, explode(',', 'available_stock,cajon,delivered_quantity,id,is_returned,loan_id,location,name,product_id,quantity,return_condition,returned_at,returned_quantity'));
     }
 
@@ -137,5 +139,10 @@ class ResourceContractTest extends TestCase
         $report = IncidentReport::factory()->create(['product_id' => Product::factory()->create()->id]);
 
         $this->assertKeys(IncidentReportResource::class, $report, explode(',', 'allowed_transitions,attachment,attachment_original_name,attachment_url,code,created_at,description,equipment_unit_id,has_evidence_photo,id,product_id,reported_by,request_type,severity,severity_label,status,title,updated_at'));
+    }
+
+    public function test_student_resource(): void
+    {
+        $this->assertKeys(StudentResource::class, Student::factory()->create(), explode(',', 'career_id,created_at,email,full_name,id,registered_at,rut,updated_at'));
     }
 }

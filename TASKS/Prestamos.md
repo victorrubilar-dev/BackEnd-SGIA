@@ -24,15 +24,15 @@
 
 ### REQ-20 — Registro de estudiantes (FU-04, PAN-01 y AD-01)
 Modelo `Student` (`TASKS/Equipos.md`, fase 5).
-- [ ] `GET /api/students`: filtros `search` (RUT o nombre), `career_id`.
-- [ ] `GET /api/students/by-rut/{rut}`: búsqueda exacta para el checkout (acepta RUT con o sin puntos y guion). `404` si no existe.
-- [ ] `POST /api/students`: `rut` (regla `ChileanRut`, se guarda normalizado `12345678-9`, único), `full_name?`, `email?`, `career_id?`.
-- [ ] `PATCH /api/students/{student}`: mismos campos.
-- [ ] `DELETE /api/students/{student}` (`AD-01`): `204`; `422` si tiene préstamos.
-- [ ] `GET /api/students/{student}/loans`: historial de préstamos del estudiante.
-- [ ] `POST /api/loans/checkout` acepta `student_id` o `student_rut`: liga `loans.student_id` y completa `borrower_name`/`borrower_document` desde el estudiante. Si el RUT no existe y viene `borrower_name`, crea el estudiante.
-- [ ] `StudentResource` (`ResourceContractTest`), `LoanResource` añade `student_id` y `student`; `ENDPOINTS.md`, `front-end.md`.
-- [ ] Test Feature `StudentTest`: caso feliz, `403` (PRO-01, DIR-01), `422` (RUT inválido, duplicado, borrar con préstamos), búsqueda por RUT con formatos distintos, checkout con `student_rut` existente y nuevo.
+- [x] `GET /api/students`: filtros `search` (RUT o nombre), `career_id`.
+- [x] `GET /api/students/by-rut/{rut}`: búsqueda exacta para el checkout (acepta RUT con o sin puntos y guion). `404` si no existe.
+- [x] `POST /api/students`: `rut` (regla `ChileanRut`, se guarda normalizado `12345678-9`, único), `full_name?`, `email?`, `career_id?`.
+- [x] `PATCH /api/students/{student}`: mismos campos.
+- [x] `DELETE /api/students/{student}` (`AD-01`): `204`; `422` si tiene préstamos.
+- [x] `GET /api/students/{student}/loans`: historial de préstamos del estudiante.
+- [x] `POST /api/loans/checkout` acepta `student_id` o `student_rut`: liga `loans.student_id` y completa `borrower_name`/`borrower_document` desde el estudiante. Si el RUT no existe y viene `borrower_name`, crea el estudiante.
+- [x] `StudentResource` (`ResourceContractTest`), `LoanResource` añade `student_id` y `student`; `ENDPOINTS.md`, `front-end.md`.
+- [x] Test Feature `StudentTest`: caso feliz, `403` (PRO-01, DIR-01), `422` (RUT inválido, duplicado, borrar con préstamos), búsqueda por RUT con formatos distintos, checkout con `student_rut` existente y nuevo.
 
 ### Préstamos con unidades (plan `Equipos.md`, fase 7)
 - [x] `checkout` y `approve` asignan unidades (`unit_ids` o automáticas) y las pasan a `prestado`; stock insuficiente → `422` (`LoanUnitsTest`).

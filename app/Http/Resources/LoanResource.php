@@ -31,6 +31,8 @@ class LoanResource extends JsonResource
             'requester' => new UserResource($this->whenLoaded('requester')),
             'borrower_name' => $this->borrower_name,
             'borrower_document' => $this->borrower_document,
+            'student_id' => $this->student_id,
+            'student' => new StudentResource($this->whenLoaded('student')),
             'subject' => $this->subject,
             'room' => $this->room,
             'loan_date' => $this->loan_date?->toDateString(),

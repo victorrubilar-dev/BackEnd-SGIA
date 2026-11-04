@@ -86,7 +86,7 @@ class LoanController extends Controller
     {
         Gate::authorize('viewAny', Loan::class);
 
-        $query = Loan::with(['items.product.location', 'items.units', 'requester'])
+        $query = Loan::with(['items.product.location', 'items.units', 'requester', 'student'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -105,7 +105,7 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor'])
+            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor', 'student'])
         );
     }
 
@@ -195,7 +195,7 @@ class LoanController extends Controller
     {
         $loan = $loanService->checkout($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load(['items.product', 'items.units'])))->resolve();
+        $data = (new LoanResource($loan->load(['items.product', 'items.units', 'student'])))->resolve();
 
         return response()->json([
             'message' => 'Préstamo presencial registrado y stock descontado.',
