@@ -31,7 +31,10 @@ php artisan migrate --seed
 # 5. Iniciar el servidor
 php artisan serve        # http://localhost:8000
 php artisan queue:work   # notificaciones (correo/push) cuando QUEUE_CONNECTION=database
+php artisan schedule:work  # en desarrollo; en producción, cron cada minuto: php artisan schedule:run
 ```
+
+Tareas programadas (`routes/console.php`): `sgia:send-reminders` a las 08:00 (Chile) avisa a los docentes de préstamos que vencen hoy o están atrasados y a `PAN-01` de mantenciones vencidas o en los próximos 7 días (`--days=N`). Se puede correr a mano.
 
 La contraseña del administrador sembrado se define con `SEED_ADMIN_PASSWORD` (por defecto `Admin1234!` solo fuera de producción; en producción el seeder no crea nada sin ella).
 

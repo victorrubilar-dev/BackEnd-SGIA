@@ -9,3 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('sanctum:prune-expired --hours=24')->daily();
+
+// Avisos de préstamos (vencen hoy / atrasados) y mantenciones próximas, cada mañana en Chile.
+Schedule::command('sgia:send-reminders')->dailyAt('08:00')->timezone('America/Santiago');

@@ -14,7 +14,7 @@ Decisiones: se puede abrir sobre una unidad `disponible` o ya `en_reparacion` (p
 - [x] `POST /api/maintenance-records/{maintenanceRecord}/cancel`: `anulada`; la unidad vuelve a `disponible`.
 - [x] `MaintenanceRecordPolicy`, `MaintenanceRecordResource` (`ResourceContractTest`), `ENDPOINTS.md`, `front-end.md`. La ficha técnica de la unidad (fase 8) lista sus mantenciones.
 - [x] Test Feature `MaintenanceRecordTest`: flujo completo con y sin proveedor externo, `422` (externa sin proveedor, unidad prestada, finalizar sin checklist, editar finalizada), `403` (PRO-01; DIR-01 escribiendo), efectos en unidad, informe y contadores.
-- [ ] Pendiente: notificar las mantenciones próximas (`next_maintenance_at`) a `PAN-01`; mientras, se consultan con `GET /api/equipment-units?maintenance_due=1`.
+- [x] Notificar las mantenciones próximas (`next_maintenance_at` vencida o en 7 días, sin mantención en curso ni de baja) a `PAN-01`: resumen diario de `sgia:send-reminders`, una vez por fecha (`ReminderTest`). El listado sigue en `GET /api/equipment-units?maintenance_due=1`.
 
 ### REQ-19 — Documentos de mantenimiento (FU-05, PAN-01 y AD-01; DIR-01 lectura)
 Modelo `MaintenanceDocument` (`TASKS/Equipos.md`, fase 5). Decisión: los documentos van por unidad (no por producto); suben y borran `PAN-01` y `AD-01`, descargan además `DIR-01`; `PRO-01` no tiene acceso.
