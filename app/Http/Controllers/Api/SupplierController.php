@@ -115,9 +115,7 @@ class SupplierController extends Controller
         Gate::authorize('delete', $supplier);
 
         if ($supplier->quotationSuppliers()->exists()) {
-            return response()->json([
-                'message' => 'El proveedor tiene cotizaciones registradas; desactívalo en lugar de eliminarlo.',
-            ], 422);
+            return $this->unprocessable('El proveedor tiene cotizaciones registradas; desactívalo en lugar de eliminarlo.', 'supplier');
         }
 
         if ($supplier->products()->exists()) {

@@ -178,18 +178,15 @@ class ProductController extends Controller
         Gate::authorize('delete', $product);
 
         if ($product->units()->exists()) {
-            return response()->json([
-                'message' => 'El producto tiene equipos registrados; dalos de baja en su lugar.',
+            return $this->unprocessable('El producto tiene equipos registrados; dalos de baja en su lugar.', 'product', [
                 'units_count' => $product->units()->count(),
-            ], 422);
+            ]);
         }
 
         try {
             $product->delete();
         } catch (QueryException) {
-            return response()->json([
-                'message' => 'El producto está referenciado por facturas o cotizaciones y no puede eliminarse; desactívalo en su lugar.',
-            ], 422);
+            return $this->unprocessable('El producto está referenciado por facturas o cotizaciones y no puede eliminarse; desactívalo en su lugar.', 'product');
         }
 
         return response()->noContent();
@@ -219,9 +216,7 @@ class ProductController extends Controller
     public function updateCondition(UpdateProductConditionRequest $request, Product $product, ProductService $products): JsonResponse
     {
         if ($product->hasUnits()) {
-            return response()->json([
-                'message' => 'Los equipos cambian de estado por unidad: usa PATCH /api/equipment-units/{id}/status.',
-            ], 422);
+            return $this->unprocessable('Los equipos cambian de estado por unidad: usa PATCH /api/equipment-units/{id}/status.', 'product_id');
         }
 
         $product = $products->changeCondition(

@@ -119,9 +119,7 @@ class EquipmentUnitController extends Controller
         Gate::authorize('delete', $equipmentUnit);
 
         if ($units->hasHistory($equipmentUnit)) {
-            return response()->json([
-                'message' => 'La unidad tiene préstamos, mantenciones o informes, o está prestada; dala de baja en su lugar.',
-            ], 422);
+            return $this->unprocessable('La unidad tiene préstamos, mantenciones o informes, o está prestada; dala de baja en su lugar.', 'equipment_unit');
         }
 
         $product = $equipmentUnit->product;

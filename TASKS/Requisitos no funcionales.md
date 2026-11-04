@@ -9,9 +9,9 @@
 
 ### REQ-NF-03 — Accesibilidad de la API
 - [x] Códigos HTTP semánticos (200, 201, 204, 401, 403, 404, 422, 429). Las eliminaciones responden 204.
-- [ ] Error normalizado `{"message": "...", "errors": {...}}` en todos los endpoints (ver `rework.md`, fase 4).
+- [x] Error normalizado `{"message": "...", "errors": {...}}` en todos los endpoints: los `422` de reglas de negocio pasan por `Controller::unprocessable()` y las transiciones inválidas traen `errors.status` (`ErrorFormatTest`, que además impide nuevos `422` armados sin `errors`).
 
 ### REQ-NF-04 — Rendimiento (< 2 s en el 90 % de las consultas)
 - [x] Paginación en los listados (`per_page` por defecto 15, máximo 100).
-- [ ] Eager loading verificado en todos los endpoints con relaciones (ver `rework.md`, fase 4).
-- [ ] Índices para filtros frecuentes: `products.barcode`, `loans.status`, `purchases.status`, `products.area` (ver `rework.md`, fase 4).
+- [x] Eager loading verificado: `Model::preventLazyLoading()` fuera de producción (toda la suite falla ante un N+1) y `ListQueryPerformanceTest` recorre los listados, incluidos los nuevos, con tope de consultas por solicitud.
+- [x] Índices para filtros frecuentes: `products.barcode`, `loans.status`, `purchases.status`, `products.area`, más `users.role_id`, `maintenance_records(status, started_at)`, `maintenance_documents(equipment_unit_id, document_type)` y `audit_logs(auditable_type, auditable_id)` (`ListQueryPerformanceTest::test_frequent_filters_are_indexed`).

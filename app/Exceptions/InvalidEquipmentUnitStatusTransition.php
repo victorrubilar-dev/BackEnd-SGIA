@@ -26,6 +26,7 @@ class InvalidEquipmentUnitStatusTransition extends RuntimeException
     {
         return response()->json([
             'message' => $this->getMessage(),
+            'errors' => ['status' => [$this->getMessage()]],
             'current_status' => $this->from,
             'attempted_status' => $this->to,
             'allowed_transitions' => EquipmentUnitStateMachine::allowedFrom($this->from),

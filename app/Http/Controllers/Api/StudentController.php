@@ -92,10 +92,7 @@ class StudentController extends Controller
         Gate::authorize('delete', $student);
 
         if ($student->loans()->exists()) {
-            return response()->json([
-                'message' => 'El estudiante tiene préstamos registrados y no se puede eliminar.',
-                'errors' => ['student' => ['El estudiante tiene préstamos registrados y no se puede eliminar.']],
-            ], 422);
+            return $this->unprocessable('El estudiante tiene préstamos registrados y no se puede eliminar.', 'student');
         }
 
         $student->delete();

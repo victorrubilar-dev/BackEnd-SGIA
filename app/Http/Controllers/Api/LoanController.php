@@ -213,12 +213,11 @@ class LoanController extends Controller
         InvalidLoanStatusTransition $e,
         Loan $loan
     ): JsonResponse {
-        return response()->json([
-            'message' => $e->getMessage(),
+        return $this->unprocessable($e->getMessage(), 'status', [
             'current_status' => $loan->status,
             'attempted_status' => $e->to,
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-        ], 422);
+        ]);
     }
 
     /**

@@ -176,12 +176,11 @@ class PurchaseController extends Controller
         InvalidPurchaseStatusTransition $e,
         Purchase $purchase
     ): JsonResponse {
-        return response()->json([
-            'message' => $e->getMessage(),
+        return $this->unprocessable($e->getMessage(), 'status', [
             'current_status' => $purchase->status,
             'attempted_status' => $e->to,
             'allowed_transitions' => PurchaseStateMachine::allowedFrom($purchase->status),
-        ], 422);
+        ]);
     }
 
     /**

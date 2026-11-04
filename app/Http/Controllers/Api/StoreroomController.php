@@ -72,7 +72,7 @@ class StoreroomController extends Controller
         if ($blockers !== []) {
             $message = 'El pañol tiene '.implode(', ', array_keys($blockers)).' asociados y no se puede eliminar.';
 
-            return response()->json(['message' => $message, 'errors' => ['storeroom' => [$message]]], 422);
+            return $this->unprocessable($message, 'storeroom');
         }
 
         $storeroom->delete();

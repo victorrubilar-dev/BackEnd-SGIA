@@ -92,10 +92,10 @@ class LocationController extends Controller
 
         $cajones = $location->cajones()->count();
         if ($cajones > 0) {
-            return response()->json([
-                'message' => "No es posible eliminar la ubicación \"{$location->nombre}\" porque tiene {$cajones} cajón(es). Elimínalos o reubícalos primero.",
-                'cajones_count' => $cajones,
-            ], 422);
+            return $this->unprocessable(
+                "No es posible eliminar la ubicación \"{$location->nombre}\" porque tiene {$cajones} cajón(es). Elimínalos o reubícalos primero.",
+                'location', ['cajones_count' => $cajones]
+            );
         }
 
         $location->delete();

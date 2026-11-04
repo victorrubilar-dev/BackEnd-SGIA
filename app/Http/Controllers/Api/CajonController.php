@@ -89,18 +89,18 @@ class CajonController extends Controller
 
         $products = $cajon->products()->count();
         if ($products > 0) {
-            return response()->json([
-                'message' => "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$products} producto(s) asignado(s). Reubícalos primero.",
-                'products_count' => $products,
-            ], 422);
+            return $this->unprocessable(
+                "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$products} producto(s) asignado(s). Reubícalos primero.",
+                'cajon', ['products_count' => $products]
+            );
         }
 
         $units = $cajon->equipmentUnits()->count();
         if ($units > 0) {
-            return response()->json([
-                'message' => "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$units} equipo(s) asignado(s). Reubícalos primero.",
-                'units_count' => $units,
-            ], 422);
+            return $this->unprocessable(
+                "No es posible eliminar el cajón \"{$cajon->codigo}\" porque tiene {$units} equipo(s) asignado(s). Reubícalos primero.",
+                'cajon', ['units_count' => $units]
+            );
         }
 
         $cajon->delete();
@@ -124,21 +124,17 @@ class CajonController extends Controller
         $detail = $blocked->map(fn (Cajon $c) => ['id' => $c->id, 'codigo' => $c->codigo, 'products_count' => $c->products_count, 'units_count' => $c->equipment_units_count]);
 
         if ($blockedIds !== [] && ! $request->boolean('partial')) {
-            return response()->json([
-                'message' => 'No es posible eliminar los cajones seleccionados porque algunos tienen productos asignados ('.$blocked->pluck('codigo')->join(', ').').',
-                'blocked_ids' => $blockedIds,
-                'blocked_cajones' => $detail,
-                'deletable_ids' => $deletableIds,
-            ], 422);
+            return $this->unprocessable(
+                'No es posible eliminar los cajones seleccionados porque algunos tienen productos asignados ('.$blocked->pluck('codigo')->join(', ').').',
+                'ids', ['blocked_ids' => $blockedIds, 'blocked_cajones' => $detail, 'deletable_ids' => $deletableIds]
+            );
         }
 
         if ($deletableIds === []) {
-            return response()->json([
-                'message' => 'No se eliminó ningún cajón: todos los seleccionados tienen productos asignados.',
-                'blocked_ids' => $blockedIds,
-                'blocked_cajones' => $detail,
-                'deleted_count' => 0,
-            ], 422);
+            return $this->unprocessable(
+                'No se eliminó ningún cajón: todos los seleccionados tienen productos asignados.',
+                'ids', ['blocked_ids' => $blockedIds, 'blocked_cajones' => $detail, 'deleted_count' => 0]
+            );
         }
 
         $deleted = Cajon::whereIn('id', $deletableIds)->delete();

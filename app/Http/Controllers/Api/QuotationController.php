@@ -165,11 +165,10 @@ class QuotationController extends Controller
         InvalidQuotationStatusTransition $e,
         Quotation $quotation
     ): JsonResponse {
-        return response()->json([
-            'message' => $e->getMessage(),
+        return $this->unprocessable($e->getMessage(), 'status', [
             'current_status' => $quotation->status,
             'attempted_status' => $e->to,
             'allowed_transitions' => QuotationStateMachine::allowedFrom($quotation->status),
-        ], 422);
+        ]);
     }
 }
