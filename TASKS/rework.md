@@ -23,7 +23,7 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 - [x] `vendor/bin/pint` falla en ~90 archivos (`concat_space`, `not_operator_with_successor_space`, imports sin usar, migraciones antiguas). Decidir el estilo (Pint por defecto de Laravel) y ejecutar `pint` una sola vez.
 - [x] Añadir un `pint.json` solo si se desvía del preset `laravel` (no hizo falta: se usa el preset por defecto).
-- [ ] Opcional: Larastan nivel 5 como `require-dev` y baseline para lo existente.
+- [x] Larastan nivel 5 como `require-dev` (`phpstan.neon`, `composer analyse`, paso en CI) con `phpstan-baseline.neon` para lo existente (361 entradas, sobre todo tipos de propiedades de modelos). Lo nuevo no debe sumar entradas: regenerar el baseline solo al corregir.
 - [x] CI mínima (GitHub Actions): PostgreSQL service, `composer install`, `pint --test`, `php artisan test`.
 
 ## Fase 2 — Documentación y requisitos coherentes
@@ -45,7 +45,7 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 
 ## Pendiente detectado (seguridad de dependencias)
 
-- [ ] `composer audit` reporta 5 avisos en dependencias que ya estaban: `symfony/http-foundation` (alto, ReDoS), `league/commonmark` (alto y medio), `symfony/mime` (medio) y `laravel/framework` (bajo). Requiere `composer update` de esos paquetes y correr la suite; no se hizo para no mezclarlo con cambios funcionales.
+- [x] `composer audit` reportaba avisos en `laravel/framework` (bajo) y `league/commonmark` (alto y medio; los de Symfony ya no aparecían). `composer update laravel/framework league/commonmark --with-dependencies` (Laravel 13.40, commonmark 2.10.7): `composer audit` sin avisos y suite en verde.
 
 ## Fase 4 — API consistente
 

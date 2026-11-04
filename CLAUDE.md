@@ -13,9 +13,10 @@ php artisan serve                       # http://localhost:8000/api
 php artisan test                        # requiere la BD sgia_testing arriba
 php artisan test --filter=NombreTest
 vendor/bin/pint --dirty                 # formatear solo lo que tocaste
+composer analyse                        # Larastan nivel 5 (con baseline)
 ```
 
-Antes de dar una tarea por terminada: `php artisan test` en verde y `pint --dirty` sin cambios pendientes.
+Antes de dar una tarea por terminada: `php artisan test` en verde, `pint --dirty` sin cambios pendientes y `composer analyse` sin errores nuevos.
 
 ## Roles (`App\Models\User::ROLE_*`)
 
