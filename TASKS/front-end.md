@@ -285,3 +285,8 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 ## Formato de error en reglas de negocio
 
 - Todos los `422` traen ahora `errors` además de `message` (antes algunos solo traían `message`): borrados bloqueados (`errors.location`, `errors.cajon`, `errors.ids` en el borrado masivo, `errors.product`, `errors.supplier`, `errors.equipment_unit`, `errors.storeroom`, `errors.student`), condición de un equipo (`errors.product_id`) y transiciones inválidas de préstamos, compras, cotizaciones, unidades y mantenciones (`errors.status`, junto a `allowed_transitions`). Las claves extra que ya existían (`products_count`, `blocked_ids`, `allowed_transitions`…) se mantienen. Basta con mostrar `message` o el primer error de `errors`.
+
+## Etiquetas 50x30 mm (impresora térmica)
+
+- Nuevas rutas, solo `AD-01`, `DIR-01` y `PAN-01` (otro rol → `403`): `GET /api/products/{id}/label` (solo `insumo`; equipo/maqueta → `422`) y `GET /api/equipment-units/{id}/label` (equipos y maquetas, una etiqueta por unidad).
+- Responden `application/pdf` (una página de 50x30 mm, código de barras Code128 + código en texto) con `Content-Disposition: attachment`. No es JSON: hay que pedir el binario con el token Bearer (`responseType: 'blob'`), no abrir la URL directo.

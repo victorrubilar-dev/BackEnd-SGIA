@@ -256,6 +256,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);
     Route::get('/products/{product}/barcode', [ProductController::class, 'barcode']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/products/{product}/label', [ProductController::class, 'label']);
     Route::patch('/products/{product}/status', [ProductController::class, 'updateStatus']);
     Route::patch('/products/{product}/condition', [ProductController::class, 'updateCondition']);
     Route::apiResource('products', ProductController::class);
@@ -268,6 +269,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/equipment-units/by-code/{code}', [EquipmentUnitController::class, 'byCode']);
     Route::get('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'show']);
     Route::get('/equipment-units/{equipmentUnit}/barcode', [EquipmentUnitController::class, 'barcode']);
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/equipment-units/{equipmentUnit}/label', [EquipmentUnitController::class, 'label']);
     Route::get('/equipment-units/{equipmentUnit}/technical-sheet', [EquipmentUnitController::class, 'technicalSheet']);
     Route::get('/equipment-units/{equipmentUnit}/reports', [EquipmentReportController::class, 'unitIndex']);
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {

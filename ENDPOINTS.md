@@ -222,6 +222,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `GET` | `/api/products/{id}/location` | Todos (`auth`) | Obtiene la sala, cajón y descripción de ubicación física de un producto. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/location` | `AD-01`, `DIR-01`, `PAN-01` | Asigna o actualiza la ubicación física.<br>**Body:** `location_id` o combinación de `sala` y `cajon` con `descripcion` opcional. | ✅ Implementado |
 | `GET` | `/api/products/{id}/barcode` | Todos (`auth`) | Retorna el código de barras del producto, su representación vectorial en SVG y su formato Data URI / HTML. | ✅ Implementado |
+| `GET` | `/api/products/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código en texto) para impresora térmica. Solo insumos; `422` para equipo/maqueta (usar la etiqueta por unidad). | ✅ Implementado |
 
 ---
 
@@ -240,6 +241,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `PATCH` | `/api/equipment-units/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado con la máquina de estados; `prestado` solo por préstamos (`422`). **Body:** `status`. | ✅ Implementado |
 | `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código de la unidad) para impresora térmica. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 

@@ -261,6 +261,23 @@ class EquipmentUnitTest extends TestCase
             ->assertJsonStructure(['barcode_svg', 'barcode_image_uri', 'barcode_html']);
     }
 
+    public function test_label_endpoint_returns_pdf_for_warehouse_and_403_for_teacher(): void
+    {
+        $unit = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000556']);
+
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        $response = $this->get("/api/equipment-units/{$unit->id}/label");
+        $response->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+        $this->assertStringContainsString('etiqueta-PRO-IC-000556.pdf', $response->headers->get('Content-Disposition'));
+
+        $this->actingAsRole(User::ROLE_DIRECTOR);
+        $this->get("/api/equipment-units/{$unit->id}/label")->assertOk();
+
+        $this->actingAsRole(User::ROLE_TEACHER);
+        $this->getJson("/api/equipment-units/{$unit->id}/label")->assertStatus(403);
+    }
+
     public function test_product_creation_with_quantity_creates_units(): void
     {
         $this->actingAsRole(User::ROLE_WAREHOUSE);
