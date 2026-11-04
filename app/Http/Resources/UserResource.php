@@ -20,6 +20,8 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'role' => $this->role,
             'area' => $this->area,
+            'storeroom_id' => $this->storeroom_id,
+            'careers' => CareerResource::collection($this->whenLoaded('careers')),
             'is_active' => (bool) $this->is_active,
             'last_login_at' => $this->last_login_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

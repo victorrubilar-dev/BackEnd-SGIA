@@ -76,7 +76,7 @@ class ResourceContractTest extends TestCase
 
     public function test_user_and_catalog_resources(): void
     {
-        $this->assertKeys(UserResource::class, User::factory()->create(), explode(',', 'area,created_at,email,id,is_active,last_login_at,name,role,updated_at'));
+        $this->assertKeys(UserResource::class, User::factory()->create(), explode(',', 'area,created_at,email,id,is_active,last_login_at,name,role,storeroom_id,updated_at'));
         $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
 
         $location = Location::factory()->create();

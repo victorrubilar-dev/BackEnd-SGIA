@@ -37,6 +37,7 @@ class RouteProtectionTest extends TestCase
             'api/me', 'api/password', 'api/logout', 'api/devices', 'api/devices/{id}',
             'api/logout-all', 'api/tokens', 'api/tokens/{tokenId}', 'api/tokens/revoke-others',
             'api/locations', 'api/locations/{location}', 'api/cajones', 'api/cajones/{cajon}',
+            'api/storerooms', 'api/storerooms/{storeroom}',
             'api/equipment/{product}/technical-sheet', 'api/equipment/{product}/reports',
             'api/incident-reports', 'api/incident-reports/{incidentReport}/status', 'api/incident-reports/{incidentReport}/attachment',
             'api/products', 'api/products/{product}', 'api/products/{product}/location',

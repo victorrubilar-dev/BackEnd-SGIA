@@ -86,7 +86,7 @@ Gráficos por usuario, mantenciones y sus documentos, y estudiantes (REQ-15 a RE
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `POST` | `/api/login` | Público | Autenticación con email y password. Rate limit: 5 intentos/min. Retorna Bearer token, expiración según dispositivo (`web` 8h, `mobile` 60d) y datos de usuario. <br>**Body:** `email`, `password`, `device_name` (`web` \| `mobile`). | ✅ Implementado |
-| `GET` | `/api/me` | Todos (`auth`) | Retorna el recurso del usuario autenticado (`UserResource`) con rol, área, estado y último login. | ✅ Implementado |
+| `GET` | `/api/me` | Todos (`auth`) | Retorna el recurso del usuario autenticado (`UserResource`) con rol, área, pañol (`storeroom_id`), carreras (`careers`), estado y último login. | ✅ Implementado |
 | `PUT` | `/api/password` | Todos (`auth`) | Cambio de contraseña del usuario autenticado. Valida contraseña actual, complejidad mínima (8 caracteres, letras y números) y revoca automáticamente las demás sesiones remotas.<br>**Body:** `current_password`, `password`, `password_confirmation`. | ✅ Implementado |
 | `POST` | `/api/logout` | Todos (`auth`) | Cierra la sesión activa revocando el Bearer token actual. | ✅ Implementado |
 | `POST` | `/api/devices` | Todos (`auth`) | Registra el token de push de Expo del dispositivo del usuario (si ya existía, pasa a este usuario).<br>**Body:** `token` (`ExponentPushToken[...]`), `platform` (`ios` \| `android`, opcional). Responde `201` con `id`. | ✅ Implementado |
@@ -104,12 +104,23 @@ Gráficos por usuario, mantenciones y sus documentos, y estudiantes (REQ-15 a RE
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/users` | `AD-01` | Listado paginado de usuarios con soporte de búsqueda y filtros.<br>**Query Params:** `role`, `area`, `is_active`, `search` (nombre/email), `per_page` (1-100). | ✅ Implementado |
-| `POST` | `/api/users` | `AD-01` | Crea un nuevo usuario en el sistema.<br>**Body:** `name`, `email` (único), `role` (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`), `area` (opcional), `password`, `password_confirmation`, `is_active` (opcional). | ✅ Implementado |
+| `GET` | `/api/users` | `AD-01` | Listado paginado de usuarios con sus `careers`.<br>**Query Params:** `role`, `area`, `is_active`, `storeroom_id`, `career_id`, `search` (nombre/email), `per_page` (1-100). | ✅ Implementado |
+| `POST` | `/api/users` | `AD-01` | Crea un nuevo usuario en el sistema.<br>**Body:** `name`, `email` (único), `role` (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`), `area` (opcional), `password`, `password_confirmation`, `is_active` (opcional), `storeroom_id` (opcional, pañol por defecto), `career_ids` (opcional, lista de carreras). | ✅ Implementado |
 | `GET` | `/api/users/{id}` | `AD-01` | Obtiene el detalle de un usuario específico. | ✅ Implementado |
-| `PUT / PATCH` | `/api/users/{id}` | `AD-01` | Actualiza los datos de un usuario (nombre, rol, área, email con validación de unicidad ignorando propio ID, contraseña opcional). | ✅ Implementado |
+| `PUT / PATCH` | `/api/users/{id}` | `AD-01` | Actualiza los datos de un usuario (nombre, rol, área, email con validación de unicidad ignorando propio ID, contraseña opcional, `storeroom_id`, `career_ids`: si se envía reemplaza las carreras). | ✅ Implementado |
 | `DELETE` | `/api/users/{id}` | `AD-01` | Elimina un usuario y borra en cascada sus tokens y registros de sesión. | ✅ Implementado |
+| `GET` | `/api/roles` | `AD-01` | Catálogo fijo de roles (`id`, `code`, `name`) para el formulario de usuarios. | ✅ Implementado |
 | `PATCH` | `/api/users/{id}/status` | `AD-01` | Activa o desactiva la cuenta sin borrarla. Si se desactiva (`is_active = false`), se revocan de inmediato todas sus sesiones activas.<br>**Body:** `is_active` (`true` \| `false`). | ✅ Implementado |
+
+### 2.0a Pañoles
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/storerooms` | Todos (`auth`) | Listado paginado con `locations_count` y `users_count`.<br>**Query Params:** `search` (nombre o código), `per_page`. | ✅ Implementado |
+| `GET` | `/api/storerooms/{id}` | Todos (`auth`) | Detalle del pañol. | ✅ Implementado |
+| `POST` | `/api/storerooms` | `AD-01` | **Body:** `name`, `code` (se guarda en mayúsculas; letras, números y guiones; único), `general_location` (opcional). `201`. | ✅ Implementado |
+| `PATCH` | `/api/storerooms/{id}` | `AD-01` | Mismos campos, opcionales. | ✅ Implementado |
+| `DELETE` | `/api/storerooms/{id}` | `AD-01` | `204`; `422` (`errors.storeroom`) si tiene salas, usuarios o préstamos. | ✅ Implementado |
 
 ### 2.0 Carreras (`FU-06` / `REQ-14`)
 

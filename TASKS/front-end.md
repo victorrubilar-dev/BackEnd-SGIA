@@ -267,3 +267,10 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `POST /api/me/charts`: solo `chart_template_id` es obligatorio; lo que no se envía se hereda de la plantilla (`custom_title` = nombre de la plantilla; `position` = primera libre). Con una plantilla genérica hay que enviar `entity`, `metric` y `period` (y `type` en `kpi`).
 - `422`: posición fuera de 1–5 u ocupada, sexto gráfico (todo en `position`), `entity`/`metric`/`period`/`type` fuera de los enums, `group_by` no válido para la entidad, `CUSTOM` sin `date_from`, `user_id` en el `PATCH`.
 - `PATCH` cambia cualquier campo salvo `user_id`; `is_active: false` lo oculta sin borrarlo (sigue ocupando su posición). Mover a una posición ocupada → `422`: para intercambiar usar `PUT /api/me/charts/positions` con `positions: [{id, position}]` (todos los que cambian); responde la lista ordenada. `GET /api/me/charts?active=1` trae solo los visibles.
+
+## Usuarios, roles y pañoles
+
+- `GET /api/roles` (`AD-01`): catálogo fijo `[{id, code, name}]` para el selector de rol. La API sigue recibiendo y devolviendo el **código** (`role: "PAN-01"`).
+- `POST`/`PATCH /api/users` aceptan `storeroom_id` (pañol por defecto del usuario; `null` lo quita) y `career_ids` (lista; reemplaza las carreras del usuario; si no se envía no se tocan). `GET /api/users` filtra además por `storeroom_id` y `career_id`.
+- `UserResource`: nuevos `storeroom_id` y `careers` (CareerResource; en el listado, el detalle, el alta/edición y `GET /api/me`).
+- Pañoles: `GET /api/storerooms` (todos los autenticados; paginado, `search`), `GET /api/storerooms/{id}`, `POST`/`PATCH` (`AD-01`: `name`, `code` en mayúsculas con letras, números y guiones, único; `general_location`), `DELETE` (`AD-01`, `204`; `422` con `errors.storeroom` si tiene salas, usuarios o préstamos). `StoreroomResource`: `id`, `name`, `code`, `general_location`, `locations_count`, `users_count` (listado/detalle), auditoría y fechas (también dentro de `EquipmentUnit.storeroom`).

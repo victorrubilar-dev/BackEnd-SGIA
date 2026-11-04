@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 
@@ -24,7 +25,15 @@ class UserController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
-        $query = User::query();
+        $query = User::with('careers');
+
+        if ($request->filled('storeroom_id')) {
+            $query->where('storeroom_id', $request->integer('storeroom_id'));
+        }
+
+        if ($request->filled('career_id')) {
+            $query->whereHas('careers', fn ($q) => $q->where('careers.id', $request->integer('career_id')));
+        }
 
         if ($request->filled('role')) {
             $query->where('role', $request->string('role'));
@@ -59,16 +68,22 @@ class UserController extends Controller
     {
         $validated = $request->validated();
 
-        $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'role' => $validated['role'],
-            'area' => $validated['area'] ?? null,
-            'password' => Hash::make($validated['password']),
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        $user = DB::transaction(function () use ($validated) {
+            $user = User::create([
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'role' => $validated['role'],
+                'area' => $validated['area'] ?? null,
+                'password' => Hash::make($validated['password']),
+                'is_active' => $validated['is_active'] ?? true,
+                'storeroom_id' => $validated['storeroom_id'] ?? null,
+            ]);
+            $user->careers()->sync($validated['career_ids'] ?? []);
 
-        return (new UserResource($user))
+            return $user;
+        });
+
+        return (new UserResource($user->load('careers')))
             ->response()
             ->setStatusCode(201);
     }
@@ -80,7 +95,7 @@ class UserController extends Controller
     {
         Gate::authorize('view', $user);
 
-        return new UserResource($user);
+        return new UserResource($user->load('careers'));
     }
 
     /**
@@ -96,9 +111,15 @@ class UserController extends Controller
             unset($validated['password']);
         }
 
-        $user->update($validated);
+        DB::transaction(function () use ($user, $validated) {
+            $user->update(collect($validated)->except('career_ids')->all());
 
-        return new UserResource($user);
+            if (array_key_exists('career_ids', $validated)) {
+                $user->careers()->sync($validated['career_ids']);
+            }
+        });
+
+        return new UserResource($user->load('careers'));
     }
 
     /**

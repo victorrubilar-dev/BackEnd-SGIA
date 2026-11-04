@@ -42,12 +42,19 @@ class UpdateUserRequest extends FormRequest
             ],
             'password_confirmation' => ['required_with:password', 'string'],
             'is_active' => ['sometimes', 'boolean'],
+            'storeroom_id' => ['nullable', 'integer', 'exists:storerooms,id'],
+            'career_ids' => ['sometimes', 'array'],
+            'career_ids.*' => ['integer', 'distinct', 'exists:careers,id'],
         ];
     }
 
     public function messages(): array
     {
         return [
+            'storeroom_id.exists' => 'El pañol seleccionado no existe.',
+            'career_ids.array' => 'career_ids debe ser una lista de carreras.',
+            'career_ids.*.exists' => 'Una de las carreras seleccionadas no existe.',
+            'career_ids.*.distinct' => 'Las carreras no pueden repetirse.',
             'name.required' => 'El nombre completo es requerido.',
             'email.required' => 'El correo electrónico es requerido.',
             'email.email' => 'El correo electrónico debe ser una dirección válida.',

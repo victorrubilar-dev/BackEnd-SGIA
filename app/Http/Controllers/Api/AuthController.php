@@ -69,7 +69,7 @@ class AuthController extends Controller
 
     public function me(Request $request): UserResource
     {
-        return new UserResource($request->user());
+        return new UserResource($request->user()->load('careers'));
     }
 
     public function changePassword(ChangePasswordRequest $request): JsonResponse

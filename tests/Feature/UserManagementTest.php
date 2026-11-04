@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
+use App\Models\Storeroom;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
@@ -336,5 +338,59 @@ class UserManagementTest extends TestCase
 
         $this->admin->refresh();
         $this->assertTrue($this->admin->is_active);
+    }
+
+    public function test_admin_assigns_storeroom_and_careers_to_user(): void
+    {
+        Sanctum::actingAs($this->admin);
+        $storeroom = Storeroom::factory()->create();
+        [$a, $b] = Career::factory()->count(2)->create()->all();
+
+        $id = $this->postJson('/api/users', [
+            'name' => 'Pañolero Norte',
+            'email' => 'norte_'.uniqid().'@inacap.cl',
+            'role' => User::ROLE_WAREHOUSE,
+            'password' => 'Secreto123',
+            'password_confirmation' => 'Secreto123',
+            'storeroom_id' => $storeroom->id,
+            'career_ids' => [$a->id, $b->id],
+        ])->assertCreated()
+            ->assertJsonPath('data.storeroom_id', $storeroom->id)
+            ->assertJsonCount(2, 'data.careers')
+            ->json('data.id');
+
+        $this->patchJson("/api/users/{$id}", ['career_ids' => [$b->id]])
+            ->assertOk()->assertJsonCount(1, 'data.careers')->assertJsonPath('data.careers.0.id', $b->id);
+        // Sin career_ids no se tocan las carreras.
+        $this->patchJson("/api/users/{$id}", ['name' => 'Pañolero Sur', 'storeroom_id' => null])
+            ->assertOk()->assertJsonCount(1, 'data.careers')->assertJsonPath('data.storeroom_id', null);
+
+        $this->getJson("/api/users?career_id={$b->id}")->assertOk()->assertJsonPath('data.0.id', $id);
+        $this->getJson("/api/users/{$id}")->assertOk()->assertJsonPath('data.careers.0.code', $b->code);
+
+        $this->postJson('/api/users', [
+            'name' => 'X', 'email' => 'x_'.uniqid().'@inacap.cl', 'role' => User::ROLE_TEACHER,
+            'password' => 'Secreto123', 'password_confirmation' => 'Secreto123',
+            'storeroom_id' => 999999, 'career_ids' => [999999],
+        ])->assertStatus(422)->assertJsonValidationErrors(['storeroom_id', 'career_ids.0']);
+    }
+
+    public function test_me_includes_careers(): void
+    {
+        $career = Career::factory()->create();
+        $this->teacher->careers()->attach($career->id);
+        Sanctum::actingAs($this->teacher);
+
+        $this->getJson('/api/me')->assertOk()->assertJsonPath('data.careers.0.id', $career->id);
+    }
+
+    public function test_roles_catalog_is_admin_only(): void
+    {
+        Sanctum::actingAs($this->admin);
+        $codes = collect($this->getJson('/api/roles')->assertOk()->json('data'))->pluck('code')->all();
+        $this->assertSame(User::ROLES, $codes);
+
+        Sanctum::actingAs($this->teacher);
+        $this->getJson('/api/roles')->assertForbidden();
     }
 }

@@ -21,7 +21,9 @@ use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StockAlertController;
+use App\Http\Controllers\Api\StoreroomController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserChartController;
@@ -45,6 +47,17 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:AD-01')->group(function () {
         Route::patch('/users/{user}/status', [UserController::class, 'updateStatus']);
         Route::apiResource('users', UserController::class);
+        // Catálogo fijo de roles para el formulario de usuarios.
+        Route::get('/roles', [RoleController::class, 'index']);
+    });
+
+    // Pañoles: lectura para todos, escritura solo AD-01
+    Route::get('/storerooms', [StoreroomController::class, 'index']);
+    Route::get('/storerooms/{storeroom}', [StoreroomController::class, 'show']);
+    Route::middleware('role:AD-01')->group(function () {
+        Route::post('/storerooms', [StoreroomController::class, 'store']);
+        Route::patch('/storerooms/{storeroom}', [StoreroomController::class, 'update']);
+        Route::delete('/storerooms/{storeroom}', [StoreroomController::class, 'destroy']);
     });
 
     // REQ-14: Catálogo de carreras y su nivel (dashboards CAREERS por level)
