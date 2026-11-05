@@ -10,11 +10,13 @@ use App\Models\QuotationSupplier;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Notifications\PurchaseArrivalNotification;
+use App\Notifications\QuotationStatusNotification;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 /**
@@ -22,6 +24,7 @@ use Tests\TestCase;
  */
 class QuotationPurchaseFlowTest extends TestCase
 {
+    use CreatesQuotations;
     use DatabaseTransactions;
 
     protected User $director;
@@ -102,6 +105,7 @@ class QuotationPurchaseFlowTest extends TestCase
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
+            'quotation_justification' => 'Solo hay dos proveedores disponibles en la zona.',
             'expected_at' => now()->addWeek()->toDateString(),
         ]);
 
@@ -145,6 +149,7 @@ class QuotationPurchaseFlowTest extends TestCase
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
+            'quotation_justification' => 'Solo hay dos proveedores disponibles en la zona.',
         ]);
 
         $response->assertStatus(422);
@@ -163,6 +168,7 @@ class QuotationPurchaseFlowTest extends TestCase
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
+            'quotation_justification' => 'Solo hay dos proveedores disponibles en la zona.',
             'supplier_id' => $stranger->id,
         ]);
 
@@ -170,14 +176,73 @@ class QuotationPurchaseFlowTest extends TestCase
         $response->assertJsonValidationErrors('supplier_id');
     }
 
-    public function test_purchase_creation_still_requires_supplier_and_items_without_quotation(): void
+    public function test_purchase_creation_requires_an_accepted_quotation(): void
     {
         Sanctum::actingAs($this->director);
 
-        $response = $this->postJson('/api/purchases', []);
+        $this->postJson('/api/purchases', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['quotation_id']);
 
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors(['supplier_id', 'items']);
+        $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
+            'supplier_id' => $this->supplier->id,
+            'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 100]],
+        ])->assertStatus(422)->assertJsonValidationErrors('quotation_id');
+    }
+
+    public function test_fewer_than_three_responses_require_a_justification_but_do_not_block(): void
+    {
+        Sanctum::actingAs($this->director);
+        $payload = fn (Quotation $q) => [
+            'annual_budget_id' => $this->budget->id,
+            'quotation_id' => $q->id,
+            'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 100]],
+        ];
+
+        $two = $this->acceptedQuotation(null, 2);
+        $this->postJson('/api/purchases', $payload($two))
+            ->assertStatus(422)->assertJsonValidationErrors('quotation_justification');
+
+        $this->postJson('/api/purchases', $payload($two) + ['quotation_justification' => 'Solo dos proveedores en la región.'])
+            ->assertCreated()
+            ->assertJsonPath('data.quotation_justification', 'Solo dos proveedores en la región.')
+            ->assertJsonPath('data.responded_suppliers', 2)
+            ->assertJsonPath('data.min_quotations', 3)
+            ->assertJsonPath('data.meets_min_quotations', false);
+    }
+
+    public function test_three_responses_need_no_justification(): void
+    {
+        Sanctum::actingAs($this->director);
+
+        $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
+            'quotation_id' => $this->acceptedQuotation(null, 3)->id,
+            'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 100]],
+        ])->assertCreated()
+            ->assertJsonPath('data.quotation_justification', null)
+            ->assertJsonPath('data.responded_suppliers', 3)
+            ->assertJsonPath('data.meets_min_quotations', true);
+    }
+
+    public function test_only_the_director_can_change_the_quotation_status_and_everyone_relevant_is_notified(): void
+    {
+        Notification::fake();
+        $quotation = $this->makeQuotation(Quotation::STATUS_PENDING);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+
+        Sanctum::actingAs($admin);
+        $this->patchJson("/api/quotations/{$quotation->id}/status", ['status' => 'aceptada'])->assertForbidden();
+        $this->assertSame('pendiente', $quotation->fresh()->status);
+
+        Sanctum::actingAs($this->director);
+        $this->patchJson("/api/quotations/{$quotation->id}/status", ['status' => 'aceptada'])
+            ->assertOk()
+            ->assertJsonPath('quotation.responded_suppliers', 0)
+            ->assertJsonPath('quotation.meets_min_quotations', false);
+
+        Notification::assertSentTo([$admin, $this->director], QuotationStatusNotification::class);
     }
 
     public function test_items_can_be_overridden_when_creating_purchase_from_quotation(): void
@@ -189,6 +254,7 @@ class QuotationPurchaseFlowTest extends TestCase
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
+            'quotation_justification' => 'Solo hay dos proveedores disponibles en la zona.',
             'items' => [
                 ['name' => 'Cable THW 2.5mm', 'quantity' => 30, 'unit_price' => 900],
             ],
@@ -207,7 +273,7 @@ class QuotationPurchaseFlowTest extends TestCase
 
         Sanctum::actingAs($this->director);
 
-        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $emptyQuotation->id])
+        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $emptyQuotation->id, 'quotation_justification' => 'Sin otros proveedores.'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('items');
 
@@ -219,7 +285,7 @@ class QuotationPurchaseFlowTest extends TestCase
             'quantity' => 3,
         ]);
 
-        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $withoutSuppliers->id])
+        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id, 'quotation_id' => $withoutSuppliers->id, 'quotation_justification' => 'Sin otros proveedores.'])
             ->assertStatus(422)
             ->assertJsonValidationErrors('supplier_id');
     }
@@ -245,6 +311,7 @@ class QuotationPurchaseFlowTest extends TestCase
         $purchaseResponse = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
             'quotation_id' => $quotation->id,
+            'quotation_justification' => 'Solo hay dos proveedores disponibles en la zona.',
         ]);
         $purchaseResponse->assertStatus(201);
 

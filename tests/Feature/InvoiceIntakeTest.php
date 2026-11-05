@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\AnnualBudget;
 use App\Models\Cajon;
+use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\InvoiceIntake;
 use App\Models\Product;
@@ -140,14 +141,65 @@ TXT;
             ->assertJsonPath('data.annual_budget', null)
             ->json('data.id');
 
-        $this->postJson("/api/invoice-intakes/$id/confirm", [
+        $this->getJson("/api/invoice-intakes/$id")->assertJsonPath('data.needs_budget', true);
+
+        // Sin carrera detectada ni presupuesto elegido no se puede confirmar.
+        $payload = [
             'document_number' => 'F-200',
             'items' => [['product_id' => $supply->id, 'quantity' => 4, 'unit_price' => 1000]],
-        ])->assertOk()->assertJsonPath('data.status', 'confirmado');
+        ];
+        $this->postJson("/api/invoice-intakes/$id/confirm", $payload)
+            ->assertStatus(422)->assertJsonValidationErrors('annual_budget_id');
+        $this->assertSame(3, $supply->fresh()->quantity);
+
+        $budget = AnnualBudget::factory()->create(['initial_amount' => 100000, 'available_amount' => 100000]);
+        $this->postJson("/api/invoice-intakes/$id/confirm", $payload + ['annual_budget_id' => $budget->id])
+            ->assertOk()
+            ->assertJsonPath('data.status', 'confirmado')
+            ->assertJsonPath('data.annual_budget_id', $budget->id);
+        $this->assertSame('96000.00', $budget->fresh()->available_amount);
         $this->assertSame(7, $supply->fresh()->quantity);
 
         $this->postJson("/api/invoice-intakes/$id/cancel")->assertOk();
         $this->assertSame(3, $supply->fresh()->quantity);
+    }
+
+    public function test_budget_is_assigned_automatically_when_the_career_is_detected_in_the_document(): void
+    {
+        $career = Career::factory()->create(['name' => 'Ingeniería en Ciberseguridad', 'code' => 'IC']);
+        $budget = AnnualBudget::factory()->create(['career_id' => $career->id, 'year' => now()->year, 'initial_amount' => 500000, 'available_amount' => 500000]);
+        Process::fake(['*pdftotext*' => Process::result(self::INVOICE_TEXT."\nCarrera: Ingenieria en Ciberseguridad")]);
+        $supply = Product::factory()->supply()->create(['quantity' => 3]);
+        Sanctum::actingAs($this->admin);
+
+        $id = $this->postJson('/api/invoice-intakes', [
+            'file' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
+        ])->assertCreated()
+            ->assertJsonPath('data.annual_budget_id', $budget->id)
+            ->assertJsonPath('data.detected_career_id', $career->id)
+            ->assertJsonPath('data.needs_budget', false)
+            ->json('data.id');
+
+        $this->postJson("/api/invoice-intakes/$id/confirm", [
+            'document_number' => 'F-300',
+            'items' => [['product_id' => $supply->id, 'quantity' => 2, 'unit_price' => 1000]],
+        ])->assertOk();
+        $this->assertSame('498000.00', $budget->fresh()->available_amount);
+    }
+
+    public function test_ambiguous_or_missing_career_leaves_the_budget_to_be_chosen(): void
+    {
+        Career::factory()->create(['name' => 'Ingeniería en Ciberseguridad', 'code' => 'IC']);
+        Career::factory()->create(['name' => 'Analista Programador', 'code' => 'AP']);
+        Process::fake(['*pdftotext*' => Process::result(self::INVOICE_TEXT."\nIC y Analista Programador")]);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson('/api/invoice-intakes', [
+            'file' => UploadedFile::fake()->create('factura.pdf', 100, 'application/pdf'),
+        ])->assertCreated()
+            ->assertJsonPath('data.annual_budget_id', null)
+            ->assertJsonPath('data.detected_career_id', null)
+            ->assertJsonPath('data.needs_budget', true);
     }
 
     public function test_confirm_fails_when_budget_is_insufficient_and_changes_nothing(): void

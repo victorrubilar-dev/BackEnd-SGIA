@@ -77,3 +77,7 @@ Reemplaza la regla actual de REQ-17 "un ingreso confirmado no se anula".
 - [x] Test Feature `BudgetReportTest`: datos sembrados con compras, facturas, anulaciones; verifica cada número; `403` PAN-01/PRO-01; DIR-01 ve todas las carreras; `422` en `group_by` inválido; año sin datos devuelve ceros.
 
 **Notas de implementación:** el test de "reservas concurrentes" de REQ-21 se cubre con reservas secuenciales + `lockForUpdate` y los `CHECK` de BD (no hay prueba con procesos paralelos). `GET /budgets/{id}/monthly` acepta un `year` opcional (año calendario del ledger; por defecto el del presupuesto). Tests: `BudgetLedgerTest`, `PurchaseBudgetTest`, `InvoiceIntakeCancellationTest`, `BudgetReportTest`.
+
+### Reglas de noviembre 2026
+- [x] Toda compra parte de una cotización aceptada (`quotation_id` obligatorio); con menos de 3 proveedores que respondieron se exige `quotation_justification` (`QuotationPurchaseFlowTest`).
+- [x] Facturas: el OCR detecta la carrera (nombre o sigla) y asigna el presupuesto del año; si no la detecta, `confirm` exige `annual_budget_id` (`InvoiceIntakeTest`).

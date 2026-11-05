@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -53,7 +54,7 @@ class LoanUnitsTest extends TestCase
     private function checkout(array $items, array $extra = []): TestResponse
     {
         return $this->postJson('/api/loans/checkout', [
-            'borrower_name' => 'Pedro Alumno', 'subject' => 'Redes', 'room' => 'Lab 1', 'loan_date' => today()->toDateString(),
+            'borrower_name' => 'Pedro Alumno', 'subject' => 'Redes', 'career_id' => Career::factory()->create()->id, 'room' => 'Lab 1', 'loan_date' => today()->toDateString(),
             'items' => $items, ...$extra,
         ]);
     }

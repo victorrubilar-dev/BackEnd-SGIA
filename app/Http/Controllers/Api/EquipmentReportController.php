@@ -3,13 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreIncidentReportRequest;
 use App\Http\Requests\UpdateIncidentReportStatusRequest;
 use App\Http\Resources\IncidentReportResource;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Product;
 use App\Services\EquipmentPdfService;
+use App\Services\IncidentReportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -56,70 +56,6 @@ class EquipmentReportController extends Controller
         $perPage = $this->perPage($request);
 
         return IncidentReportResource::collection($query->paginate($perPage));
-    }
-
-    /**
-     * REQ-13: Solicitud de reposición mediante informe de novedades (FU-05).
-     *
-     * POST /api/equipment/{id}/reports
-     *
-     * Acepta el formulario del informe (description/title/severity) más un
-     * adjunto opcional (documento o imagen) y asocia el informe al equipo
-     * para trazabilidad en su hoja de vida.
-     */
-    public function store(StoreIncidentReportRequest $request, Product $product): JsonResponse
-    {
-        $validated = $request->validated();
-        $attachment = $request->file('attachment');
-
-        $path = null;
-        $originalName = null;
-
-        if ($attachment !== null) {
-            $path = $attachment->store('incidents', 'local');
-
-            if ($path === false) {
-                throw ValidationException::withMessages([
-                    'attachment' => 'No se pudo almacenar el adjunto del informe.',
-                ]);
-            }
-
-            $originalName = $attachment->getClientOriginalName();
-        }
-
-        $photoPath = null;
-        $photo = $request->file('evidence_photo');
-
-        if ($photo !== null) {
-            $photoPath = $photo->store('incidents/evidence', 'local');
-
-            if ($photoPath === false) {
-                throw ValidationException::withMessages([
-                    'evidence_photo' => 'No se pudo almacenar la foto de evidencia.',
-                ]);
-            }
-        }
-
-        $report = $product->incidentReports()->create([
-            'code' => IncidentReport::generateUniqueCode(),
-            'equipment_unit_id' => $validated['equipment_unit_id'] ?? null,
-            'request_type' => $validated['request_type'] ?? IncidentReport::REQUEST_FAILURE,
-            'evidence_photo_path' => $photoPath,
-            'reported_by' => $request->user()?->id,
-            'title' => $validated['title'] ?? null,
-            'description' => $validated['description'] ?? ($validated['title'] ?? ''),
-            'severity' => $validated['severity'] ?? IncidentReport::SEVERITY_MEDIUM,
-            'status' => IncidentReport::STATUS_REPORTED,
-            'attachment' => $path,
-            'attachment_original_name' => $originalName,
-        ]);
-
-        $report->load(['reporter', 'equipmentUnit']);
-
-        return response()->json([
-            'message' => 'Informe de novedad registrado correctamente.',
-            'data' => (new IncidentReportResource($report))->resolve(),
-        ], 201);
     }
 
     /**
@@ -205,7 +141,7 @@ class EquipmentReportController extends Controller
     {
         Gate::authorize('viewAny', IncidentReport::class);
 
-        $query = IncidentReport::with(['reporter', 'product', 'equipmentUnit'])->latest();
+        $query = IncidentReport::with(['reporter', 'product', 'equipmentUnit', 'location'])->latest();
 
         foreach (['severity', 'status', 'request_type'] as $field) {
             if ($request->filled($field)) {
@@ -236,7 +172,7 @@ class EquipmentReportController extends Controller
      *
      * PATCH /api/incident-reports/{id}/status
      */
-    public function updateStatus(UpdateIncidentReportStatusRequest $request, IncidentReport $incidentReport): JsonResponse
+    public function updateStatus(UpdateIncidentReportStatusRequest $request, IncidentReport $incidentReport, IncidentReportService $reports): JsonResponse
     {
         $to = $request->validated('status');
 
@@ -246,7 +182,9 @@ class EquipmentReportController extends Controller
             ]);
         }
 
+        $from = $incidentReport->status;
         $incidentReport->update(['status' => $to]);
+        $reports->notifyStatusChange($incidentReport, $from);
 
         return response()->json([
             'message' => 'Estado del informe actualizado.',

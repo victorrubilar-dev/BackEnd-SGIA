@@ -10,6 +10,7 @@ use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -55,6 +56,30 @@ class EquipmentPdfService
             'reports' => $reports,
             'unit' => $unit,
         ]));
+    }
+
+    /**
+     * Informe de novedades del docente: formulario con las casillas marcadas, foto y firma.
+     */
+    public function incidentReport(IncidentReport $report): string
+    {
+        return $this->render(view('incidents.report', [
+            'report' => $report,
+            'signature' => $this->imageDataUri($report->signature_path, 'image/png'),
+            'photo' => $this->imageDataUri($report->evidence_photo_path),
+        ]));
+    }
+
+    private function imageDataUri(?string $path, ?string $mime = null): ?string
+    {
+        $disk = Storage::disk('local');
+
+        // dompdf necesita la extensión GD para incrustar PNG/JPG; sin ella el PDF omite las imágenes.
+        if (! extension_loaded('gd') || ! $path || ! $disk->exists($path)) {
+            return null;
+        }
+
+        return 'data:'.($mime ?? $disk->mimeType($path) ?: 'image/jpeg').';base64,'.base64_encode((string) $disk->get($path));
     }
 
     /**

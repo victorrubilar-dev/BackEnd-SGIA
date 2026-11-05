@@ -41,16 +41,47 @@ class IncidentReport extends Model
 
     public const STATUS_DISCARDED = 'dado_de_baja';
 
+    // Estados finales del formulario del docente.
+    public const STATUS_RESOLVED = 'resuelto';
+
+    public const STATUS_DISMISSED = 'descartado';
+
+    public const PROBLEM_EQUIPMENT_FAILURE = 'falla_equipo';
+
+    public const PROBLEM_MISSING_EQUIPMENT = 'falta_equipamiento';
+
+    public const PROBLEM_MISSING_SUPPLIES = 'falta_insumo';
+
+    public const PROBLEM_OTHER = 'otros';
+
+    /** Casillas del formulario: falla de equipos / instrumento / software, falta de equipamiento, falta de insumo, otros. */
+    public const PROBLEM_LABELS = [
+        self::PROBLEM_EQUIPMENT_FAILURE => 'Falla de equipos / instrumento / software',
+        self::PROBLEM_MISSING_EQUIPMENT => 'Falta de equipamiento',
+        self::PROBLEM_MISSING_SUPPLIES => 'Falta de insumo',
+        self::PROBLEM_OTHER => 'Otros',
+    ];
+
+    /** Estados finales (ambos formatos). */
+    public const FINAL_STATUSES = [
+        self::STATUS_REPAIRED,
+        self::STATUS_DISCARDED,
+        self::STATUS_RESOLVED,
+        self::STATUS_DISMISSED,
+    ];
+
     public const STATUSES = [
         self::STATUS_REPORTED,
         self::STATUS_IN_REVIEW,
         self::STATUS_IN_REPAIR,
         self::STATUS_REPAIRED,
         self::STATUS_DISCARDED,
+        self::STATUS_RESOLVED,
+        self::STATUS_DISMISSED,
     ];
 
     /**
-     * Transiciones permitidas de atención; `reparado` y `dado_de_baja` son finales.
+     * Transiciones de los informes anteriores (por equipo); `reparado` y `dado_de_baja` son finales.
      *
      * @var array<string, array<int, string>>
      */
@@ -60,6 +91,22 @@ class IncidentReport extends Model
         self::STATUS_IN_REPAIR => [self::STATUS_REPAIRED, self::STATUS_DISCARDED],
         self::STATUS_REPAIRED => [],
         self::STATUS_DISCARDED => [],
+    ];
+
+    /**
+     * Transiciones de los informes del formulario del docente. `en_reparacion` solo lo fija
+     * una mantención abierta desde el informe.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const FORM_TRANSITIONS = [
+        self::STATUS_REPORTED => [self::STATUS_IN_REVIEW, self::STATUS_RESOLVED, self::STATUS_DISMISSED],
+        self::STATUS_IN_REVIEW => [self::STATUS_RESOLVED, self::STATUS_DISMISSED],
+        self::STATUS_IN_REPAIR => [self::STATUS_RESOLVED, self::STATUS_DISMISSED],
+        self::STATUS_REPAIRED => [],
+        self::STATUS_DISCARDED => [],
+        self::STATUS_RESOLVED => [],
+        self::STATUS_DISMISSED => [],
     ];
 
     public const SEVERITY_LABELS = [
@@ -85,19 +132,49 @@ class IncidentReport extends Model
         'status',
         'attachment',
         'attachment_original_name',
+        'teacher_name',
+        'subject',
+        'report_date',
+        'location_id',
+        'problems',
+        'suggestion',
+        'signature_path',
+        'signed_at',
     ];
 
-    /**
-     * @return array<int, string>
-     */
+    protected function casts(): array
+    {
+        return [
+            'report_date' => 'date',
+            'problems' => 'array',
+            'signed_at' => 'datetime',
+        ];
+    }
+
+    /** Informe anterior al formulario del docente (por equipo, sin problemas marcados). */
+    public function isLegacy(): bool
+    {
+        return $this->problems === null;
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
     public function equipmentUnit(): BelongsTo
     {
         return $this->belongsTo(EquipmentUnit::class);
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function allowedTransitions(): array
     {
-        return self::TRANSITIONS[$this->status] ?? [];
+        $map = $this->isLegacy() ? self::TRANSITIONS : self::FORM_TRANSITIONS;
+
+        return $map[$this->status] ?? [];
     }
 
     public function product(): BelongsTo

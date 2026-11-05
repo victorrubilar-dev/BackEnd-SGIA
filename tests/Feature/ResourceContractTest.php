@@ -93,7 +93,7 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(AnnualBudgetResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,created_at,created_by,id,initial_amount,reserved_amount,updated_at,updated_by,year'));
 
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);
-        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,document_number,has_file,id,purchase_id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
+        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,detected_career_id,document_number,has_file,id,needs_budget,purchase_id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
 
         $this->assertKeys(BudgetSummaryResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,execution_percent,id,initial_amount,reserved_amount,year'));
         $movement = BudgetMovement::create(['annual_budget_id' => $budget->id, 'type' => BudgetMovement::TYPE_INITIAL, 'amount' => 1, 'user_id' => User::factory()->create()->id]);
@@ -119,7 +119,7 @@ class ResourceContractTest extends TestCase
         $loan = Loan::factory()->create();
         $item = LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => 'x', 'quantity' => 1]);
 
-        $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,code,created_at,due_date,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,status,status_label,student_id,subject,time_block,type,updated_at'));
+        $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,career_id,code,created_at,due_date,end_time,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,location_id,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,start_time,status,status_label,storeroom_id,student_id,subject,time_block,type,updated_at'));
         $this->assertKeys(LoanItemResource::class, $item, explode(',', 'available_stock,cajon,delivered_quantity,id,is_returned,loan_id,location,name,product_id,quantity,return_condition,returned_at,returned_quantity'));
     }
 
@@ -130,11 +130,11 @@ class ResourceContractTest extends TestCase
 
         $purchase = Purchase::factory()->create(['created_by' => $user->id]);
         $purchaseItem = $purchase->items()->create(['name' => 'a', 'quantity' => 1, 'unit_price' => 1]);
-        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,annual_budget_id,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,id,invoice_number,notes,quotation_id,quotation_reference,received_at,reserved_amount,status,supplier_id,total,updated_at'));
+        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,annual_budget_id,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,id,invoice_number,min_quotations,notes,quotation_id,quotation_justification,quotation_reference,received_at,reserved_amount,status,supplier_id,total,updated_at'));
         $this->assertKeys(PurchaseItemResource::class, $purchaseItem, explode(',', 'id,name,product_id,purchase_id,quantity,unit_price'));
 
         $quotation = Quotation::factory()->create(['created_by' => $user->id]);
-        $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,career_id,code,converted_at,created_at,created_by,expires_at,id,notes,purchase_id,status,title,updated_at'));
+        $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,career_id,code,converted_at,created_at,created_by,expires_at,id,meets_min_quotations,min_quotations,notes,purchase_id,responded_suppliers,status,title,updated_at'));
         $this->assertKeys(QuotationItemResource::class, $quotation->items()->create(['name' => 'a', 'quantity' => 1]), explode(',', 'id,name,product_id,quantity,quotation_id'));
         $this->assertKeys(QuotationSupplierResource::class, $quotation->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'contacted_at,email_error,email_sent_at,has_backup_file,id,notes,offer_total,quotation_id,quotation_number,responded_at,status,supplier_id'));
     }
@@ -148,7 +148,7 @@ class ResourceContractTest extends TestCase
     {
         $report = IncidentReport::factory()->create(['product_id' => Product::factory()->create()->id]);
 
-        $this->assertKeys(IncidentReportResource::class, $report, explode(',', 'allowed_transitions,attachment,attachment_original_name,attachment_url,code,created_at,description,equipment_unit_id,has_evidence_photo,id,product_id,reported_by,request_type,severity,severity_label,status,title,updated_at'));
+        $this->assertKeys(IncidentReportResource::class, $report, explode(',', 'allowed_transitions,attachment,attachment_original_name,attachment_url,code,created_at,description,equipment_unit_id,has_evidence_photo,has_signature,id,is_legacy,location_id,pdf_url,problems,product_id,report_date,reported_by,request_type,severity,severity_label,signature_url,signed_at,status,subject,suggestion,teacher_name,title,updated_at'));
     }
 
     public function test_student_resource(): void

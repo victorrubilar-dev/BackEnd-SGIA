@@ -15,15 +15,16 @@ class StorePurchaseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // Se puede crear desde cero (proveedor + ítems) o partir de una
-            // cotización aceptada (REQ-07 -> REQ-08) que aporte ambos datos.
+            // La compra parte siempre de una cotización aceptada (REQ-07 -> REQ-08);
+            // proveedor e ítems son opcionales y, si faltan, se toman de la cotización.
             'annual_budget_id' => ['required', 'integer', 'exists:annual_budgets,id'],
-            'quotation_id' => ['nullable', 'integer', 'exists:quotations,id'],
-            'supplier_id' => ['required_without:quotation_id', 'integer', 'exists:suppliers,id'],
+            'quotation_id' => ['required', 'integer', 'exists:quotations,id'],
+            'quotation_justification' => ['nullable', 'string', 'max:1000'],
+            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
             'quotation_reference' => ['nullable', 'string', 'max:100'],
             'expected_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
-            'items' => ['required_without:quotation_id', 'array', 'min:1'],
+            'items' => ['nullable', 'array', 'min:1'],
             'items.*.product_id' => ['nullable', 'integer', 'exists:products,id'],
             'items.*.name' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
@@ -37,10 +38,10 @@ class StorePurchaseRequest extends FormRequest
             'annual_budget_id.required' => 'El presupuesto es obligatorio.',
             'annual_budget_id.exists' => 'El presupuesto no existe.',
             'items.*.unit_price.required_with' => 'Cada producto de la orden debe tener precio unitario.',
-            'supplier_id.required_without' => 'El proveedor es obligatorio si no indicas una cotización aprobada.',
+            'quotation_id.required' => 'Toda compra debe partir de una cotización aceptada.',
+            'quotation_justification.max' => 'El motivo no puede superar los 1000 caracteres.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'quotation_id.exists' => 'La cotización seleccionada no existe en el sistema.',
-            'items.required_without' => 'La orden de compra debe incluir al menos un producto si no indicas una cotización aprobada.',
             'items.array' => 'El campo items debe ser una lista.',
             'items.min' => 'La orden de compra debe incluir al menos un producto.',
             'items.*.name.required' => 'Cada producto de la orden debe tener nombre.',

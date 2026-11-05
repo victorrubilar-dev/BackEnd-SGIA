@@ -6,6 +6,7 @@ use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Location;
 use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\User;
@@ -50,68 +51,37 @@ class UnitLifeSheetTest extends TestCase
         return $text;
     }
 
-    public function test_report_on_equipment_requires_a_unit_of_that_product(): void
-    {
-        $unit = EquipmentUnit::factory()->create();
-        $other = EquipmentUnit::factory()->create();
-        Sanctum::actingAs($this->teacher);
-
-        $this->postJson("/api/equipment/{$unit->product_id}/reports", ['description' => 'No enciende el equipo.'])
-            ->assertStatus(422)->assertJsonValidationErrors('equipment_unit_id');
-        $this->postJson("/api/equipment/{$unit->product_id}/reports", ['description' => 'No enciende.', 'equipment_unit_id' => $other->id])
-            ->assertStatus(422)->assertJsonValidationErrors('equipment_unit_id');
-
-        $this->postJson("/api/equipment/{$unit->product_id}/reports", ['description' => 'No enciende el equipo.', 'equipment_unit_id' => $unit->id])
-            ->assertCreated()
-            ->assertJsonPath('data.equipment_unit_id', $unit->id)
-            ->assertJsonPath('data.equipment_unit.code', $unit->code)
-            ->assertJsonPath('data.request_type', 'falla')
-            ->assertJsonPath('data.has_evidence_photo', false);
-    }
-
-    public function test_supply_report_does_not_need_a_unit(): void
-    {
-        $supply = Product::factory()->supply()->create();
-        Sanctum::actingAs($this->warehouse);
-
-        $this->postJson("/api/equipment/{$supply->id}/reports", ['description' => 'Se acabó el insumo.', 'request_type' => 'reposicion'])
-            ->assertCreated()->assertJsonPath('data.request_type', 'reposicion')->assertJsonPath('data.equipment_unit_id', null);
-        $this->postJson("/api/equipment/{$supply->id}/reports", ['description' => 'x y z', 'request_type' => 'otro'])
-            ->assertStatus(422)->assertJsonValidationErrors('request_type');
-    }
-
-    public function test_evidence_photo_is_private_and_downloadable_by_staff(): void
+    public function test_evidence_photo_is_private_and_downloadable_by_staff_and_owner(): void
     {
         $unit = EquipmentUnit::factory()->create();
         Sanctum::actingAs($this->teacher);
 
-        $id = $this->postJson("/api/equipment/{$unit->product_id}/reports", [
-            'description' => 'Pantalla rota.', 'equipment_unit_id' => $unit->id, 'request_type' => 'mantencion',
+        $id = $this->postJson('/api/incident-reports', [
+            'subject' => 'Redes',
+            'location_id' => Location::factory()->create()->id,
+            'problems' => [['type' => 'falla_equipo', 'description' => 'Pantalla rota.']],
+            'signature' => 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+            'equipment_code' => $unit->code,
             'evidence_photo' => UploadedFile::fake()->create('foto.jpg', 100, 'image/jpeg'),
-        ])->assertCreated()->assertJsonPath('data.has_evidence_photo', true)->assertJsonPath('data.request_type', 'mantencion')->json('data.id');
+        ])->assertCreated()->assertJsonPath('data.has_evidence_photo', true)->assertJsonPath('data.equipment_unit_id', $unit->id)->json('data.id');
 
         $report = IncidentReport::findOrFail($id);
         Storage::disk('local')->assertExists($report->evidence_photo_path);
         Storage::disk('public')->assertMissing($report->evidence_photo_path);
 
-        $this->get("/api/incident-reports/{$id}/evidence-photo")->assertForbidden();
+        // El docente dueño y el personal la descargan; otro docente no.
+        $this->get("/api/incident-reports/{$id}/evidence-photo")->assertOk();
         Sanctum::actingAs($this->director);
         $this->get("/api/incident-reports/{$id}/evidence-photo")->assertOk();
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true]));
+        $this->get("/api/incident-reports/{$id}/evidence-photo")->assertForbidden();
 
+        Sanctum::actingAs($this->director);
         $noPhoto = IncidentReport::factory()->create(['product_id' => $unit->product_id, 'equipment_unit_id' => $unit->id]);
         $this->getJson("/api/incident-reports/{$noPhoto->id}/evidence-photo")->assertNotFound();
-    }
 
-    public function test_evidence_photo_rejects_non_images_and_oversized_files(): void
-    {
-        $unit = EquipmentUnit::factory()->create();
-        Sanctum::actingAs($this->teacher);
-        $url = "/api/equipment/{$unit->product_id}/reports";
-
-        $this->postJson($url, ['description' => 'abc def', 'equipment_unit_id' => $unit->id, 'evidence_photo' => UploadedFile::fake()->create('x.pdf', 10, 'application/pdf')])
-            ->assertStatus(422)->assertJsonValidationErrors('evidence_photo');
-        $this->postJson($url, ['description' => 'abc def', 'equipment_unit_id' => $unit->id, 'evidence_photo' => UploadedFile::fake()->create('x.jpg', 11000, 'image/jpeg')])
-            ->assertStatus(422)->assertJsonValidationErrors('evidence_photo');
+        // Queda en la hoja de vida de la unidad.
+        $this->getJson("/api/equipment-units/{$unit->id}/reports")->assertOk()->assertJsonPath('data.0.id', $id);
     }
 
     public function test_global_list_filters_by_unit_and_request_type(): void

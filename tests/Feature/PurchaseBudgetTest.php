@@ -7,13 +7,13 @@ use App\Models\BudgetMovement;
 use App\Models\InvoiceIntake;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 /**
@@ -21,6 +21,7 @@ use Tests\TestCase;
  */
 class PurchaseBudgetTest extends TestCase
 {
+    use CreatesQuotations;
     use DatabaseTransactions;
 
     private User $director;
@@ -39,7 +40,7 @@ class PurchaseBudgetTest extends TestCase
     {
         return $override + [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => Supplier::factory()->create()->id,
+            'quotation_id' => $this->acceptedQuotation()->id,
             'items' => [['name' => 'Cable', 'quantity' => 10, 'unit_price' => 1500], ['name' => 'Pinza', 'quantity' => 4, 'unit_price' => 8000]],
         ];
     }

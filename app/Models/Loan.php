@@ -41,11 +41,15 @@ class Loan extends Model
         'borrower_name',
         'borrower_document',
         'subject',
+        'career_id',
+        'storeroom_id',
+        'location_id',
+        'start_time',
+        'end_time',
         'room',
         'loan_date',
         'due_date',
         'expected_return_at',
-        'storeroom_id',
         'student_id',
         'returned_at',
         'returned_by',
@@ -94,6 +98,16 @@ class Loan extends Model
     public function items(): HasMany
     {
         return $this->hasMany(LoanItem::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(Location::class);
+    }
+
+    public function career(): BelongsTo
+    {
+        return $this->belongsTo(Career::class);
     }
 
     public function requester(): BelongsTo

@@ -33,7 +33,7 @@ class StudentTest extends TestCase
     {
         return [
             'items' => [['product_id' => $product->id, 'quantity' => 1]],
-            'subject' => 'Redes',
+            'subject' => 'Redes', 'career_id' => Career::factory()->create()->id,
             'room' => 'Lab 1',
             'loan_date' => now()->toDateString(),
             ...$extra,

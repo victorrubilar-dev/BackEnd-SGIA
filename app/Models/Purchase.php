@@ -30,6 +30,7 @@ class Purchase extends Model
         'quotation_id',
         'status',
         'quotation_reference',
+        'quotation_justification',
         'annual_budget_id',
         'expected_at',
         'total',

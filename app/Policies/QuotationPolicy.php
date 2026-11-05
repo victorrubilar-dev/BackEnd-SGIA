@@ -35,11 +35,11 @@ class QuotationPolicy
     }
 
     /**
-     * Determine whether the user can update the quotation status.
+     * Determine whether the user can update the quotation status (solo DIR-01).
      */
     public function updateStatus(User $user, Quotation $quotation): bool
     {
-        return $this->viewAny($user);
+        return $user->is_active && $user->hasRole(User::ROLE_DIRECTOR);
     }
 
     /**

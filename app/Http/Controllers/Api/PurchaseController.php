@@ -55,7 +55,7 @@ class PurchaseController extends Controller
 
         $purchase = $purchaseService->create($request->validated(), $request->user(), $quotationService);
 
-        return (new PurchaseResource($purchase->load(['supplier', 'items', 'quotation'])))
+        return (new PurchaseResource($purchase->load(['supplier', 'items', 'quotation.suppliers'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -67,7 +67,7 @@ class PurchaseController extends Controller
     {
         Gate::authorize('view', $purchase);
 
-        return new PurchaseResource($purchase->load(['supplier', 'items', 'creator']));
+        return new PurchaseResource($purchase->load(['supplier', 'items', 'creator', 'quotation.suppliers']));
     }
 
     /**

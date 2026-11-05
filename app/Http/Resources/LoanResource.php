@@ -34,6 +34,28 @@ class LoanResource extends JsonResource
             'student_id' => $this->student_id,
             'student' => new StudentResource($this->whenLoaded('student')),
             'subject' => $this->subject,
+            'career_id' => $this->resource->career_id,
+            'career' => new CareerResource($this->whenLoaded('career')),
+            'storeroom_id' => $this->resource->storeroom_id,
+            'storeroom' => $this->when($this->resource->relationLoaded('storeroom') && $this->resource->storeroom !== null, fn () => [
+                'id' => $this->resource->storeroom->id,
+                'name' => $this->resource->storeroom->name,
+                'code' => $this->resource->storeroom->code,
+            ]),
+            'location_id' => $this->resource->location_id,
+            'location' => $this->when($this->resource->relationLoaded('location') && $this->resource->location !== null, fn () => [
+                'id' => $this->resource->location->id,
+                'nombre' => $this->resource->location->nombre ?? $this->resource->location->sala,
+                'tipo' => $this->resource->location->tipo,
+            ]),
+            // Horario de la actividad (HH:MM); `time_block` conserva el texto para clientes antiguos.
+            'start_time' => $this->resource->start_time ? substr((string) $this->resource->start_time, 0, 5) : null,
+            'end_time' => $this->resource->end_time ? substr((string) $this->resource->end_time, 0, 5) : null,
+            // Profesor que solicita: siempre el usuario autenticado que creó la solicitud (solo lectura).
+            'teacher' => $this->when($this->resource->relationLoaded('requester') && $this->resource->requester !== null, fn () => [
+                'id' => $this->resource->requester->id,
+                'name' => $this->resource->requester->name,
+            ]),
             'room' => $this->room,
             'loan_date' => $this->loan_date?->toDateString(),
             'due_date' => ($this->due_date ?? $this->loan_date)?->toDateString(),

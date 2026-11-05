@@ -71,6 +71,20 @@ class Quotation extends Model
         return $this->belongsTo(Purchase::class);
     }
 
+    /**
+     * Proveedores que respondieron (aceptaron o rechazaron). Usa la relación si ya está cargada.
+     */
+    public function respondedSuppliersCount(): int
+    {
+        $pending = QuotationSupplier::STATUS_PENDING;
+
+        if ($this->relationLoaded('suppliers')) {
+            return $this->suppliers->where('status', '!=', $pending)->count();
+        }
+
+        return $this->suppliers()->where('status', '!=', $pending)->count();
+    }
+
     public function isConverted(): bool
     {
         return $this->status === self::STATUS_CONVERTED;

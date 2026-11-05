@@ -95,6 +95,7 @@ class InvoiceIntakeController extends Controller
             $request->validated('document_number'),
             $request->validated('items'),
             $request->user()->id,
+            $request->validated('annual_budget_id'),
         );
 
         return new InvoiceIntakeResource($intake->load(['annualBudget', 'items.product']));

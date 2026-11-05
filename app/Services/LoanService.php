@@ -6,6 +6,7 @@ use App\Exceptions\InvalidLoanStatusTransition;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\Storeroom;
 use App\Models\Student;
@@ -42,19 +43,31 @@ class LoanService
     {
         $items = $validated['items'];
 
+        // Disponibilidad: solo se compara con el stock actual, no con otras solicitudes ni con el
+        // rango horario. El stock se descuenta recién cuando el pañol aprueba (`approve`).
         $this->assertItemsAvailable($items);
 
-        return DB::transaction(function () use ($validated, $creator, $items) {
+        $location = ! empty($validated['location_id']) ? Location::find($validated['location_id']) : null;
+        $start = $validated['start_time'] ?? null;
+        $end = $validated['end_time'] ?? null;
+
+        return DB::transaction(function () use ($validated, $creator, $items, $location, $start, $end) {
             $loan = Loan::create([
                 'code' => Loan::generateUniqueCode(Loan::TYPE_REMOTE),
                 'type' => Loan::TYPE_REMOTE,
                 'requested_by' => $creator->id,
                 'borrower_name' => $creator->name,
                 'subject' => $validated['subject'],
-                'room' => $validated['room'],
+                'career_id' => $validated['career_id'],
+                'storeroom_id' => $validated['storeroom_id'] ?? null,
+                'location_id' => $location?->id,
+                // `room` y `time_block` siguen alimentando la cola del pañol y las exportaciones.
+                'room' => $location ? ($location->nombre ?? $location->sala) : $validated['room'],
                 'loan_date' => $validated['loan_date'],
+                'start_time' => $start,
+                'end_time' => $end,
                 'due_date' => $validated['due_date'] ?? $validated['loan_date'],
-                'time_block' => $validated['time_block'] ?? null,
+                'time_block' => $start && $end ? "{$start} - {$end}" : ($validated['time_block'] ?? null),
                 'status' => LoanStateMachine::STATUS_PENDING,
                 'notes' => $validated['notes'] ?? null,
             ]);
@@ -189,6 +202,7 @@ class LoanService
                 'storeroom_id' => $validated['storeroom_id'] ?? $operator->storeroom_id ?? Storeroom::default()->id,
                 'student_id' => $student?->id,
                 'subject' => $validated['subject'],
+                'career_id' => $validated['career_id'],
                 'room' => $validated['room'],
                 'loan_date' => $validated['loan_date'],
                 'due_date' => $validated['due_date'] ?? $validated['loan_date'],
@@ -750,6 +764,20 @@ class LoanService
 
         if ($type !== null) {
             $query->where('type', $type);
+        }
+
+        if ($request->filled('career_id')) {
+            $query->where('career_id', $request->integer('career_id'));
+        }
+
+        foreach (['storeroom_id', 'location_id'] as $column) {
+            if ($request->filled($column)) {
+                $query->where($column, $request->integer($column));
+            }
+        }
+
+        if ($request->filled('loan_date')) {
+            $query->whereDate('loan_date', $request->date('loan_date'));
         }
 
         $room = $request->input('sala') ?? $request->input('room');

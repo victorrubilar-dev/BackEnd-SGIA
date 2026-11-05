@@ -20,7 +20,7 @@ class TextractExpenseReader
     }
 
     /**
-     * @return array{invoice_number: string|null, supplier_name: string|null, items: array<int, array{name: string, quantity: int, unit_price: float, area: null}>}
+     * @return array{invoice_number: string|null, supplier_name: string|null, items: array<int, array{name: string, quantity: int, unit_price: float, area: null}>, text: string}
      *
      * @throws RuntimeException si Textract rechaza el documento o no responde.
      */
@@ -34,9 +34,11 @@ class TextractExpenseReader
 
         $document = $result['ExpenseDocuments'][0] ?? [];
         $summary = [];
+        $text = [];
 
         foreach ($document['SummaryFields'] ?? [] as $field) {
             $summary[$field['Type']['Text'] ?? ''] ??= $field['ValueDetection']['Text'] ?? null;
+            $text[] = ($field['LabelDetection']['Text'] ?? '').' '.($field['ValueDetection']['Text'] ?? '');
         }
 
         $number = $summary['INVOICE_RECEIPT_ID'] ?? null;
@@ -45,6 +47,7 @@ class TextractExpenseReader
             'invoice_number' => $number !== null && preg_match('/\d+/', $number, $m) ? $m[0] : null,
             'supplier_name' => filled($summary['VENDOR_NAME'] ?? null) ? trim($summary['VENDOR_NAME']) : null,
             'items' => $this->items($document['LineItemGroups'] ?? []),
+            'text' => implode("\n", $text),
         ];
     }
 

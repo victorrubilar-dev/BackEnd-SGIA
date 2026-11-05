@@ -11,6 +11,8 @@ use App\Http\Requests\StoreLoanCheckoutRequest;
 use App\Http\Requests\StoreLoanRequest;
 use App\Http\Resources\LoanResource;
 use App\Models\Loan;
+use App\Models\Storeroom;
+use App\Models\User;
 use App\Services\EquipmentPdfService;
 use App\Services\LoanService;
 use App\Services\LoanStateMachine;
@@ -27,14 +29,15 @@ class LoanController extends Controller
     /**
      * Registra una solicitud remota de préstamo del docente (REQ-09).
      *
-     * Body: items (product_id + quantity), subject, room, loan_date.
+     * Body: items (product_id + quantity), career_id, subject, loan_date, start_time, end_time,
+     * storeroom_id y location_id (o, en clientes antiguos, room y time_block).
      * La solicitud nace en estado `pendiente` hasta que el pañol la procese.
      */
     public function store(StoreLoanRequest $request, LoanService $loanService): JsonResponse
     {
         $loan = $loanService->createRequest($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load('items')))->resolve();
+        $data = (new LoanResource($loan->load(['items.product', 'career', 'storeroom', 'location', 'requester'])))->resolve();
 
         return response()->json([
             'message' => 'Solicitud enviada correctamente.',
@@ -46,13 +49,23 @@ class LoanController extends Controller
     /**
      * Lista las solicitudes propias del docente autenticado (REQ-09).
      *
-     * Query params: estado (alias: status), per_page.
+     * Query params: estado (alias: status), storeroom_id, career_id, loan_date, per_page.
      */
     public function myRequests(Request $request): AnonymousResourceCollection
     {
         $query = Loan::where('requested_by', $request->user()->id)
-            ->with(['items.product', 'items.units'])
+            ->with(['items.product', 'items.units', 'career', 'storeroom', 'location', 'requester'])
             ->orderByDesc('created_at');
+
+        foreach (['storeroom_id', 'career_id'] as $column) {
+            if ($request->filled($column)) {
+                $query->where($column, $request->integer($column));
+            }
+        }
+
+        if ($request->filled('loan_date')) {
+            $query->whereDate('loan_date', $request->date('loan_date'));
+        }
 
         $status = $request->input('estado', $request->input('status'));
 
@@ -86,7 +99,7 @@ class LoanController extends Controller
     {
         Gate::authorize('viewAny', Loan::class);
 
-        $query = Loan::with(['items.product.location', 'items.units', 'requester', 'student'])
+        $query = Loan::with(['items.product.location', 'items.units', 'requester', 'student', 'career', 'storeroom', 'location'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -105,7 +118,7 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor', 'student'])
+            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor', 'student', 'career', 'storeroom', 'location'])
         );
     }
 
@@ -121,8 +134,16 @@ class LoanController extends Controller
 
         $query = Loan::where('status', LoanStateMachine::STATUS_PENDING)
             ->where('type', Loan::TYPE_REMOTE)
-            ->with(['items.product.location', 'items.units', 'requester'])
+            ->with(['items.product.location', 'items.units', 'requester', 'career', 'storeroom', 'location'])
             ->orderBy('created_at');
+
+        // La cola de cada pañolero es la de su pañol; el administrador ve todas (y puede filtrar).
+        $user = $request->user();
+        if ($user->hasRole(User::ROLE_WAREHOUSE)) {
+            $query->where('storeroom_id', $user->storeroom_id ?? Storeroom::default()->id);
+        } elseif ($request->filled('storeroom_id')) {
+            $query->where('storeroom_id', $request->integer('storeroom_id'));
+        }
 
         $perPage = $this->perPage($request);
 
@@ -145,7 +166,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} aprobado: stock descontado y docente notificado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->fresh(['items.product', 'items.units'])),
+            'loan' => new LoanResource($loan->fresh(['items.product', 'items.units', 'career'])),
         ]);
     }
 
@@ -195,7 +216,7 @@ class LoanController extends Controller
     {
         $loan = $loanService->checkout($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load(['items.product', 'items.units', 'student'])))->resolve();
+        $data = (new LoanResource($loan->load(['items.product', 'items.units', 'student', 'career', 'storeroom', 'location'])))->resolve();
 
         return response()->json([
             'message' => 'Préstamo presencial registrado y stock descontado.',

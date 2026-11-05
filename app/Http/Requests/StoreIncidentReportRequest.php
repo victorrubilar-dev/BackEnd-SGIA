@@ -3,38 +3,24 @@
 namespace App\Http\Requests;
 
 use App\Models\IncidentReport;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+/**
+ * Formulario del informe de novedades (solo docentes): asignatura, fecha, laboratorio,
+ * problemas marcados con su descripción, sugerencia, firma, y foto y equipo opcionales.
+ */
 class StoreIncidentReportRequest extends FormRequest
 {
-    /**
-     * Normaliza los alias en español aceptados por los clientes:
-     * descripcion -> description, titulo -> title, gravedad/severidad -> severity
-     * y los alias del adjunto (archivo, adjunto, foto, photo, file).
-     */
+    /** Tamaño máximo de la firma ya decodificada. */
+    public const MAX_SIGNATURE_BYTES = 512 * 1024;
+
     public function prepareForValidation(): void
     {
-        $aliases = [
-            'description' => $this->input('descripcion'),
-            'title' => $this->input('titulo'),
-            'severity' => $this->input('gravedad') ?? $this->input('severidad'),
-        ];
-
-        $this->merge(array_filter($aliases, fn ($value) => $value !== null && $value !== ''));
-
-        // El adjunto también llega como archivo: se normaliza en el FileBag
-        // (sin tocar $request->file() para no congelar la caché de archivos).
-        $files = $this->files->all();
-
-        if (empty($files['attachment'])) {
-            foreach (['archivo', 'adjunto', 'foto', 'photo', 'file'] as $alias) {
-                if (! empty($files[$alias])) {
-                    $this->files->set('attachment', $files[$alias]);
-
-                    break;
-                }
-            }
+        // La fecha es la de hoy salvo que el docente indique otra.
+        if (! $this->filled('report_date')) {
+            $this->merge(['report_date' => today()->toDateString()]);
         }
     }
 
@@ -46,38 +32,59 @@ class StoreIncidentReportRequest extends FormRequest
     public function rules(): array
     {
         return [
-            // El formulario exige describir la novedad; se acepta el título
-            // como mínimo identificador del informe.
-            'description' => ['required_without:title', 'nullable', 'string', 'max:2000'],
-            'title' => ['nullable', 'string', 'max:150'],
-            'severity' => ['sometimes', 'nullable', Rule::in(IncidentReport::SEVERITIES)],
-            // Adjunto opcional: documento o imagen (máx. 10 MB).
-            'attachment' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png,webp', 'max:10240'],
-            // Equipos y maquetas se reportan por unidad (hoja de vida).
-            'equipment_unit_id' => [
-                Rule::requiredIf(fn () => $this->route('product')?->hasUnits() ?? false),
-                'nullable',
-                'integer',
-                Rule::exists('equipment_units', 'id')->where('product_id', $this->route('product')?->id),
-            ],
-            'request_type' => ['sometimes', 'nullable', Rule::in(IncidentReport::REQUEST_TYPES)],
+            'subject' => ['required', 'string', 'max:100'],
+            'report_date' => ['required', 'date', 'before_or_equal:today'],
+            'location_id' => ['required', 'integer', 'exists:locations,id'],
+            'problems' => ['required', 'array', 'min:1', 'max:'.count(IncidentReport::PROBLEM_LABELS)],
+            'problems.*.type' => ['required', 'string', Rule::in(array_keys(IncidentReport::PROBLEM_LABELS)), 'distinct'],
+            'problems.*.description' => ['required', 'string', 'max:1000'],
+            'suggestion' => ['nullable', 'string', 'max:2000'],
+            // PNG dibujado en pantalla, en base64 (con o sin el prefijo `data:image/png;base64,`).
+            'signature' => ['required', 'string', function (string $attribute, mixed $value, Closure $fail) {
+                $png = self::decodeSignature((string) $value);
+
+                if ($png === null) {
+                    $fail('La firma debe ser una imagen PNG válida.');
+                } elseif (strlen($png) > self::MAX_SIGNATURE_BYTES) {
+                    $fail('La firma no puede superar los 512 KB.');
+                }
+            }],
             'evidence_photo' => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp', 'max:10240'],
+            'equipment_code' => ['nullable', 'string', 'max:100'],
         ];
+    }
+
+    /**
+     * Binario PNG de la firma, o null si no es un PNG en base64.
+     */
+    public static function decodeSignature(string $value): ?string
+    {
+        $base64 = preg_replace('#^data:image/png;base64,#i', '', trim($value));
+        $binary = base64_decode((string) $base64, true);
+
+        return $binary !== false && str_starts_with($binary, "\x89PNG\r\n\x1a\n") ? $binary : null;
     }
 
     public function messages(): array
     {
         return [
-            'description.required_without' => 'Debes describir la novedad detectada en el equipo.',
-            'description.max' => 'La descripción no puede superar los 2000 caracteres.',
-            'severity.in' => 'La severidad debe ser leve, media o crítica.',
-            'attachment.mimes' => 'El adjunto debe ser un documento PDF o una imagen (jpg, png, webp).',
-            'attachment.max' => 'El adjunto no puede superar los 10 MB.',
-            'equipment_unit_id.required' => 'Indica la unidad del equipo a la que corresponde el informe.',
-            'equipment_unit_id.exists' => 'La unidad indicada no pertenece a este equipo.',
-            'request_type.in' => 'El tipo de solicitud debe ser falla, reposicion o mantencion.',
-            'evidence_photo.mimes' => 'La foto de evidencia debe ser jpg, png o webp.',
-            'evidence_photo.max' => 'La foto de evidencia no puede superar los 10 MB.',
+            'subject.required' => 'La asignatura es obligatoria.',
+            'subject.max' => 'La asignatura no puede superar los 100 caracteres.',
+            'report_date.before_or_equal' => 'La fecha no puede ser futura.',
+            'report_date.date' => 'La fecha debe ser válida.',
+            'location_id.required' => 'El laboratorio es obligatorio.',
+            'location_id.exists' => 'El laboratorio seleccionado no existe.',
+            'problems.required' => 'Marca al menos un problema.',
+            'problems.min' => 'Marca al menos un problema.',
+            'problems.*.type.required' => 'Cada problema debe indicar su tipo.',
+            'problems.*.type.in' => 'El tipo de problema debe ser falla_equipo, falta_equipamiento, falta_insumo u otros.',
+            'problems.*.type.distinct' => 'No repitas un mismo tipo de problema.',
+            'problems.*.description.required' => 'Describe cada problema marcado.',
+            'problems.*.description.max' => 'La descripción de un problema no puede superar los 1000 caracteres.',
+            'suggestion.max' => 'La sugerencia no puede superar los 2000 caracteres.',
+            'signature.required' => 'La firma del profesor es obligatoria.',
+            'evidence_photo.mimes' => 'La foto debe ser jpg, png o webp.',
+            'evidence_photo.max' => 'La foto no puede superar los 10 MB.',
         ];
     }
 }

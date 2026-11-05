@@ -87,7 +87,7 @@ class MaintenanceRecordService
             $previousReportStatus = null;
             if (! empty($data['incident_report_id'])) {
                 $report = IncidentReport::whereKey($data['incident_report_id'])->lockForUpdate()->firstOrFail();
-                if (in_array($report->status, [IncidentReport::STATUS_REPAIRED, IncidentReport::STATUS_DISCARDED], true)) {
+                if (in_array($report->status, IncidentReport::FINAL_STATUSES, true)) {
                     throw ValidationException::withMessages([
                         'incident_report_id' => 'El informe de novedades ya está cerrado.',
                     ]);
@@ -185,11 +185,12 @@ class MaintenanceRecordService
 
             if ($locked->incident_report_id !== null) {
                 $report = IncidentReport::findOrFail($locked->incident_report_id);
-                if (! in_array($report->status, [IncidentReport::STATUS_REPAIRED, IncidentReport::STATUS_DISCARDED], true)) {
+                if (! in_array($report->status, IncidentReport::FINAL_STATUSES, true)) {
+                    $operational = $result === MaintenanceRecord::RESULT_OPERATIONAL;
                     $report->forceFill([
-                        'status' => $result === MaintenanceRecord::RESULT_OPERATIONAL
-                            ? IncidentReport::STATUS_REPAIRED
-                            : IncidentReport::STATUS_DISCARDED,
+                        'status' => $report->isLegacy()
+                            ? ($operational ? IncidentReport::STATUS_REPAIRED : IncidentReport::STATUS_DISCARDED)
+                            : ($operational ? IncidentReport::STATUS_RESOLVED : IncidentReport::STATUS_DISMISSED),
                     ])->save();
                 }
             }

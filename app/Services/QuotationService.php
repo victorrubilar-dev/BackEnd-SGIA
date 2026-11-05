@@ -8,7 +8,9 @@ use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\QuotationSupplier;
 use App\Models\User;
+use App\Notifications\QuotationStatusNotification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -80,9 +82,47 @@ class QuotationService
             throw new InvalidQuotationStatusTransition($quotation->status, $toStatus);
         }
 
-        $quotation->update(['status' => $toStatus]);
+        $this->changeStatus($quotation, $toStatus);
 
         return $quotation;
+    }
+
+    /**
+     * Cambia el estado y avisa a AD-01 y DIR-01 (en cada cambio, manual o por respuestas).
+     *
+     * @param  array<string, mixed>  $extra  columnas que cambian junto con el estado
+     */
+    protected function changeStatus(Quotation $quotation, string $toStatus, array $extra = []): void
+    {
+        $from = $quotation->status;
+        $quotation->forceFill(['status' => $toStatus] + $extra)->save();
+
+        $recipients = User::withRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR])->where('is_active', true)->get();
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new QuotationStatusNotification(
+                $quotation,
+                $from,
+                $this->respondedSuppliersCount($quotation),
+                $this->minSuppliers(),
+            ));
+        }
+    }
+
+    /**
+     * Mínimo recomendado de proveedores que responden (config `sgia.min_quotations`).
+     */
+    public function minSuppliers(): int
+    {
+        return (int) config('sgia.min_quotations', 3);
+    }
+
+    /**
+     * Proveedores que respondieron (aceptaron o rechazaron) la cotización.
+     */
+    public function respondedSuppliersCount(Quotation $quotation): int
+    {
+        return $quotation->respondedSuppliersCount();
     }
 
     /**
@@ -132,13 +172,13 @@ class QuotationService
         $statuses = $quotation->suppliers()->pluck('status');
 
         if ($statuses->contains(QuotationSupplier::STATUS_ACCEPTED)) {
-            $quotation->update(['status' => QuotationStateMachine::STATUS_ACCEPTED]);
+            $this->changeStatus($quotation, QuotationStateMachine::STATUS_ACCEPTED);
 
             return;
         }
 
         if ($statuses->isNotEmpty() && ! $statuses->contains(QuotationSupplier::STATUS_PENDING)) {
-            $quotation->update(['status' => QuotationStateMachine::STATUS_REJECTED]);
+            $this->changeStatus($quotation, QuotationStateMachine::STATUS_REJECTED);
         }
     }
 
@@ -147,11 +187,10 @@ class QuotationService
      */
     public function markAsConverted(Quotation $quotation, Purchase $purchase): Quotation
     {
-        $quotation->forceFill([
-            'status' => QuotationStateMachine::STATUS_CONVERTED,
+        $this->changeStatus($quotation, QuotationStateMachine::STATUS_CONVERTED, [
             'purchase_id' => $purchase->id,
             'converted_at' => now(),
-        ])->save();
+        ]);
 
         return $quotation;
     }

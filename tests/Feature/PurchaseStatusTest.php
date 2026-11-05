@@ -13,10 +13,12 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 class PurchaseStatusTest extends TestCase
 {
+    use CreatesQuotations;
     use DatabaseTransactions;
 
     protected User $director;
@@ -67,7 +69,7 @@ class PurchaseStatusTest extends TestCase
 
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => $supplier->id,
+            'quotation_id' => $this->acceptedQuotation($supplier)->id,
             'notes' => 'Compra de materiales para taller',
             'items' => [
                 ['name' => 'Cable THW 1.5mm', 'quantity' => 10, 'unit_price' => 1500],
@@ -99,7 +101,7 @@ class PurchaseStatusTest extends TestCase
 
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => $supplier->id,
+            'quotation_id' => $this->acceptedQuotation($supplier)->id,
             'items' => [],
         ]);
 
@@ -113,7 +115,7 @@ class PurchaseStatusTest extends TestCase
 
         $response = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => Supplier::factory()->create()->id,
+            'quotation_id' => $this->acceptedQuotation()->id,
             'items' => [['name' => 'Multímetro', 'quantity' => 2]],
         ]);
 

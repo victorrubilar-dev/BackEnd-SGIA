@@ -34,6 +34,7 @@ class InvoiceScanController extends Controller
             'invoice_number' => $result['invoice_number'],
             'supplier_name' => $result['supplier_name'],
             'supplier_id' => $result['supplier_id'],
+            'career_id' => $result['career_id'] ?? null,
             'draft_products' => $result['items'],
         ]);
     }

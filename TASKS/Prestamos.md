@@ -40,3 +40,16 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 - [x] `checkin` devuelve todas las unidades pendientes o `unit_ids` concretas; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja` (`LoanUnitsTest`).
 - [x] `LoanItemResource`: `units`, `delivered_quantity`, `returned_quantity`; export CSV/PDF con los códigos (`LoanUnitsTest`, `ResourceContractTest`).
 - [x] El checkout con RUT válido en `borrower_document` crea o reutiliza el `Student` (`LoanUnitsTest`).
+
+### Carrera en el préstamo (noviembre 2026)
+- [x] `career_id` obligatorio al solicitar o registrar un préstamo; `LoanResource` muestra `career` junto a `subject`; filtro `career_id` en `GET /api/loans` (`LoanRequestTest`).
+
+### Solicitud remota ampliada del profesor (REQ-21 del panel web; especificación en `docs/solicitud-prestamo-profesor.md`)
+- [x] `POST /api/loans/requests` registra carrera (`career_id`, cualquiera), asignatura, fecha (hoy o futura), horario (`start_time`/`end_time`), laboratorio (`location_id`: sala o taller del pañol) y pañol (`storeroom_id`); el profesor sale solo del token (`LoanRemoteRequestTest`).
+- [x] Cada regla responde `422` con `errors` por campo: carrera, hora de término, fecha pasada, laboratorio de otro pañol o de tipo pañol/bodega, ítems vacíos o repetidos, stock insuficiente (`LoanRemoteRequestTest`).
+- [x] Retrocompatibilidad: clientes con solo `room` y `time_block` siguen funcionando; `time_block` y `room` se rellenan al crear (`LoanRemoteRequestTest`, `LoanRequestTest`).
+- [x] `GET /api/loans/requests` filtra por `storeroom_id`, `career_id` y `loan_date`; el historial suma `storeroom_id`, `location_id` y `loan_date` (`LoanRemoteRequestTest`).
+- [x] La cola `GET /api/loans/pending` de `PAN-01` muestra solo su pañol; `AD-01` ve todas (`LoanRemoteRequestTest`).
+- [x] `GET /api/careers` de solo lectura para `PRO-01`; `GET /api/locations?storeroom_id=` (`LoanRemoteRequestTest`, `CareerManagementTest`).
+- [x] `LoanResource` suma `storeroom`, `location`, `start_time`, `end_time` y `teacher` (`ResourceContractTest`).
+- [ ] La disponibilidad no considera otras solicitudes ni el rango horario (solo el stock actual); queda documentado, sin reserva por horario.

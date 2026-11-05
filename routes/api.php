@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\EquipmentUnitController;
+use App\Http\Controllers\Api\IncidentReportController;
 use App\Http\Controllers\Api\InvoiceIntakeController;
 use App\Http\Controllers\Api\InvoiceScanController;
 use App\Http\Controllers\Api\LoanController;
@@ -64,9 +65,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-14: Catálogo de carreras y su nivel (dashboards CAREERS por level)
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    // PRO-01 lee las carreras (solo lectura) para el selector de la solicitud de préstamo.
+    Route::middleware('role:AD-01,DIR-01,PAN-01,PRO-01')->group(function () {
         Route::get('/careers', [CareerController::class, 'index']);
         Route::get('/careers/{career}', [CareerController::class, 'show']);
+    });
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         // Catálogo para el alta de productos (`category_id`).
         Route::get('/categories', [CategoryController::class, 'index']);
     });
@@ -143,9 +147,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/quotations', [QuotationController::class, 'store']);
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
         Route::post('/quotations/{quotation}/resend', [QuotationController::class, 'resend']);
-        Route::patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
         Route::patch('/quotations/{quotation}/responses', [QuotationController::class, 'storeResponse']);
     });
+    // Solo el director decide (acepta, rechaza o convierte) una cotización.
+    Route::middleware('role:DIR-01')->patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
 
     // REQ-09: Solicitud de préstamo remoto (FU-04, docente)
     // Las rutas estáticas van antes de cualquier GET /loans/{loan} (REQ-11).
@@ -239,18 +244,18 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // /equipment/{id}/reports: informes de novedades asociados al equipo,
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
     Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
+    // REQ-13: informe de novedades del docente (formulario con firma, solo PRO-01).
+    Route::middleware(['role:PRO-01', 'throttle:sensitive'])->post('/incident-reports', [IncidentReportController::class, 'store']);
+    // Estática: antes de /incident-reports/{incidentReport}
+    Route::middleware('role:PRO-01')->get('/incident-reports/mine', [IncidentReportController::class, 'mine']);
     Route::get('/incident-reports', [EquipmentReportController::class, 'all']);
+    Route::get('/incident-reports/{incidentReport}', [IncidentReportController::class, 'show']);
+    Route::get('/incident-reports/{incidentReport}/pdf', [IncidentReportController::class, 'pdf']);
+    Route::get('/incident-reports/{incidentReport}/signature', [IncidentReportController::class, 'signature']);
     Route::patch('/incident-reports/{incidentReport}/status', [EquipmentReportController::class, 'updateStatus']);
     // Los adjuntos viven en disco privado: se descargan autenticados.
     Route::get('/incident-reports/{incidentReport}/attachment', [EquipmentReportController::class, 'attachment']);
     Route::get('/incident-reports/{incidentReport}/evidence-photo', [EquipmentReportController::class, 'evidencePhoto']);
-
-    // REQ-13: Solicitud de reposición mediante informe de novedades
-    // (FU-05, PRO-01/PAN-01): formulario + adjunto opcional, asociado
-    // al equipo para su hoja de vida.
-    Route::middleware(['role:PRO-01,PAN-01', 'throttle:sensitive'])->group(function () {
-        Route::post('/equipment/{product}/reports', [EquipmentReportController::class, 'store']);
-    });
 
     // REQ-03, REQ-04, REQ-05: Productos
     Route::get('/products/{product}/location', [ProductController::class, 'location']);

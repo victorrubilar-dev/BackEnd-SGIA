@@ -12,6 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\BuildsProductPayload;
+use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use Tests\TestCase;
 class BudgetReportTest extends TestCase
 {
     use BuildsProductPayload;
+    use CreatesQuotations;
     use DatabaseTransactions;
 
     private User $admin;
@@ -48,7 +50,7 @@ class BudgetReportTest extends TestCase
     {
         $purchaseId = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => $this->supplier->id,
+            'quotation_id' => $this->acceptedQuotation($this->supplier)->id,
             'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 200000]],
         ])->assertCreated()->json('data.id');
 
@@ -69,7 +71,7 @@ class BudgetReportTest extends TestCase
         $this->seedActivity();
         $reserve = $this->postJson('/api/purchases', [
             'annual_budget_id' => $this->budget->id,
-            'supplier_id' => $this->supplier->id,
+            'quotation_id' => $this->acceptedQuotation($this->supplier)->id,
             'items' => [['name' => 'Otro', 'quantity' => 1, 'unit_price' => 250000]],
         ])->assertCreated();
 

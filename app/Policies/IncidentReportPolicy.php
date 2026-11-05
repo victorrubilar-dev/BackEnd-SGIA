@@ -25,7 +25,9 @@ class IncidentReportPolicy
      */
     public function view(User $user, IncidentReport $incidentReport): bool
     {
-        return $this->viewAny($user);
+        // Personal de atención, o el docente dueño del informe.
+        return $this->viewAny($user)
+            || ($user->is_active && $incidentReport->reported_by === $user->id);
     }
 
     /**
@@ -37,14 +39,10 @@ class IncidentReportPolicy
     }
 
     /**
-     * Determine whether the user can register an incident report for an
-     * equipment (PRO-01, PAN-01).
+     * Solo los docentes (PRO-01) registran informes de novedades.
      */
     public function create(User $user): bool
     {
-        return $user->is_active && $user->hasRole([
-            User::ROLE_TEACHER,
-            User::ROLE_WAREHOUSE,
-        ]);
+        return $user->is_active && $user->hasRole(User::ROLE_TEACHER);
     }
 }

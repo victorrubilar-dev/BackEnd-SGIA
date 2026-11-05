@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\InvoiceIntake;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,6 +18,8 @@ class InvoiceIntakeResource extends JsonResource
             'user_id' => $this->user_id,
             'annual_budget_id' => $this->annual_budget_id,
             'purchase_id' => $this->purchase_id,
+            'detected_career_id' => $this->raw_ocr_payload['career_id'] ?? null,
+            'needs_budget' => $this->resource->status === InvoiceIntake::STATUS_DRAFT && $this->resource->annual_budget_id === null,
             'annual_budget' => new AnnualBudgetResource($this->whenLoaded('annualBudget')),
             'document_number' => $this->document_number,
             'status' => $this->status,

@@ -8,6 +8,7 @@ Este repositorio contiene **solo el backend** (capa de lógica de negocio). El p
 
 - PHP 8.3+ con extensiones `pgsql`, `dom`, `openssl`
 - Para leer facturas (OCR): `poppler-utils` y `tesseract-ocr` con el idioma español (`dnf install poppler-utils tesseract tesseract-langpack-spa` / `apt install poppler-utils tesseract-ocr tesseract-ocr-spa`). Sin ellos `POST /api/invoices/scan` responde 503.
+- Para incrustar firma y fotos en el PDF del informe de novedades: la extensión PHP `gd` (`apt install php-gd` / `dnf install php-gd`). Sin ella el PDF se genera sin imágenes.
 - Composer
 - Docker (para el contenedor de PostgreSQL en desarrollo)
 - PostgreSQL 16

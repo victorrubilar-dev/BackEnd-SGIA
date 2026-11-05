@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Http\Resources\ProductResource;
+use App\Models\Career;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Product;
@@ -178,7 +179,7 @@ class LoanReturnTest extends TestCase
         $product = Product::factory()->supply()->create(['quantity' => 10]);
         Sanctum::actingAs($this->teacher);
 
-        $base = ['items' => [['product_id' => $product->id, 'quantity' => 1]], 'subject' => 'Redes', 'room' => 'Sala 1'];
+        $base = ['items' => [['product_id' => $product->id, 'quantity' => 1]], 'subject' => 'Redes', 'career_id' => Career::factory()->create()->id, 'room' => 'Sala 1'];
         $date = today()->addDays(3)->toDateString();
 
         $this->postJson('/api/loans/requests', $base + ['loan_date' => $date])

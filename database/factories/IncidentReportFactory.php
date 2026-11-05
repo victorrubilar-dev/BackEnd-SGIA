@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\IncidentReport;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -27,6 +28,19 @@ class IncidentReportFactory extends Factory
             'attachment' => null,
             'attachment_original_name' => null,
         ];
+    }
+
+    /** Informe del formulario del docente (no legacy). */
+    public function teacherForm(): static
+    {
+        return $this->state(fn () => [
+            'teacher_name' => fake()->name(),
+            'subject' => 'Redes',
+            'report_date' => today()->toDateString(),
+            'location_id' => Location::factory(),
+            'problems' => [['type' => IncidentReport::PROBLEM_OTHER, 'description' => 'Proyector sin imagen.']],
+            'suggestion' => null,
+        ]);
     }
 
     public function critical(): static

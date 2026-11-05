@@ -16,6 +16,8 @@ class LocationController extends Controller
 {
     /**
      * Display a listing of locations (salas, pañoles, talleres).
+     *
+     * Query params: tipo, storeroom_id, search, per_page.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -23,6 +25,10 @@ class LocationController extends Controller
 
         if ($request->filled('tipo')) {
             $query->where('tipo', $request->string('tipo'));
+        }
+
+        if ($request->filled('storeroom_id')) {
+            $query->where('storeroom_id', $request->integer('storeroom_id'));
         }
 
         if ($request->filled('search')) {

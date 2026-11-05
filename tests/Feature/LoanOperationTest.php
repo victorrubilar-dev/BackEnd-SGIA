@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Product;
@@ -189,7 +190,7 @@ class LoanOperationTest extends TestCase
             'borrower_name' => 'Estudiante Javiera Peña',
             'borrower_document' => '12345678-9',
             'items' => [['product_id' => $this->product->id, 'quantity' => 2]],
-            'subject' => 'Electricidad Básica',
+            'subject' => 'Electricidad Básica', 'career_id' => Career::factory()->create()->id,
             'room' => 'Taller A',
             'loan_date' => now()->toDateString(),
         ]);
@@ -215,7 +216,7 @@ class LoanOperationTest extends TestCase
 
         $base = [
             'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'subject' => 'Electricidad',
+            'subject' => 'Electricidad', 'career_id' => Career::factory()->create()->id,
             'room' => 'Taller A',
             'loan_date' => now()->toDateString(),
         ];
@@ -269,7 +270,7 @@ class LoanOperationTest extends TestCase
         $this->postJson('/api/loans/checkout', [
             'borrower_name' => 'Docente',
             'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 1',
             'loan_date' => now()->toDateString(),
         ])->assertStatus(403);

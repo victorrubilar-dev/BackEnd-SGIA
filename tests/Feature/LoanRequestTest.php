@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
 use App\Models\Loan;
 use App\Models\Product;
 use App\Models\User;
@@ -46,6 +47,30 @@ class LoanRequestTest extends TestCase
         $this->product = Product::factory()->supply()->create(['quantity' => 20]);
     }
 
+    public function test_loan_request_requires_a_valid_career_and_shows_it_with_the_subject(): void
+    {
+        $career = Career::factory()->create();
+        $payload = [
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'subject' => 'Redes', 'room' => 'Sala 1', 'loan_date' => now()->addDay()->toDateString(),
+        ];
+
+        Sanctum::actingAs($this->teacher);
+        $this->postJson('/api/loans/requests', $payload)->assertStatus(422)->assertJsonValidationErrors('career_id');
+        $this->postJson('/api/loans/requests', $payload + ['career_id' => 999999])->assertStatus(422)->assertJsonValidationErrors('career_id');
+
+        $id = $this->postJson('/api/loans/requests', $payload + ['career_id' => $career->id])
+            ->assertCreated()
+            ->assertJsonPath('data.subject', 'Redes')
+            ->assertJsonPath('data.career_id', $career->id)
+            ->json('data.id');
+
+        Sanctum::actingAs($this->warehouse);
+        $this->getJson("/api/loans/$id")->assertOk()->assertJsonPath('data.career.name', $career->name);
+        $this->getJson('/api/loans?career_id='.$career->id)->assertOk()->assertJsonPath('data.0.career.id', $career->id);
+        $this->getJson('/api/loans?career_id='.($career->id + 100000))->assertOk()->assertJsonCount(0, 'data');
+    }
+
     public function test_teacher_can_send_remote_loan_request(): void
     {
         Sanctum::actingAs($this->teacher);
@@ -54,7 +79,7 @@ class LoanRequestTest extends TestCase
             'items' => [
                 ['product_id' => $this->product->id, 'quantity' => 2],
             ],
-            'subject' => 'Taller de Electricidad',
+            'subject' => 'Taller de Electricidad', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(3)->toDateString(),
             'time_block' => 'Bloque 1-3',
@@ -100,7 +125,7 @@ class LoanRequestTest extends TestCase
         Sanctum::actingAs($this->teacher);
 
         $this->postJson('/api/loans/requests', [
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('items');
@@ -111,17 +136,17 @@ class LoanRequestTest extends TestCase
 
         $this->postJson('/api/loans/requests', $base)
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['subject', 'room', 'loan_date']);
+            ->assertJsonValidationErrors(['subject', 'location_id', 'loan_date']);
 
         $this->postJson('/api/loans/requests', array_merge($base, [
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
             'items' => [['product_id' => 999999, 'quantity' => 1]],
         ]))->assertStatus(422)->assertJsonValidationErrors('items.0.product_id');
 
         $this->postJson('/api/loans/requests', array_merge($base, [
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
             'items' => [['product_id' => $this->product->id, 'quantity' => 0]],
@@ -134,7 +159,7 @@ class LoanRequestTest extends TestCase
 
         $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $this->product->id, 'quantity' => 50]],
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('items.0.quantity');
@@ -143,7 +168,7 @@ class LoanRequestTest extends TestCase
 
         $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $inactive->id, 'quantity' => 1]],
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(422)->assertJsonValidationErrors('items.0.product_id');
@@ -157,7 +182,7 @@ class LoanRequestTest extends TestCase
 
         $response = $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'asignatura' => 'Electrónica de Potencia',
+            'asignatura' => 'Electrónica de Potencia', 'career_id' => Career::factory()->create()->id,
             'sala' => 'Taller B',
             'fecha' => now()->addDays(2)->toDateString(),
         ]);
@@ -216,7 +241,7 @@ class LoanRequestTest extends TestCase
 
         $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(403);
@@ -230,7 +255,7 @@ class LoanRequestTest extends TestCase
     {
         $this->postJson('/api/loans/requests', [
             'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
-            'subject' => 'Taller',
+            'subject' => 'Taller', 'career_id' => Career::factory()->create()->id,
             'room' => 'Sala 201',
             'loan_date' => now()->addDays(1)->toDateString(),
         ])->assertStatus(401);

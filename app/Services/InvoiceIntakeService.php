@@ -35,7 +35,7 @@ class InvoiceIntakeService
             $this->assertPurchaseBillable($purchase, $budget);
         }
 
-        $payload = ['invoice_number' => null, 'supplier_name' => null, 'supplier_id' => null, 'items' => []];
+        $payload = ['invoice_number' => null, 'supplier_name' => null, 'supplier_id' => null, 'career_id' => null, 'items' => []];
         $ocrAvailable = true;
 
         try {
@@ -44,6 +44,9 @@ class InvoiceIntakeService
             report($e);
             $ocrAvailable = false;
         }
+
+        // Sin presupuesto explícito ni de la compra, se usa el de la carrera detectada en el documento.
+        $budget ??= $this->budgetForCareer($payload['career_id'] ?? null);
 
         return InvoiceIntake::create([
             'user_id' => $userId,
@@ -63,9 +66,9 @@ class InvoiceIntakeService
      *
      * @throws ValidationException
      */
-    public function confirm(InvoiceIntake $intake, string $documentNumber, array $items, int $userId): InvoiceIntake
+    public function confirm(InvoiceIntake $intake, string $documentNumber, array $items, int $userId, ?int $budgetId = null): InvoiceIntake
     {
-        return DB::transaction(function () use ($intake, $documentNumber, $items, $userId) {
+        return DB::transaction(function () use ($intake, $documentNumber, $items, $userId, $budgetId) {
             $locked = InvoiceIntake::whereKey($intake->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== InvoiceIntake::STATUS_DRAFT) {
@@ -74,9 +77,17 @@ class InvoiceIntakeService
                 ]);
             }
 
-            $budget = $locked->annual_budget_id
-                ? AnnualBudget::whereKey($locked->annual_budget_id)->lockForUpdate()->firstOrFail()
-                : null;
+            // El presupuesto elegido al confirmar manda; si no se manda, vale el del borrador.
+            $budgetId ??= $locked->annual_budget_id;
+
+            if (blank($budgetId)) {
+                throw ValidationException::withMessages([
+                    'annual_budget_id' => 'Selecciona el presupuesto al que se descuenta la factura (no se detectó la carrera en el documento).',
+                ]);
+            }
+
+            $budget = AnnualBudget::whereKey($budgetId)->lockForUpdate()->firstOrFail();
+            $locked->annual_budget_id = $budget->id;
             $products = Product::whereIn('id', array_column($items, 'product_id'))->get()->keyBy('id');
 
             $rows = [];
@@ -100,16 +111,14 @@ class InvoiceIntakeService
 
             $purchase = null;
 
-            if ($locked->purchase_id && $budget) {
+            if ($locked->purchase_id) {
                 // La factura cierra la reserva de su compra: se libera y se consume el monto real.
                 $purchase = Purchase::whereKey($locked->purchase_id)->lockForUpdate()->firstOrFail();
                 $this->assertPurchaseBillable($purchase, $budget);
                 $this->budgets->releaseReservation($budget, $purchase, $userId, $locked);
             }
 
-            if ($budget) {
-                $this->budgets->consume($budget, $totalCents / 100, $locked, $userId, $purchase);
-            }
+            $this->budgets->consume($budget, $totalCents / 100, $locked, $userId, $purchase);
 
             foreach ($rows as [$product, $item, $subtotalCents]) {
                 $intakeItem = $locked->items()->create([
@@ -131,6 +140,16 @@ class InvoiceIntakeService
 
             return $locked;
         });
+    }
+
+    /**
+     * Presupuesto del año en curso de la carrera detectada (null si no hay carrera o presupuesto).
+     */
+    private function budgetForCareer(?int $careerId): ?AnnualBudget
+    {
+        return $careerId === null
+            ? null
+            : AnnualBudget::where('career_id', $careerId)->where('year', now()->year)->first();
     }
 
     /**

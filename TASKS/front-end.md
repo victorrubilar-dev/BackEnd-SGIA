@@ -285,3 +285,33 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 ## Formato de error en reglas de negocio
 
 - Todos los `422` traen ahora `errors` además de `message` (antes algunos solo traían `message`): borrados bloqueados (`errors.location`, `errors.cajon`, `errors.ids` en el borrado masivo, `errors.product`, `errors.supplier`, `errors.equipment_unit`, `errors.storeroom`, `errors.student`), condición de un equipo (`errors.product_id`) y transiciones inválidas de préstamos, compras, cotizaciones, unidades y mantenciones (`errors.status`, junto a `allowed_transitions`). Las claves extra que ya existían (`products_count`, `blocked_ids`, `allowed_transitions`…) se mantienen. Basta con mostrar `message` o el primer error de `errors`.
+
+## Reglas nuevas: carrera en préstamos, cotizaciones y presupuesto de facturas (noviembre 2026)
+
+- **Préstamos** (`POST /api/loans/requests` y `POST /api/loans/checkout`): `career_id` pasa a ser **obligatorio** (selector con `GET /api/careers`). `LoanResource` trae `career_id` y `career` (CareerResource; en listados y detalle), junto a `subject`. `GET /api/loans` y su export filtran por `career_id`. Los préstamos anteriores quedan con `career_id: null`. **Rompe** a los clientes que crean préstamos sin enviarlo.
+- **Cotizaciones**: `PATCH /api/quotations/{id}/status` es solo de `DIR-01` (`AD-01` recibe `403`: ocultar los botones de aceptar/rechazar/convertir para el admin). Cada cambio de estado notifica a `AD-01` y `DIR-01`. `QuotationResource` trae `responded_suppliers`, `min_quotations` (3) y `meets_min_quotations`.
+- **Compras** (`POST /api/purchases`): `quotation_id` es **obligatorio** (ya no se crean compras desde cero; `supplier_id` e `items` pasan a ser opcionales). El mínimo de 3 proveedores que respondieron es una recomendación: con menos hay que enviar `quotation_justification` (motivo) o responde `422` en ese campo. `PurchaseResource` trae `quotation_justification`, `min_quotations` y, con la cotización cargada (detalle), `responded_suppliers` y `meets_min_quotations` (mostrar un aviso cuando es `false`).
+- **Facturas**: el OCR detecta la carrera (nombre o sigla) y, si encuentra una sola, el borrador se crea con el presupuesto de esa carrera del año actual. `InvoiceIntakeResource` trae `detected_career_id` y `needs_budget`. Cuando `needs_budget` es `true` hay que pedir al usuario el presupuesto (`GET /api/budgets`) y enviarlo en `POST /api/invoice-intakes/{id}/confirm` como `annual_budget_id`; si falta responde `422` en ese campo. `POST /api/invoices/scan` devuelve además `career_id` (o `null`).
+
+## Informe de novedades del docente (noviembre 2026)
+
+- **Rompe:** `POST /api/equipment/{id}/reports` ya no existe. El informe se crea con `POST /api/incident-reports` y **solo `PRO-01`** puede (`PAN-01` recibe `403`; quitar el botón en pañol).
+- Formulario (`multipart/form-data` si lleva foto): `subject`, `report_date` (opcional), `location_id` (selector de salas, `GET /api/locations`), `problems` (casillas marcadas, cada una con su descripción: `falla_equipo` = "Falla de equipos / instrumento / software", `falta_equipamiento`, `falta_insumo`, `otros`), `suggestion`, `signature` (PNG en base64 dibujado en un canvas), `evidence_photo` (opcional) y `equipment_code` (opcional). El nombre del docente lo pone el backend.
+- Asociar un equipo: buscar con `GET /api/equipment-units/by-code/{code}` para mostrarlo y enviar ese `code` en `equipment_code`. Para insumos se envía el código de barras del producto; el del modelo de un equipo/maqueta responde `422` (hay que usar el de la unidad).
+- Nuevas rutas: `GET /api/incident-reports/mine` (`PRO-01`: seguimiento de sus informes), `GET /api/incident-reports/{id}` (personal o dueño), `/pdf` y `/signature`.
+- `IncidentReportResource` suma: `is_legacy`, `teacher_name`, `subject`, `report_date`, `location_id`, `location`, `problems[{type, description, label}]`, `suggestion`, `has_signature`, `signature_url`, `signed_at`, `pdf_url`. Los informes antiguos traen esos campos en `null` y `is_legacy: true`.
+- Estados de los informes nuevos: `reportado` → `en_revision` → `resuelto` | `descartado` (usar `allowed_transitions`). Los antiguos conservan `en_reparacion`, `reparado`, `dado_de_baja`. Valores nuevos de `status`: `resuelto`, `descartado`.
+- Notificaciones: al crearse un informe se avisa a `PAN-01`, `AD-01` y `DIR-01`; al cambiar el estado, al docente.
+- El docente puede descargar la foto y el adjunto de **sus** informes; el PDF necesita la extensión PHP `gd` en el servidor para incrustar firma y foto.
+
+## Solicitud remota ampliada del profesor (noviembre 2026)
+
+Especificación completa: `docs/solicitud-prestamo-profesor.md`.
+
+- `POST /api/loans/requests` (solo `PRO-01`) ahora recibe `career_id`, `subject`, `loan_date` (hoy o futura), `start_time` y `end_time` (`HH:MM`), `storeroom_id`, `location_id` (laboratorio: sala o taller **del pañol elegido**) e `items` (sin `product_id` repetido). El profesor es siempre el usuario del token; `user_id`/`teacher_id` se ignoran. `room` y `time_block` se rellenan solos.
+- Selectores: pañol `GET /api/storerooms`; laboratorio `GET /api/locations?tipo=sala|taller&storeroom_id={id}` (filtro nuevo; cargar al elegir el pañol); carrera `GET /api/careers` (**ahora permitido a `PRO-01`**, lectura completa); insumos `GET /api/products?is_active=1`.
+- `LoanResource` suma `storeroom_id`/`storeroom {id,name,code}`, `location_id`/`location {id,nombre,tipo}`, `start_time`/`end_time` (`HH:MM`) y `teacher {id,name}`. Los préstamos antiguos traen `null`.
+- Filtros nuevos: `GET /api/loans/requests` (`storeroom_id`, `career_id`, `loan_date`); `GET /api/loans` y su exportación (`storeroom_id`, `location_id`, `loan_date`, además de `career_id`).
+- La cola del pañol (`GET /api/loans/pending`) muestra solo las solicitudes del pañol del pañolero; `AD-01` ve todas y puede filtrar por `storeroom_id`. Mostrar pañol, laboratorio, horario y carrera en cada fila.
+- Clientes antiguos (solo `room` + `time_block`, sin `location_id`/`storeroom_id`) siguen funcionando, pero `career_id` es obligatorio para todos.
+- `packages/types`: agregar los campos de `CreatePrestamoPayload` y `Prestamo`; `packages/api-client`: `storeroom_id`, `career_id`, `loan_date` en `LoanRequestQueryParams` y `storeroom_id` en `LocationQueryParams`.

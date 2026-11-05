@@ -16,13 +16,17 @@ use RuntimeException;
  */
 class InvoiceOcrService
 {
-    public function __construct(private readonly TextractExpenseReader $textract) {}
+    public function __construct(
+        private readonly TextractExpenseReader $textract,
+        private readonly CareerDetector $careers,
+    ) {}
 
     /**
      * @return array{
      *     invoice_number: string|null,
      *     supplier_name: string|null,
      *     supplier_id: int|null,
+     *     career_id: int|null,
      *     items: array<int, array{name: string, quantity: int, unit_price: float, area: string|null}>
      * }
      *
@@ -33,9 +37,13 @@ class InvoiceOcrService
         if ($this->textract->isConfigured()) {
             try {
                 $result = $this->textract->read(File::get($file->getRealPath()));
-                $supplierName = $result['supplier_name'];
+                $text = $result['text'];
+                unset($result['text']);
 
-                return $result + ['supplier_id' => $this->supplierId($supplierName)];
+                return $result + [
+                    'supplier_id' => $this->supplierId($result['supplier_name']),
+                    'career_id' => $this->careers->detect($text)?->id,
+                ];
             } catch (RuntimeException $e) {
                 // Credenciales vencidas, red caída, PDF multipágina o WEBP: se lee en local.
                 report($e);
@@ -74,7 +82,7 @@ class InvoiceOcrService
     }
 
     /**
-     * @return array{invoice_number: string|null, supplier_name: string|null, supplier_id: int|null, items: array<int, array<string, mixed>>}
+     * @return array{invoice_number: string|null, supplier_name: string|null, supplier_id: int|null, career_id: int|null, items: array<int, array<string, mixed>>}
      */
     public function parse(string $text): array
     {
@@ -84,6 +92,7 @@ class InvoiceOcrService
             'invoice_number' => $this->invoiceNumber($text),
             'supplier_name' => $supplierName,
             'supplier_id' => $this->supplierId($supplierName),
+            'career_id' => $this->careers->detect($text)?->id,
             'items' => $this->items($text),
         ];
     }

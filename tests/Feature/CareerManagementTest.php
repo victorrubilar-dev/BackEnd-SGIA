@@ -69,7 +69,13 @@ class CareerManagementTest extends TestCase
     public function test_teacher_cannot_access(): void
     {
         $this->actingAsRole(User::ROLE_TEACHER);
-        $this->getJson('/api/careers')->assertForbidden();
+        // El docente solo lee las carreras (selector de la solicitud de préstamo).
+        $career = Career::factory()->create();
+        $this->getJson('/api/careers')->assertOk();
+        $this->getJson("/api/careers/{$career->id}")->assertOk();
+        $this->postJson('/api/careers', ['name' => 'X', 'level' => 'tecnico'])->assertForbidden();
+        $this->patchJson("/api/careers/{$career->id}", ['level' => 'profesional'])->assertForbidden();
+        $this->deleteJson("/api/careers/{$career->id}")->assertForbidden();
         $this->getJson('/api/categories')->assertForbidden();
     }
 
