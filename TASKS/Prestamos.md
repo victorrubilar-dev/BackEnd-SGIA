@@ -40,6 +40,8 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 - [x] `checkin` devuelve todas las unidades pendientes o `unit_ids` concretas; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja` (`LoanUnitsTest`).
 - [x] `LoanItemResource`: `units`, `delivered_quantity`, `returned_quantity`; export CSV/PDF con los códigos (`LoanUnitsTest`, `ResourceContractTest`).
 - [x] El checkout con RUT válido en `borrower_document` crea o reutiliza el `Student` (`LoanUnitsTest`).
+- [x] Solicitud, aprobación, presencial y entrega usan solo unidades del pañol del préstamo; `422` que nombra el pañol (`LoanUnitsTest`, `LoanRemoteRequestTest`).
+- [x] `items[].units[]` trae `cajon` y `location` de cada unidad (`docs/ubicacion-unidades-prestamo.md`, `LoanUnitsTest`).
 
 ### Carrera en el préstamo (noviembre 2026)
 - [x] `career_id` obligatorio al solicitar o registrar un préstamo; `LoanResource` muestra `career` junto a `subject`; filtro `career_id` en `GET /api/loans` (`LoanRequestTest`).

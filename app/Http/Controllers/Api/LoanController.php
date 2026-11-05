@@ -54,7 +54,7 @@ class LoanController extends Controller
     public function myRequests(Request $request): AnonymousResourceCollection
     {
         $query = Loan::where('requested_by', $request->user()->id)
-            ->with(['items.product', 'items.units', 'career', 'storeroom', 'location', 'requester'])
+            ->with(['items.product', 'items.units.cajon.location', 'career', 'storeroom', 'location', 'requester'])
             ->orderByDesc('created_at');
 
         foreach (['storeroom_id', 'career_id'] as $column) {
@@ -99,7 +99,7 @@ class LoanController extends Controller
     {
         Gate::authorize('viewAny', Loan::class);
 
-        $query = Loan::with(['items.product.location', 'items.units', 'requester', 'student', 'career', 'storeroom', 'location'])
+        $query = Loan::with(['items.product.location', 'items.units.cajon.location', 'requester', 'student', 'career', 'storeroom', 'location'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -118,7 +118,7 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'items.units', 'requester', 'approver', 'processor', 'student', 'career', 'storeroom', 'location'])
+            $loan->load(['items.product.location', 'items.units.cajon.location', 'requester', 'approver', 'processor', 'student', 'career', 'storeroom', 'location'])
         );
     }
 
@@ -134,7 +134,7 @@ class LoanController extends Controller
 
         $query = Loan::where('status', LoanStateMachine::STATUS_PENDING)
             ->where('type', Loan::TYPE_REMOTE)
-            ->with(['items.product.location', 'items.units', 'requester', 'career', 'storeroom', 'location'])
+            ->with(['items.product.location', 'items.units.cajon.location', 'requester', 'career', 'storeroom', 'location'])
             ->orderBy('created_at');
 
         // La cola de cada pañolero es la de su pañol; el administrador ve todas (y puede filtrar).
@@ -166,7 +166,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} aprobado: stock descontado y docente notificado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->fresh(['items.product', 'items.units', 'career'])),
+            'loan' => new LoanResource($loan->fresh(['items.product', 'items.units.cajon.location', 'career'])),
         ]);
     }
 
@@ -203,7 +203,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} entregado y marcado como procesado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->load('items.units')),
+            'loan' => new LoanResource($loan->load('items.units.cajon.location')),
         ]);
     }
 
@@ -216,7 +216,7 @@ class LoanController extends Controller
     {
         $loan = $loanService->checkout($request->validated(), $request->user());
 
-        $data = (new LoanResource($loan->load(['items.product', 'items.units', 'student', 'career', 'storeroom', 'location'])))->resolve();
+        $data = (new LoanResource($loan->load(['items.product', 'items.units.cajon.location', 'student', 'career', 'storeroom', 'location'])))->resolve();
 
         return response()->json([
             'message' => 'Préstamo presencial registrado y stock descontado.',

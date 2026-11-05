@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Cajon;
 use App\Models\Career;
+use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\Storeroom;
 use App\Models\User;
+use App\Services\EquipmentUnitService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -117,6 +120,24 @@ class LoanRemoteRequestTest extends TestCase
         $post(['items' => [['product_id' => $inactive->id, 'quantity' => 1]]], 'items.0.product_id');
 
         $this->assertDatabaseMissing('loans', ['requested_by' => $this->teacher->id]);
+    }
+
+    public function test_equipment_availability_counts_only_units_of_the_requested_storeroom(): void
+    {
+        $equipment = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0, 'is_active' => true, 'name' => 'Router Cisco 1941']);
+        $own = Cajon::factory()->create(['location_id' => $this->lab->id]);
+        $foreign = Cajon::factory()->create(['location_id' => Location::factory()->create(['storeroom_id' => Storeroom::factory()->create()->id])->id]);
+        EquipmentUnit::factory()->create(['product_id' => $equipment->id, 'cajon_id' => $own->id]);
+        EquipmentUnit::factory()->count(3)->create(['product_id' => $equipment->id, 'cajon_id' => $foreign->id]);
+        app(EquipmentUnitService::class)->syncProductCounters($equipment);
+        Sanctum::actingAs($this->teacher);
+
+        $this->postJson('/api/loans/requests', $this->payload(['items' => [['product_id' => $equipment->id, 'quantity' => 2]]]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['items.0.quantity' => "Stock insuficiente para \"Router Cisco 1941\" en {$this->storeroom->name}: se solicitaron 2 y hay 1 disponibles."]);
+
+        $this->postJson('/api/loans/requests', $this->payload(['items' => [['product_id' => $equipment->id, 'quantity' => 1]]]))
+            ->assertCreated();
     }
 
     public function test_laboratory_must_be_a_room_or_workshop_of_the_selected_storeroom(): void

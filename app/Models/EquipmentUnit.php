@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -61,6 +62,7 @@ class EquipmentUnit extends Model
         return $this->belongsTo(Product::class);
     }
 
+    /** @return BelongsTo<Cajon, $this> */
     public function cajon(): BelongsTo
     {
         return $this->belongsTo(Cajon::class);
@@ -70,6 +72,16 @@ class EquipmentUnit extends Model
     public function location(): HasOneThrough
     {
         return $this->hasOneThrough(Location::class, Cajon::class, 'id', 'id', 'cajon_id', 'location_id');
+    }
+
+    /**
+     * Unidades guardadas en un cajón de alguna sala del pañol indicado.
+     *
+     * @param  Builder<EquipmentUnit>  $query
+     */
+    public function scopeInStoreroom(Builder $query, int $storeroomId): void
+    {
+        $query->whereHas('cajon.location', fn (Builder $location) => $location->where('storeroom_id', $storeroomId));
     }
 
     public function incidentReports(): HasMany

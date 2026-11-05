@@ -108,7 +108,7 @@ class StudentController extends Controller
         Gate::authorize('view', $student);
 
         $loans = $student->loans()
-            ->with(['items.product.location', 'items.units', 'requester'])
+            ->with(['items.product.location', 'items.units.cajon.location', 'requester'])
             ->orderByDesc('loan_date')
             ->orderByDesc('id')
             ->paginate($this->perPage($request));
