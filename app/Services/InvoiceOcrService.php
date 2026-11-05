@@ -130,7 +130,14 @@ class InvoiceOcrService
     {
         $items = [];
 
-        foreach (preg_split('/\R/u', $text) as $line) {
+        $lines = preg_split('/\R/u', $text);
+
+        foreach ($lines as $i => $line) {
+            if (preg_match('/^\s*(\d+)\s+\d+\s+\$?\s*([\d.]+)\s+\$?\s*([\d.]+)\s*$/u', $line, $c) && ! empty($lines[$i + 1])) {
+                // Formato "cant código precio total" con la descripción en la línea siguiente.
+                $line = trim($lines[$i + 1])." $c[1] $c[2] $c[3]";
+            }
+
             if (! preg_match('/^\s*(.+?)\s+(\d+)\s+\$?\s*([\d.]+)\s+\$?\s*([\d.]+)\s*$/u', $line, $m)) {
                 continue;
             }

@@ -15,6 +15,7 @@ class ConfirmInvoiceIntakeRequest extends FormRequest
     {
         return [
             'document_number' => ['required', 'string', 'max:100'],
+            'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100000'],
@@ -28,6 +29,7 @@ class ConfirmInvoiceIntakeRequest extends FormRequest
     {
         return [
             'document_number.required' => 'El número de factura es obligatorio.',
+            'purchase_id.exists' => 'La orden de compra no existe.',
             'items.required' => 'Debes indicar al menos un ítem.',
             'items.min' => 'Debes indicar al menos un ítem.',
             'items.*.product_id.required' => 'Cada ítem debe indicar su producto.',

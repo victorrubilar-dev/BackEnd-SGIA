@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\PurchaseStateMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +50,13 @@ class Purchase extends Model
             'reserved_amount' => 'decimal:2',
             'received_at' => 'datetime',
         ];
+    }
+
+    /** Órdenes que aún esperan factura: no canceladas y sin otro ingreso vigente. */
+    public function scopeLinkable(Builder $query): Builder
+    {
+        return $query->whereIn('status', [self::STATUS_PENDING, self::STATUS_IN_TRANSIT, self::STATUS_COMPLETED])
+            ->whereNotIn('id', InvoiceIntake::query()->whereNotNull('purchase_id')->where('status', '!=', InvoiceIntake::STATUS_CANCELLED)->select('purchase_id'));
     }
 
     public function supplier(): BelongsTo

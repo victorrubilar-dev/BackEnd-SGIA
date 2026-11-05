@@ -3,15 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\AnnualBudget;
-use App\Models\BudgetMovement;
-use App\Models\InvoiceIntake;
-use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -137,74 +132,5 @@ class PurchaseBudgetTest extends TestCase
 
         $this->postJson("/api/purchases/{$purchase->id}/cancel")->assertOk();
         $this->assertSame('1000000.00', $this->budget->fresh()->available_amount);
-    }
-
-    public function test_confirming_a_linked_invoice_releases_the_reservation_and_consumes_the_real_amount(): void
-    {
-        Process::fake(['*' => Process::result('')]);
-        $purchase = $this->purchase(100000);
-        $supply = Product::factory()->supply()->create(['quantity' => 0, 'stock_minimo' => 1]);
-
-        $intakeId = $this->postJson('/api/invoice-intakes', [
-            'file' => UploadedFile::fake()->create('f.pdf', 10, 'application/pdf'),
-            'annual_budget_id' => $this->budget->id,
-            'purchase_id' => $purchase->id,
-        ])->assertCreated()->assertJsonPath('data.purchase_id', $purchase->id)->json('data.id');
-
-        $this->assertSame('900000.00', $this->budget->fresh()->available_amount);
-
-        // La factura real es menor que lo reservado: la diferencia vuelve al disponible.
-        $this->postJson("/api/invoice-intakes/$intakeId/confirm", [
-            'document_number' => 'F-9',
-            'items' => [['product_id' => $supply->id, 'quantity' => 10, 'unit_price' => 9000]],
-        ])->assertOk()->assertJsonPath('data.total_deducted', '90000.00');
-
-        $budget = $this->budget->fresh();
-        $this->assertSame('910000.00', $budget->available_amount);
-        $this->assertSame('0.00', $budget->reserved_amount);
-        $this->assertSame('0.00', $purchase->fresh()->reserved_amount);
-        $this->assertSame(
-            ['reserva', 'liberacion_reserva', 'consumo'],
-            BudgetMovement::where('annual_budget_id', $budget->id)->orderBy('id')->pluck('type')->all()
-        );
-
-        // La compra ya facturada no admite otra factura ni cancelación con reposición.
-        $this->postJson('/api/invoice-intakes', [
-            'file' => UploadedFile::fake()->create('g.pdf', 10, 'application/pdf'),
-            'annual_budget_id' => $this->budget->id,
-            'purchase_id' => $purchase->id,
-        ])->assertStatus(422)->assertJsonValidationErrors('purchase_id');
-    }
-
-    public function test_linked_invoice_above_budget_plus_released_reservation_is_rejected(): void
-    {
-        Process::fake(['*' => Process::result('')]);
-        $purchase = $this->purchase(100000);
-        $supply = Product::factory()->supply()->create(['quantity' => 0]);
-        $intake = InvoiceIntake::factory()->create([
-            'annual_budget_id' => $this->budget->id,
-            'purchase_id' => $purchase->id,
-        ]);
-
-        $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
-            'document_number' => 'F-10',
-            'items' => [['product_id' => $supply->id, 'quantity' => 1, 'unit_price' => 1100000]],
-        ])->assertStatus(422)->assertJsonValidationErrors('items');
-
-        $this->assertSame('900000.00', $this->budget->fresh()->available_amount);
-        $this->assertSame('100000.00', $purchase->fresh()->reserved_amount);
-        $this->assertSame('borrador', $intake->fresh()->status);
-    }
-
-    public function test_invoice_linked_to_purchase_of_another_budget_is_rejected(): void
-    {
-        $purchase = $this->purchase();
-        $other = AnnualBudget::factory()->create();
-
-        $this->postJson('/api/invoice-intakes', [
-            'file' => UploadedFile::fake()->create('f.pdf', 10, 'application/pdf'),
-            'annual_budget_id' => $other->id,
-            'purchase_id' => $purchase->id,
-        ])->assertStatus(422)->assertJsonValidationErrors('purchase_id');
     }
 }

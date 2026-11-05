@@ -6,9 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmInvoiceIntakeRequest;
 use App\Http\Requests\StoreInvoiceIntakeRequest;
 use App\Http\Resources\InvoiceIntakeResource;
-use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
-use App\Models\Purchase;
 use App\Services\InvoiceIntakeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +18,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class InvoiceIntakeController extends Controller
 {
     /**
-     * Query params: status, annual_budget_id, from, to, per_page. DIR-01 solo ve sus carreras.
+     * Query params: status, from, to, per_page. DIR-01 solo ve sus carreras.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -28,19 +26,14 @@ class InvoiceIntakeController extends Controller
 
         $request->validate([
             'status' => ['sometimes', 'string', 'in:'.implode(',', InvoiceIntake::STATUSES)],
-            'annual_budget_id' => ['sometimes', 'integer'],
             'from' => ['sometimes', 'date'],
             'to' => ['sometimes', 'date'],
         ]);
 
-        $query = InvoiceIntake::query()->with('annualBudget');
+        $query = InvoiceIntake::query();
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
-        }
-
-        if ($request->filled('annual_budget_id')) {
-            $query->where('annual_budget_id', $request->integer('annual_budget_id'));
         }
 
         if ($request->filled('from')) {
@@ -51,24 +44,21 @@ class InvoiceIntakeController extends Controller
             $query->whereDate('received_at', '<=', $request->date('to'));
         }
 
-        return InvoiceIntakeResource::collection($query->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
+        return InvoiceIntakeResource::collection($query->with(['purchase:id,code,status', 'annualBudget'])->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
     }
 
     public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service): JsonResponse
     {
-        $budget = AnnualBudget::findOrFail($request->integer('annual_budget_id'));
-        Gate::authorize('create', [InvoiceIntake::class, $budget]);
+        Gate::authorize('create', InvoiceIntake::class);
 
-        $purchase = $request->filled('purchase_id') ? Purchase::findOrFail($request->integer('purchase_id')) : null;
+        $intake = $service->createDraft($request->file('file'), $request->user()->id);
 
-        $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id, $purchase);
-
-        return (new InvoiceIntakeResource($intake->load(['annualBudget', 'items'])))->response()->setStatusCode(201);
+        return (new InvoiceIntakeResource($intake->load(['items', 'purchase', 'annualBudget'])))->response()->setStatusCode(201);
     }
 
     public function show(InvoiceIntake $invoiceIntake): InvoiceIntakeResource
     {
-        $invoiceIntake->load(['annualBudget', 'items.product']);
+        $invoiceIntake->load(['items.product.cajon.location', 'purchase', 'annualBudget']);
         Gate::authorize('view', $invoiceIntake);
 
         return new InvoiceIntakeResource($invoiceIntake);
@@ -76,7 +66,6 @@ class InvoiceIntakeController extends Controller
 
     public function file(InvoiceIntake $invoiceIntake): StreamedResponse
     {
-        $invoiceIntake->load('annualBudget');
         Gate::authorize('view', $invoiceIntake);
 
         abort_unless(
@@ -95,16 +84,16 @@ class InvoiceIntakeController extends Controller
             $request->validated('document_number'),
             $request->validated('items'),
             $request->user()->id,
+            $request->validated('purchase_id'),
         );
 
-        return new InvoiceIntakeResource($intake->load(['annualBudget', 'items.product']));
+        return new InvoiceIntakeResource($intake->load(['items.product.cajon.location', 'purchase', 'annualBudget']));
     }
 
     public function cancel(Request $request, InvoiceIntake $invoiceIntake, InvoiceIntakeService $service): InvoiceIntakeResource
     {
-        $invoiceIntake->load('annualBudget');
         Gate::authorize('update', $invoiceIntake);
 
-        return new InvoiceIntakeResource($service->cancel($invoiceIntake, $request->user()->id)->load('annualBudget'));
+        return new InvoiceIntakeResource($service->cancel($invoiceIntake, $request->user()->id));
     }
 }

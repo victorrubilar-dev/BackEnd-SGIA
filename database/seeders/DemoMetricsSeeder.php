@@ -256,9 +256,6 @@ class DemoMetricsSeeder extends Seeder
             }
         }
 
-        Purchase::factory()->count(2)->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
-        Purchase::factory()->inTransit()->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
-        Purchase::factory()->completed()->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
 
         foreach (Product::where('type', '!=', Product::TYPE_SUPPLY)->get() as $p) {
             $units->syncProductCounters($p);

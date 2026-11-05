@@ -113,7 +113,7 @@ class ListQueryPerformanceTest extends TestCase
             '/api/purchases', '/api/quotations', '/api/loans', '/api/loans/pending',
             '/api/alerts/critical-stock', '/api/users', '/api/tokens',
             "/api/equipment/{$products[0]->id}/reports",
-            "/api/products/{$products[0]->id}/units", '/api/equipment-units?search=PRO&maintenance_due=1&status=disponible',
+            "/api/products/{$products[0]->id}/units", '/api/equipment-units?search=EQP&maintenance_due=1&status=disponible',
         ] as $uri) {
             $this->getJson($uri)->assertOk();
         }

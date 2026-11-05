@@ -129,7 +129,7 @@ class UnitLifeSheetTest extends TestCase
 
     public function test_unit_reports_endpoint_returns_json_and_pdf(): void
     {
-        $unit = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000321']);
+        $unit = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000321']);
         $other = EquipmentUnit::factory()->create(['product_id' => $unit->product_id]);
         IncidentReport::factory()->count(2)->create(['product_id' => $unit->product_id, 'equipment_unit_id' => $unit->id]);
         IncidentReport::factory()->create(['product_id' => $unit->product_id, 'equipment_unit_id' => $other->id]);
@@ -142,14 +142,14 @@ class UnitLifeSheetTest extends TestCase
 
         $response = $this->get("/api/equipment-units/{$unit->id}/reports?format=pdf")->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString('informes-PRO-IC-000321.pdf', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('informes-EQP-IC-000321.pdf', $response->headers->get('Content-Disposition'));
     }
 
     public function test_unit_technical_sheet_pdf_includes_history(): void
     {
         $product = Product::factory()->create(['name' => 'Osciloscopio Rigol', 'maintenance_priority' => 'A', 'maintenance_frequency_months' => 12]);
         $unit = EquipmentUnit::factory()->create([
-            'product_id' => $product->id, 'code' => 'PRO-IC-000654', 'serial_number' => 'SN-OSC-9',
+            'product_id' => $product->id, 'code' => 'EQP-IC-000654', 'serial_number' => 'SN-OSC-9',
             'next_maintenance_at' => '2027-03-15',
         ]);
         $loan = Loan::factory()->processed()->create(['borrower_name' => 'Docente Prestatario']);
@@ -161,14 +161,14 @@ class UnitLifeSheetTest extends TestCase
         $response = $this->get("/api/equipment-units/{$unit->id}/technical-sheet")->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
         $this->assertStringStartsWith('%PDF', $response->getContent());
-        $this->assertStringContainsString('hoja-de-vida-PRO-IC-000654.pdf', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('hoja-de-vida-EQP-IC-000654.pdf', $response->headers->get('Content-Disposition'));
 
         $this->getJson('/api/equipment-units/999999/technical-sheet')->assertNotFound();
     }
 
     public function test_product_technical_sheet_lists_units(): void
     {
-        $unit = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000987']);
+        $unit = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000987']);
         Sanctum::actingAs($this->teacher);
 
         $response = $this->get("/api/equipment/{$unit->product_id}/technical-sheet")->assertOk();

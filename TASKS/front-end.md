@@ -193,7 +193,7 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 - Rutas nuevas: `GET/POST /api/products/{id}/units`, `GET /api/equipment-units`, `GET /api/equipment-units/by-code/{code}`, `GET/PATCH/DELETE /api/equipment-units/{id}`, `PATCH /api/equipment-units/{id}/status`, `GET /api/equipment-units/{id}/barcode`.
 - `EquipmentUnitResource`: `id`, `product_id`, `product`, `code`, `serial_number`, `status` (`disponible`|`prestado`|`en_reparacion`|`dado_de_baja`), `cajon_id`, `cajon`, `location`, `storeroom`, `active_loan` (solo en el detalle), `last_maintenance_at`, `next_maintenance_at`, auditoría y fechas.
-- `POST /api/products` de `equipo`/`maqueta` con `quantity > 0`: exige `career_id` (con código) y `cajon_id` (o `sala` + `cajon`) y crea las unidades con códigos `PRO-{carrera}-000001` / `MAQ-{carrera}-000001`; `units: [{serial_number}]` opcional.
+- `POST /api/products` de `equipo`/`maqueta` con `quantity > 0`: exige `career_id` (con código) y `cajon_id` (o `sala` + `cajon`) y crea las unidades con códigos `EQP-{carrera}-000001` / `MAQ-{carrera}-000001`; `units: [{serial_number}]` opcional.
 - **422 nuevos:** `PATCH /api/products/{id}` con `quantity` en un equipo ("La cantidad de un equipo se calcula a partir de sus unidades."); `type` → `insumo` con unidades; `PATCH /api/products/{id}/condition` en un equipo (usar `PATCH /api/equipment-units/{id}/status`); cambiar a `prestado` a mano; `DELETE` de una unidad prestada o con historial.
 - `products.quantity`, `quantity_in_repair` y `quantity_written_off` de un equipo se derivan de las unidades (las `prestado` no suman).
 
@@ -223,7 +223,7 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 - Rutas nuevas: `GET/POST /api/budgets`, `GET/PATCH/DELETE /api/budgets/{id}`, `GET/POST /api/invoice-intakes`, `GET /api/invoice-intakes/{id}`, `GET /api/invoice-intakes/{id}/file`, `POST /api/invoice-intakes/{id}/confirm`, `POST /api/invoice-intakes/{id}/cancel`.
 - `AnnualBudgetResource`: `id`, `career_id`, `career` (si viene cargada), `year`, `initial_amount`, `available_amount`, `consumed_amount`, `invoice_intakes` (solo en el detalle, confirmados), auditoría y fechas. Los montos son strings con 2 decimales.
-- `InvoiceIntakeResource`: `id`, `user_id`, `annual_budget_id`, `annual_budget`, `document_number`, `status` (`borrador`|`confirmado`|`anulado`), `total_deducted`, `has_file`, `raw_ocr_payload`, `items`, `received_at`, fechas. `InvoiceIntakeItemResource`: `id`, `invoice_intake_id`, `product_id`, `product`, `detected_name`, `quantity`, `unit_price`, `subtotal`.
+- `InvoiceIntakeResource`: `id`, `user_id`, `document_number`, `status` (`borrador`|`confirmado`|`anulado`), `total_deducted`, `has_file`, `raw_ocr_payload`, `items`, `received_at`, fechas. `InvoiceIntakeItemResource`: `id`, `invoice_intake_id`, `product_id`, `product`, `detected_name`, `quantity`, `unit_price`, `subtotal`.
 - Flujo: subir (`multipart`) → el borrador trae lo detectado en `raw_ocr_payload` (`invoice_number`, `supplier_name`, `supplier_id`, `items[{name, quantity, unit_price, area}]`; puede venir vacío y `ocr_available: false`) → la pantalla deja asociar cada fila a un `product_id` existente (y `cajon_id` si es equipo/maqueta) → `confirm`.
 - **422 nuevos:** presupuesto duplicado (carrera + año); `PATCH` que dejaría el disponible bajo cero; borrar presupuesto con ingresos; confirmar sobre el disponible (error en `items`); confirmar/anular un ingreso que no está en `borrador` (error en `status`); equipo/maqueta sin `cajon_id` (`items.N.cajon_id`).
 - `DIR-01` es director del Área de Informática: opera sobre los presupuestos de **todas** las carreras (ISD, II, IC, AP), igual que `AD-01`. Los listados ya no se filtran por carreras asignadas.
@@ -290,3 +290,11 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 - Nuevas rutas, solo `AD-01`, `DIR-01` y `PAN-01` (otro rol → `403`): `GET /api/products/{id}/label` (solo `insumo`; equipo/maqueta → `422`) y `GET /api/equipment-units/{id}/label` (equipos y maquetas, una etiqueta por unidad).
 - Responden `application/pdf` (una página de 50x30 mm, código de barras Code128 + código en texto) con `Content-Disposition: attachment`. No es JSON: hay que pedir el binario con el token Bearer (`responseType: 'blob'`), no abrir la URL directo.
+
+- **Facturas sin presupuesto ni compra (nov 2026)**: `POST /api/invoice-intakes` solo recibe `file`; ya no acepta `annual_budget_id` ni `purchase_id`, y `GET /api/invoice-intakes` ya no filtra por `annual_budget_id`. `InvoiceIntakeResource` pierde `annual_budget_id`, `purchase_id` y `annual_budget`. Confirmar una factura solo ingresa stock: no reserva, consume ni libera presupuesto.
+
+## Facturas asociadas a órdenes de compra
+
+- `InvoiceIntakeResource` suma `purchase_id` (null si no hay compra asociada).
+- Al asociarse una orden, el confirm también deja la orden `completa`, libera su reserva y consume del presupuesto de la orden el total facturado (puede diferir de lo reservado). Si supera el disponible responde 422 en `items` y no se ingresa nada. Anular la factura repone el presupuesto, pero la orden sigue `completa`.
+- `POST /api/invoice-intakes/{id}/confirm` acepta `purchase_id` opcional. Sin él, el backend asocia solo la compra abierta con los mismos productos y cantidades. El front puede mostrar `purchase_id` tras confirmar y ofrecer elegir la compra a mano si vino null.

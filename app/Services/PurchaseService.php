@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -122,8 +123,11 @@ class PurchaseService
     public function create(array $validated, User $user, QuotationService $quotationService): Purchase
     {
         $quotation = null;
+        $multi = collect();
 
-        if (! empty($validated['quotation_id'])) {
+        if (! empty($validated['quotation_ids'])) {
+            $multi = $this->loadAcceptedQuotations($validated, $quotationService);
+        } elseif (! empty($validated['quotation_id'])) {
             $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
 
             if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
@@ -144,6 +148,7 @@ class PurchaseService
             ?? ($quotation ? $quotationService->preferredSupplierId($quotation) : null);
 
         $items = $validated['items']
+            ?? ($multi->isNotEmpty() ? $this->consolidateItems($multi, (int) $supplierId) : null)
             ?? $quotation?->items->map(fn (QuotationItem $item) => [
                 'product_id' => $item->product_id,
                 'name' => $item->name,
@@ -172,7 +177,7 @@ class PurchaseService
 
         $budget = AnnualBudget::findOrFail($validated['annual_budget_id']);
 
-        $purchase = DB::transaction(function () use ($validated, $user, $quotation, $quotationService, $items, $supplierId, $budget) {
+        $purchase = DB::transaction(function () use ($validated, $user, $quotation, $multi, $quotationService, $items, $supplierId, $budget) {
             $items = collect($items);
 
             $totalCents = $items->sum(fn (array $item) => $this->budgets->cents($item['unit_price']) * $item['quantity']);
@@ -184,7 +189,7 @@ class PurchaseService
                 'annual_budget_id' => $budget->id,
                 'quotation_id' => $quotation?->id,
                 'status' => PurchaseStateMachine::STATUS_PENDING,
-                'quotation_reference' => $validated['quotation_reference'] ?? $quotation?->code,
+                'quotation_reference' => $validated['quotation_reference'] ?? ($quotation?->code ?? ($multi->isNotEmpty() ? $multi->pluck('code')->implode(', ') : null)),
                 'expected_at' => $validated['expected_at'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'total' => $totalCents / 100,
@@ -202,6 +207,10 @@ class PurchaseService
             // Crear la compra equivale a aprobarla: reserva el total en el presupuesto.
             $this->budgets->reserve($budget, $totalCents / 100, $purchase, $user->id);
 
+            foreach ($multi as $q) {
+                $quotationService->markAsConverted($q, $purchase);
+            }
+
             if ($quotation) {
                 // La cotización aprobada queda vinculada y convertida en OC.
                 $quotationService->markAsConverted($quotation, $purchase);
@@ -211,6 +220,55 @@ class PurchaseService
         });
 
         return $purchase;
+    }
+
+    /**
+     * Cotizaciones de `quotation_ids`: todas aceptadas y con el proveedor elegido contactado.
+     *
+     * @return Collection<int, Quotation>
+     *
+     * @throws ValidationException
+     */
+    private function loadAcceptedQuotations(array $validated, QuotationService $quotationService)
+    {
+        $quotations = Quotation::with('items')->whereIn('id', $validated['quotation_ids'])->get();
+
+        foreach ($quotations as $q) {
+            if ($q->status !== Quotation::STATUS_ACCEPTED) {
+                throw ValidationException::withMessages([
+                    'quotation_ids' => "La cotización {$q->code} no está aceptada (estado actual: \"{$q->status}\").",
+                ]);
+            }
+
+            if (! $quotationService->wasContacted($q, (int) $validated['supplier_id'])) {
+                throw ValidationException::withMessages([
+                    'supplier_id' => "El proveedor no fue contactado en la cotización {$q->code}.",
+                ]);
+            }
+        }
+
+        return $quotations;
+    }
+
+    /**
+     * Ítems consolidados por producto (suma de cantidades) con el precio ofertado por el proveedor.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function consolidateItems($quotations, int $supplierId): array
+    {
+        $rows = [];
+
+        foreach ($quotations as $q) {
+            foreach ($q->items as $item) {
+                $key = $item->product_id ?? 'n:'.$item->name;
+                $rows[$key] ??= ['product_id' => $item->product_id, 'name' => $item->name, 'quantity' => 0, 'unit_price' => null];
+                $rows[$key]['quantity'] += $item->quantity;
+                $rows[$key]['unit_price'] ??= $this->offeredPrice($q, $supplierId, $item);
+            }
+        }
+
+        return array_values($rows);
     }
 
     /**

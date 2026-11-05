@@ -53,7 +53,7 @@ class EquipmentUnitTest extends TestCase
             ->assertJsonPath('data.status', 'disponible')
             ->assertJsonPath('data.cajon_id', $cajon->id);
 
-        $this->assertMatchesRegularExpression('/^PRO-IC-\d{6}$/', $response->json('data.code'));
+        $this->assertMatchesRegularExpression('/^EQP-IC-\d{6}$/', $response->json('data.code'));
         $this->assertSame(1, $product->fresh()->quantity);
     }
 
@@ -118,16 +118,16 @@ class EquipmentUnitTest extends TestCase
     public function test_global_listing_filters(): void
     {
         $this->actingAsRole(User::ROLE_DIRECTOR);
-        $a = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000901', 'serial_number' => 'ABC-111']);
-        $b = EquipmentUnit::factory()->inRepair()->create(['code' => 'PRO-IC-000902']);
-        $c = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000903', 'next_maintenance_at' => now()->subDay()]);
-        $d = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000904', 'next_maintenance_at' => now()->addMonths(2)]);
+        $a = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000901', 'serial_number' => 'ABC-111']);
+        $b = EquipmentUnit::factory()->inRepair()->create(['code' => 'EQP-IC-000902']);
+        $c = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000903', 'next_maintenance_at' => now()->subDay()]);
+        $d = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000904', 'next_maintenance_at' => now()->addMonths(2)]);
 
         $ids = fn (string $query) => collect($this->getJson("/api/equipment-units?{$query}&per_page=100")->assertOk()->json('data'))->pluck('id')->all();
 
-        $this->assertSame([$b->id], $ids('status=en_reparacion&search=PRO-IC-00090'));
+        $this->assertSame([$b->id], $ids('status=en_reparacion&search=EQP-IC-00090'));
         $this->assertSame([$a->id], $ids('search=abc-111'));
-        $this->assertSame([$c->id], $ids('maintenance_due=1&search=PRO-IC-00090'));
+        $this->assertSame([$c->id], $ids('maintenance_due=1&search=EQP-IC-00090'));
         $this->assertSame([$a->id], $ids("product_id={$a->product_id}"));
         $this->assertSame([$d->id], $ids("cajon_id={$d->cajon_id}"));
         $this->assertSame([$c->id], $ids("location_id={$c->cajon->location_id}"));
@@ -253,23 +253,23 @@ class EquipmentUnitTest extends TestCase
     public function test_barcode_endpoint_returns_unit_code(): void
     {
         $this->actingAsRole(User::ROLE_TEACHER);
-        $unit = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000555']);
+        $unit = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000555']);
 
         $this->getJson("/api/equipment-units/{$unit->id}/barcode")
             ->assertOk()
-            ->assertJsonPath('code', 'PRO-IC-000555')
+            ->assertJsonPath('code', 'EQP-IC-000555')
             ->assertJsonStructure(['barcode_svg', 'barcode_image_uri', 'barcode_html']);
     }
 
     public function test_label_endpoint_returns_pdf_for_warehouse_and_403_for_teacher(): void
     {
-        $unit = EquipmentUnit::factory()->create(['code' => 'PRO-IC-000556']);
+        $unit = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000556']);
 
         $this->actingAsRole(User::ROLE_WAREHOUSE);
         $response = $this->get("/api/equipment-units/{$unit->id}/label");
         $response->assertOk();
         $this->assertStringStartsWith('%PDF', $response->getContent());
-        $this->assertStringContainsString('etiqueta-PRO-IC-000556.pdf', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('etiqueta-EQP-IC-000556.pdf', $response->headers->get('Content-Disposition'));
 
         $this->actingAsRole(User::ROLE_DIRECTOR);
         $this->get("/api/equipment-units/{$unit->id}/label")->assertOk();
@@ -291,7 +291,7 @@ class EquipmentUnitTest extends TestCase
         $units = EquipmentUnit::where('product_id', $id)->orderBy('id')->get();
         $this->assertCount(3, $units);
         $this->assertSame(['S-1', 'S-2', null], $units->pluck('serial_number')->all());
-        $this->assertMatchesRegularExpression('/^PRO-AP-\d{6}$/', $units[0]->code);
+        $this->assertMatchesRegularExpression('/^EQP-AP-\d{6}$/', $units[0]->code);
         $this->assertSame($payload['cajon_id'], $units[0]->cajon_id);
     }
 
@@ -357,7 +357,7 @@ class EquipmentUnitTest extends TestCase
         $this->assertSame(2, $created->where('status', 'disponible')->count());
         $this->assertSame(1, $created->where('status', 'en_reparacion')->count());
         $this->assertSame(1, $created->where('status', 'dado_de_baja')->count());
-        $this->assertMatchesRegularExpression('/^PRO-II-\d{6}$/', $created->first()->code);
+        $this->assertMatchesRegularExpression('/^EQP-II-\d{6}$/', $created->first()->code);
         $this->assertSame(2, $supply->fresh()->quantity);
         $this->assertSame($supply->cajon_id, $created->first()->cajon_id);
 

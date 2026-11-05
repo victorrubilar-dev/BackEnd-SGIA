@@ -34,7 +34,7 @@ class ProductResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'cajon_id' => $this->cajon_id,
             'cajon' => new CajonResource($cajon),
-            'location_id' => $this->location_id ?? $this->cajon?->location_id,
+            'location_id' => $this->location_id ?? ($this->relationLoaded('cajon') ? $this->cajon?->location_id : null),
             'location' => new LocationResource($location),
             'area' => $this->area,
             'category_id' => $this->category_id,

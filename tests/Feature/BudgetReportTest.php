@@ -7,8 +7,10 @@ use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\InvoiceIntake;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\AnnualBudgetService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\BuildsProductPayload;
@@ -52,6 +54,7 @@ class BudgetReportTest extends TestCase
             'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 200000]],
         ])->assertCreated()->json('data.id');
 
+        // Ingreso heredado: vinculado a presupuesto y compra (ya no se crean así).
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $this->budget->id, 'purchase_id' => $purchaseId]);
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
             'document_number' => 'F-1',
@@ -60,6 +63,11 @@ class BudgetReportTest extends TestCase
                 ['product_id' => $this->other->id, 'quantity' => 1, 'unit_price' => 100000, 'cajon_id' => Cajon::factory()->create()->id],
             ],
         ])->assertOk();
+
+        $budgets = app(AnnualBudgetService::class);
+        $purchase = Purchase::findOrFail($purchaseId);
+        $budgets->releaseReservation($this->budget->fresh(), $purchase, $this->admin->id, $intake);
+        $budgets->consume($this->budget->fresh(), 150000, $intake, $this->admin->id, $purchase);
 
         return $intake;
     }

@@ -2,7 +2,6 @@
 
 namespace App\Policies;
 
-use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
 use App\Models\User;
 
@@ -15,23 +14,23 @@ class InvoiceIntakePolicy
 
     public function view(User $user, InvoiceIntake $intake): bool
     {
-        return $this->operatesOn($user, $intake->loadMissing('annualBudget')->annualBudget);
+        return $this->operatesOn($user);
     }
 
     /**
-     * Subir una factura contra un presupuesto: AD-01 y DIR-01 (cualquier carrera del área).
+     * Subir una factura: AD-01 y DIR-01.
      */
-    public function create(User $user, AnnualBudget $budget): bool
+    public function create(User $user): bool
     {
-        return $this->operatesOn($user, $budget);
+        return $this->operatesOn($user);
     }
 
     public function update(User $user, InvoiceIntake $intake): bool
     {
-        return $this->operatesOn($user, $intake->loadMissing('annualBudget')->annualBudget);
+        return $this->operatesOn($user);
     }
 
-    private function operatesOn(User $user, AnnualBudget $budget): bool
+    private function operatesOn(User $user): bool
     {
         return $this->viewAny($user) && $user->managesBudgets();
     }

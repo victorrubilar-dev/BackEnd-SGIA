@@ -15,9 +15,14 @@ class InvoiceIntakeResource extends JsonResource
         return [
             'id' => $this->id,
             'user_id' => $this->user_id,
-            'annual_budget_id' => $this->annual_budget_id,
             'purchase_id' => $this->purchase_id,
-            'annual_budget' => new AnnualBudgetResource($this->whenLoaded('annualBudget')),
+            'purchase' => $this->whenLoaded('purchase', fn () => $this->purchase?->only(['code', 'status'])),
+            'linked' => $this->purchase_id !== null,
+            'annual_budget' => $this->whenLoaded('annualBudget', fn () => $this->annualBudget ? [
+                'id' => $this->annualBudget->id,
+                'available' => $this->annualBudget->available_amount,
+                'reserved' => $this->annualBudget->reserved_amount,
+            ] : null),
             'document_number' => $this->document_number,
             'status' => $this->status,
             'total_deducted' => $this->total_deducted,

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AnnualBudget;
 use App\Models\Cajon;
 use App\Models\EquipmentUnit;
 use App\Models\InvoiceIntake;
@@ -16,7 +15,7 @@ use Tests\Concerns\BuildsProductPayload;
 use Tests\TestCase;
 
 /**
- * REQ-23: anulación de una factura confirmada con reposición de presupuesto y reversa de stock.
+ * REQ-23: anulación de una factura confirmada y reversa de stock.
  */
 class InvoiceIntakeCancellationTest extends TestCase
 {
@@ -25,14 +24,11 @@ class InvoiceIntakeCancellationTest extends TestCase
 
     private User $admin;
 
-    private AnnualBudget $budget;
-
     protected function setUp(): void
     {
         parent::setUp();
         Storage::fake('local');
         $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
-        $this->budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 1000000]);
         Sanctum::actingAs($this->admin);
     }
 
@@ -40,7 +36,6 @@ class InvoiceIntakeCancellationTest extends TestCase
     private function confirmedIntake(): array
     {
         $intake = InvoiceIntake::factory()->create([
-            'annual_budget_id' => $this->budget->id,
             'pdf_path' => UploadedFile::fake()->create('f.pdf', 10, 'application/pdf')->store('invoice-intakes', 'local'),
         ]);
         $supply = Product::factory()->supply()->create(['quantity' => 3, 'stock_minimo' => 1]);
@@ -57,19 +52,16 @@ class InvoiceIntakeCancellationTest extends TestCase
         return [$intake->fresh(), $supply, $equipment];
     }
 
-    public function test_cancel_confirmed_restores_budget_stock_and_units(): void
+    public function test_cancel_confirmed_restores_stock_and_units(): void
     {
         [$intake, $supply, $equipment] = $this->confirmedIntake();
-        $this->assertSame('485000.00', $this->budget->fresh()->available_amount);
 
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")
             ->assertOk()->assertJsonPath('data.status', 'anulado');
 
-        $this->assertSame('1000000.00', $this->budget->fresh()->available_amount);
         $this->assertSame(3, $supply->fresh()->quantity);
         $this->assertSame(2, EquipmentUnit::where('product_id', $equipment->id)->where('status', 'dado_de_baja')->count());
         $this->assertSame(0, $equipment->fresh()->quantity);
-        $this->assertDatabaseHas('budget_movements', ['invoice_intake_id' => $intake->id, 'type' => 'reposicion', 'amount' => '515000.00']);
 
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertStatus(422)->assertJsonValidationErrors('status');
     }
@@ -83,7 +75,6 @@ class InvoiceIntakeCancellationTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('items');
 
         $this->assertSame('confirmado', $intake->fresh()->status);
-        $this->assertSame('485000.00', $this->budget->fresh()->available_amount);
         $this->assertSame(5, $supply->fresh()->quantity);
         $this->assertSame(2, EquipmentUnit::where('status', 'disponible')->where('invoice_intake_item_id', '!=', null)->count());
     }
@@ -97,7 +88,6 @@ class InvoiceIntakeCancellationTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('items');
 
         $this->assertSame('confirmado', $intake->fresh()->status);
-        $this->assertSame('485000.00', $this->budget->fresh()->available_amount);
     }
 
     public function test_cancel_is_rejected_for_historical_units_without_traceability(): void
