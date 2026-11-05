@@ -93,7 +93,7 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(AnnualBudgetResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,created_at,created_by,id,initial_amount,reserved_amount,updated_at,updated_by,year'));
 
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);
-        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,detected_career_id,document_number,has_file,id,needs_budget,purchase_id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
+        $this->assertKeys(InvoiceIntakeResource::class, $intake, explode(',', 'annual_budget_id,created_at,detected_career_id,document_number,has_file,id,linked,needs_budget,purchase_id,raw_ocr_payload,received_at,status,total_deducted,updated_at,user_id'));
 
         $this->assertKeys(BudgetSummaryResource::class, $budget, explode(',', 'available_amount,career_id,consumed_amount,execution_percent,id,initial_amount,reserved_amount,year'));
         $movement = BudgetMovement::create(['annual_budget_id' => $budget->id, 'type' => BudgetMovement::TYPE_INITIAL, 'amount' => 1, 'user_id' => User::factory()->create()->id]);

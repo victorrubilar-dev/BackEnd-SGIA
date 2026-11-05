@@ -15,8 +15,9 @@ class ConfirmInvoiceIntakeRequest extends FormRequest
     {
         return [
             'document_number' => ['required', 'string', 'max:100'],
-            // Obligatorio si el borrador no trae presupuesto (no se detectó la carrera); si viene, reemplaza al del borrador.
+            // Obligatorio si no hay orden de compra ni carrera detectada; si viene, reemplaza al del borrador.
             'annual_budget_id' => ['nullable', 'integer', 'exists:annual_budgets,id'],
+            'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100000'],
@@ -31,6 +32,7 @@ class ConfirmInvoiceIntakeRequest extends FormRequest
         return [
             'document_number.required' => 'El número de factura es obligatorio.',
             'annual_budget_id.exists' => 'El presupuesto no existe.',
+            'purchase_id.exists' => 'La orden de compra no existe.',
             'items.required' => 'Debes indicar al menos un ítem.',
             'items.min' => 'Debes indicar al menos un ítem.',
             'items.*.product_id.required' => 'Cada ítem debe indicar su producto.',

@@ -131,6 +131,30 @@ class ProductManagementTest extends TestCase
         $this->assertNotEmpty($response->json('barcode_image_uri'));
     }
 
+    public function test_warehouse_can_download_supply_label_pdf(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+        $supply = Product::factory()->supply()->create(['barcode' => 'INS-IC-000001']);
+
+        $response = $this->get('/api/products/'.$supply->id.'/label');
+
+        $response->assertOk();
+        $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_label_is_forbidden_for_teacher_and_rejected_for_equipment(): void
+    {
+        $supply = Product::factory()->supply()->create();
+        $equipment = Product::factory()->create();
+
+        Sanctum::actingAs($this->teacher);
+        $this->getJson('/api/products/'.$supply->id.'/label')->assertStatus(403);
+
+        Sanctum::actingAs($this->warehouse);
+        $this->getJson('/api/products/'.$equipment->id.'/label')->assertStatus(422);
+    }
+
     public function test_validations_name_without_special_chars_positive_quantity_and_existing_supplier(): void
     {
         Sanctum::actingAs($this->warehouse);

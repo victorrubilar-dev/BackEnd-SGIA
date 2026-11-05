@@ -8,6 +8,8 @@ use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\InvoiceIntake;
 use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\PurchaseItem;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
@@ -297,5 +299,141 @@ TXT;
         $this->assertNotEmpty($this->getJson('/api/invoice-intakes')->assertOk()->json('data'));
         $this->getJson("/api/invoice-intakes/{$intake->id}")->assertOk();
         $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertOk();
+    }
+
+    private function purchaseFor(array $lines, array $attrs = []): Purchase
+    {
+        $purchase = Purchase::factory()->create($attrs);
+        foreach ($lines as [$product, $qty]) {
+            PurchaseItem::create(['purchase_id' => $purchase->id, 'product_id' => $product->id, 'name' => $product->name, 'quantity' => $qty, 'unit_price' => 100]);
+        }
+
+        return $purchase;
+    }
+
+    private function confirmPayload(array $lines, array $extra = []): array
+    {
+        return $extra + [
+            'document_number' => 'F-200',
+            'items' => array_map(fn ($l) => ['product_id' => $l[0]->id, 'quantity' => $l[1], 'unit_price' => 100], $lines),
+        ];
+    }
+
+    public function test_confirm_auto_links_purchase_with_same_products_and_quantities(): void
+    {
+        [$a, $b] = [Product::factory()->supply()->create(), Product::factory()->supply()->create()];
+        $match = $this->purchaseFor([[$a, 5], [$b, 2]]);
+        $this->purchaseFor([[$a, 5], [$b, 3]]); // otra cantidad: no coincide
+        $intake = $this->draft();
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", $this->confirmPayload([[$b, 2], [$a, 5]]))
+            ->assertOk()->assertJsonPath('data.purchase_id', $match->id)
+            ->assertJsonPath('data.linked', true)
+            ->assertJsonPath('data.purchase.code', $match->code)
+            ->assertJsonStructure(['data' => ['annual_budget', 'total_deducted']]);
+
+        $this->assertSame(Purchase::STATUS_COMPLETED, $match->fresh()->status);
+    }
+
+    public function test_confirm_does_not_link_when_ambiguous(): void
+    {
+        $a = Product::factory()->supply()->create();
+        $this->purchaseFor([[$a, 5]]);
+        $this->purchaseFor([[$a, 5]]);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$this->draft()->id}/confirm", $this->confirmPayload([[$a, 5]]))
+            ->assertOk()->assertJsonPath('data.purchase_id', null)->assertJsonPath('data.linked', false);
+    }
+
+    public function test_confirm_ambiguity_is_resolved_by_invoice_number(): void
+    {
+        $a = Product::factory()->supply()->create();
+        $this->purchaseFor([[$a, 5]]);
+        $match = $this->purchaseFor([[$a, 5]], ['invoice_number' => 'F-200']);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$this->draft()->id}/confirm", $this->confirmPayload([[$a, 5]]))
+            ->assertOk()->assertJsonPath('data.purchase_id', $match->id);
+    }
+
+    public function test_confirm_accepts_explicit_purchase_id_and_validates_it(): void
+    {
+        $a = Product::factory()->supply()->create();
+        $purchase = $this->purchaseFor([[$a, 9]]);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$this->draft()->id}/confirm", $this->confirmPayload([[$a, 5]], ['purchase_id' => 999999]))
+            ->assertStatus(422)->assertJsonValidationErrors('purchase_id');
+
+        $this->postJson("/api/invoice-intakes/{$this->draft()->id}/confirm", $this->confirmPayload([[$a, 5]], ['purchase_id' => $purchase->id]))
+            ->assertOk()->assertJsonPath('data.purchase_id', $purchase->id);
+    }
+
+    public function test_linking_completes_purchase_and_settles_its_budget(): void
+    {
+        $budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 1000000]);
+        $product = Product::factory()->supply()->create();
+        Sanctum::actingAs($this->admin);
+        $purchaseId = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $budget->id,
+            'supplier_id' => Supplier::factory()->create()->id,
+            'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 5, 'unit_price' => 1000]],
+        ])->assertCreated()->json('data.id');
+        $this->assertSame('995000.00', $budget->fresh()->available_amount);
+
+        $intake = $this->draft();
+        $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
+            'document_number' => 'F-9',
+            'items' => [['product_id' => $product->id, 'quantity' => 5, 'unit_price' => 1100]],
+        ])->assertOk()->assertJsonPath('data.purchase_id', $purchaseId)
+            ->assertJsonPath('data.purchase.status', 'completa')
+            ->assertJsonPath('data.annual_budget.id', $budget->id)
+            ->assertJsonPath('data.annual_budget.reserved', '0.00')
+            ->assertJsonPath('data.annual_budget.available', '994500.00');
+
+        $purchase = Purchase::find($purchaseId);
+        $this->assertSame(Purchase::STATUS_COMPLETED, $purchase->status);
+        $this->assertSame('F-9', $purchase->invoice_number);
+        $this->assertSame('0.00', $purchase->reserved_amount);
+        $budget->refresh();
+        $this->assertSame('994500.00', $budget->available_amount);
+        $this->assertSame('0.00', $budget->reserved_amount);
+
+        $this->postJson("/api/invoice-intakes/{$intake->id}/cancel")->assertOk();
+        $this->assertSame('1000000.00', $budget->fresh()->available_amount);
+    }
+
+    public function test_linking_rolls_back_when_invoice_exceeds_budget(): void
+    {
+        $budget = AnnualBudget::factory()->create(['initial_amount' => 10000, 'available_amount' => 10000]);
+        $product = Product::factory()->supply()->create(['quantity' => 0]);
+        Sanctum::actingAs($this->admin);
+        $purchaseId = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $budget->id,
+            'supplier_id' => Supplier::factory()->create()->id,
+            'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 1, 'unit_price' => 5000]],
+        ])->assertCreated()->json('data.id');
+
+        $intake = $this->draft();
+        $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
+            'document_number' => 'F-9',
+            'items' => [['product_id' => $product->id, 'quantity' => 1, 'unit_price' => 50000]],
+        ])->assertStatus(422);
+
+        $this->assertSame(Purchase::STATUS_PENDING, Purchase::find($purchaseId)->status);
+        $this->assertSame(InvoiceIntake::STATUS_DRAFT, $intake->fresh()->status);
+        $this->assertSame(0, $product->fresh()->quantity);
+    }
+
+    public function test_explicit_purchase_must_be_linkable(): void
+    {
+        $a = Product::factory()->supply()->create();
+        $cancelled = $this->purchaseFor([[$a, 1]], ['status' => Purchase::STATUS_CANCELLED]);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$this->draft()->id}/confirm", $this->confirmPayload([[$a, 1]], ['purchase_id' => $cancelled->id]))
+            ->assertStatus(422)->assertJsonValidationErrors('purchase_id');
     }
 }

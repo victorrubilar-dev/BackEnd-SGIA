@@ -36,6 +36,10 @@ class PurchaseController extends Controller
 
         $purchaseService->applyFilters($query, $request);
 
+        if ($request->boolean('linkable')) {
+            $query->linkable();
+        }
+
         $perPage = $this->perPage($request);
         $purchases = $query->orderByDesc('created_at')->paginate($perPage);
 

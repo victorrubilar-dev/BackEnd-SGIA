@@ -2,7 +2,6 @@
 
 namespace Database\Factories;
 
-use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -18,7 +17,6 @@ class InvoiceIntakeFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'annual_budget_id' => AnnualBudget::factory(),
             'document_number' => (string) fake()->numerify('F-#####'),
             'status' => InvoiceIntake::STATUS_DRAFT,
         ];

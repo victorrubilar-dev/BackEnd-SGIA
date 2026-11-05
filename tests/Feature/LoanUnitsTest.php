@@ -306,18 +306,18 @@ class LoanUnitsTest extends TestCase
     public function test_show_history_and_export_include_unit_codes(): void
     {
         [$product, $units] = $this->productWithUnits(2);
-        $units[0]->update(['code' => 'PRO-IC-000771']);
-        $units[1]->update(['code' => 'PRO-IC-000772']);
+        $units[0]->update(['code' => 'EQP-IC-000771']);
+        $units[1]->update(['code' => 'EQP-IC-000772']);
         Sanctum::actingAs($this->warehouse);
         $loanId = $this->checkout([['product_id' => $product->id, 'quantity' => 2]])->assertCreated()->json('data.id');
 
         $this->getJson("/api/loans/{$loanId}")->assertOk()
-            ->assertJsonPath('data.items.0.units.0.code', 'PRO-IC-000771')
-            ->assertJsonPath('data.items.0.units.1.code', 'PRO-IC-000772');
+            ->assertJsonPath('data.items.0.units.0.code', 'EQP-IC-000771')
+            ->assertJsonPath('data.items.0.units.1.code', 'EQP-IC-000772');
         $this->getJson('/api/loans?search='.Loan::findOrFail($loanId)->code)->assertOk()->assertJsonCount(2, 'data.0.items.0.units');
 
         $csv = $this->get('/api/loans/export?format=csv')->assertOk()->streamedContent();
-        $this->assertStringContainsString('[PRO-IC-000771, PRO-IC-000772]', $csv);
+        $this->assertStringContainsString('[EQP-IC-000771, EQP-IC-000772]', $csv);
     }
 
     public function test_insumo_flow_is_unchanged_and_has_no_units(): void

@@ -57,7 +57,7 @@ class CodeSequenceService
         return match ($type) {
             Product::TYPE_SUPPLY => CodeSequence::PREFIX_SUPPLY,
             Product::TYPE_SCALE_MODEL => CodeSequence::PREFIX_SCALE_MODEL,
-            default => CodeSequence::PREFIX_PRODUCT,
+            default => CodeSequence::PREFIX_EQUIPMENT,
         };
     }
 }

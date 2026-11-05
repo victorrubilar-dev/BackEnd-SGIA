@@ -63,7 +63,7 @@ class CodeSequenceTest extends TestCase
         $career = $this->career('IC');
 
         $this->assertStringStartsWith('INS-IC-', $service->forProduct(Product::factory()->supply()->make(['career_id' => $career->id])));
-        $this->assertStringStartsWith('PRO-IC-', $service->forProduct(Product::factory()->make(['career_id' => $career->id])));
+        $this->assertStringStartsWith('EQP-IC-', $service->forProduct(Product::factory()->make(['career_id' => $career->id])));
         $this->assertStringStartsWith('MAQ-IC-', $service->forProduct(Product::factory()->scaleModel()->make(['career_id' => $career->id])));
 
         $noCode = Career::factory()->create(['code' => null]);
@@ -79,18 +79,18 @@ class CodeSequenceTest extends TestCase
 
     public function test_seeder_creates_twelve_combinations_without_resetting_index(): void
     {
-        CodeSequence::where('prefix', 'PRO')->where('career', 'AP')->update(['current_index' => 7]);
+        CodeSequence::where('prefix', 'EQP')->where('career', 'AP')->update(['current_index' => 7]);
         $this->seed(CodeSequenceSeeder::class);
 
         $this->assertSame(12, CodeSequence::count());
-        $this->assertSame(7, CodeSequence::where('prefix', 'PRO')->where('career', 'AP')->value('current_index'));
+        $this->assertSame(7, CodeSequence::where('prefix', 'EQP')->where('career', 'AP')->value('current_index'));
     }
 
     public function test_function_is_sequential_inside_database(): void
     {
-        CodeSequence::where('prefix', 'PRO')->where('career', 'II')->update(['current_index' => 41]);
+        CodeSequence::where('prefix', 'EQP')->where('career', 'II')->update(['current_index' => 41]);
 
-        $this->assertSame('PRO-II-000042', DB::selectOne("select fn_generar_codigo_sgia('PRO', 'II') as code")->code);
+        $this->assertSame('EQP-II-000042', DB::selectOne("select fn_generar_codigo_sgia('EQP', 'II') as code")->code);
     }
 
     public function test_supply_creation_generates_code_with_career(): void

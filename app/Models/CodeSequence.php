@@ -13,13 +13,13 @@ class CodeSequence extends Model
 
     public const PREFIX_SUPPLY = 'INS';
 
-    public const PREFIX_PRODUCT = 'PRO';
+    public const PREFIX_EQUIPMENT = 'EQP';
 
     /** @var array<string, string> prefijo => nombre */
     public const PREFIXES = [
         self::PREFIX_SCALE_MODEL => 'maquetas',
         self::PREFIX_SUPPLY => 'insumos',
-        self::PREFIX_PRODUCT => 'productos',
+        self::PREFIX_EQUIPMENT => 'equipos',
     ];
 
     protected $fillable = ['name', 'prefix', 'career', 'current_index'];

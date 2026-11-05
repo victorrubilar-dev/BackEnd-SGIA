@@ -332,4 +332,51 @@ class QuotationPurchaseFlowTest extends TestCase
         $this->assertEquals(Purchase::STATUS_COMPLETED, Purchase::find($purchaseId)->status);
         Notification::assertSentTo($this->warehouse, PurchaseArrivalNotification::class);
     }
+
+    public function test_purchase_from_three_quotations_consolidates_items_and_converts_all(): void
+    {
+        $qs = collect(range(1, 3))->map(fn () => $this->makeQuotation(Quotation::STATUS_ACCEPTED));
+        Sanctum::actingAs($this->director);
+        $this->budget->update(['initial_amount' => 5000000, 'available_amount' => 5000000]);
+
+        $response = $this->postJson('/api/purchases', [
+            'annual_budget_id' => $this->budget->id,
+            'quotation_ids' => $qs->pluck('id')->all(),
+            'supplier_id' => $this->supplier->id,
+        ])->assertCreated()
+            ->assertJsonCount(1, 'data.items')
+            ->assertJsonPath('data.items.0.quantity', 18)
+            ->assertJsonPath('data.total', 18 * 90000);
+
+        foreach ($qs as $q) {
+            $this->assertSame(Quotation::STATUS_CONVERTED, $q->fresh()->status);
+            $this->assertSame($response->json('data.id'), $q->fresh()->purchase_id);
+        }
+        $this->assertSame((float) (18 * 90000), (float) $this->budget->fresh()->reserved_amount);
+    }
+
+    public function test_purchase_from_quotation_ids_requires_three_accepted(): void
+    {
+        $qs = collect(range(1, 3))->map(fn () => $this->makeQuotation(Quotation::STATUS_ACCEPTED));
+        Sanctum::actingAs($this->director);
+        $base = ['annual_budget_id' => $this->budget->id, 'supplier_id' => $this->supplier->id];
+
+        $this->postJson('/api/purchases', $base + ['quotation_ids' => $qs->take(2)->pluck('id')->all()])
+            ->assertStatus(422)->assertJsonValidationErrors('quotation_ids');
+
+        $qs[2]->update(['status' => Quotation::STATUS_PENDING]);
+        $this->postJson('/api/purchases', $base + ['quotation_ids' => $qs->pluck('id')->all()])
+            ->assertStatus(422)->assertJsonValidationErrors('quotation_ids');
+    }
+
+    public function test_purchases_linkable_filter_lists_orders_awaiting_invoice(): void
+    {
+        $open = Purchase::factory()->create(['status' => Purchase::STATUS_PENDING]);
+        $cancelled = Purchase::factory()->create(['status' => Purchase::STATUS_CANCELLED]);
+        Sanctum::actingAs($this->director);
+
+        $ids = collect($this->getJson('/api/purchases?linkable=1&per_page=100')->assertOk()->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($open->id));
+        $this->assertFalse($ids->contains($cancelled->id));
+    }
 }

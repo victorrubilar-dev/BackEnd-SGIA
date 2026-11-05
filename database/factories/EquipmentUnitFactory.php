@@ -19,7 +19,7 @@ class EquipmentUnitFactory extends Factory
         return [
             'product_id' => Product::factory(),
             'cajon_id' => Cajon::factory(),
-            'code' => 'PRO-IC-'.fake()->unique()->numerify('######'),
+            'code' => 'EQP-IC-'.fake()->unique()->numerify('######'),
             'serial_number' => null,
             'status' => EquipmentUnit::STATUS_AVAILABLE,
         ];

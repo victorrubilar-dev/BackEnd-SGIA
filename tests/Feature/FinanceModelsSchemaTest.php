@@ -42,7 +42,7 @@ class FinanceModelsSchemaTest extends TestCase
 
     public function test_invoice_intake_relations_and_jsonb_cast(): void
     {
-        $intake = InvoiceIntake::factory()->create(['raw_ocr_payload' => ['total' => 1190, 'lines' => [['name' => 'Cable']]], 'total_deducted' => 1190]);
+        $intake = InvoiceIntake::factory()->create(['annual_budget_id' => AnnualBudget::factory()->create()->id, 'raw_ocr_payload' => ['total' => 1190, 'lines' => [['name' => 'Cable']]], 'total_deducted' => 1190]);
         $product = Product::factory()->create();
         $item = InvoiceIntakeItem::create([
             'invoice_intake_id' => $intake->id, 'product_id' => $product->id,
@@ -61,7 +61,7 @@ class FinanceModelsSchemaTest extends TestCase
 
     public function test_intake_items_are_deleted_with_intake_but_budget_is_restricted(): void
     {
-        $intake = InvoiceIntake::factory()->create();
+        $intake = InvoiceIntake::factory()->create(['annual_budget_id' => AnnualBudget::factory()->create()->id]);
         InvoiceIntakeItem::create(['invoice_intake_id' => $intake->id, 'product_id' => Product::factory()->create()->id, 'quantity' => 1]);
 
         $budget = $intake->annualBudget;

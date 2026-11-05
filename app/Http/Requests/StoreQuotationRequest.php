@@ -22,8 +22,8 @@ class StoreQuotationRequest extends FormRequest
             'products.*.quantity' => ['required', 'integer', 'min:1'],
             'products.*.name' => ['sometimes', 'string', 'max:255'],
 
-            // Mínimo 3 proveedores distintos
-            'supplier_ids' => ['required', 'array', 'min:3', 'distinct'],
+            // Mínimo 1 proveedor
+            'supplier_ids' => ['required', 'array', 'min:1', 'distinct'],
             'supplier_ids.*' => ['required', 'integer', Rule::exists('suppliers', 'id')],
 
             'career_id' => ['nullable', 'integer', 'exists:careers,id'],
@@ -44,8 +44,8 @@ class StoreQuotationRequest extends FormRequest
             'products.*.quantity.required' => 'Cada producto debe tener una cantidad.',
             'products.*.quantity.integer' => 'La cantidad debe ser un número entero.',
             'products.*.quantity.min' => 'La cantidad solicitada debe ser positiva.',
-            'supplier_ids.required' => 'Debes seleccionar al menos 3 proveedores.',
-            'supplier_ids.min' => 'Debes seleccionar al menos 3 proveedores.',
+            'supplier_ids.required' => 'Debes seleccionar al menos 1 proveedor.',
+            'supplier_ids.min' => 'Debes seleccionar al menos 1 proveedor.',
             'supplier_ids.distinct' => 'No puedes repetir el mismo proveedor.',
             'supplier_ids.*.exists' => 'Uno de los proveedores seleccionados no existe en el sistema.',
         ];
