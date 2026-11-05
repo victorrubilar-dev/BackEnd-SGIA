@@ -15,6 +15,7 @@ use App\Models\Cajon;
 use App\Models\Product;
 use App\Services\BarcodeService;
 use App\Services\CodeSequenceService;
+use App\Services\EquipmentPdfService;
 use App\Services\EquipmentUnitService;
 use App\Services\ProductService;
 use App\Services\StockAlertService;
@@ -26,6 +27,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class ProductController extends Controller
 {
@@ -314,5 +316,25 @@ class ProductController extends Controller
             'barcode_image_uri' => $barcodeService->generateBarcodeImageUri($product->barcode),
             'barcode_html' => $barcodeService->generateHtml($product->barcode),
         ]);
+    }
+
+    /**
+     * Etiqueta PDF 50x30 mm del insumo para la impresora térmica.
+     * GET /api/products/{product}/label
+     */
+    public function label(Product $product, BarcodeService $barcodeService, EquipmentPdfService $pdfService): SymfonyResponse
+    {
+        Gate::authorize('view', $product);
+
+        if ($product->type !== Product::TYPE_SUPPLY) {
+            throw ValidationException::withMessages([
+                'product' => 'Solo los insumos llevan etiqueta propia; los equipos y maquetas se etiquetan por unidad.',
+            ]);
+        }
+
+        return $pdfService->download(
+            $pdfService->label($product->barcode, $barcodeService),
+            'etiqueta-'.$product->barcode.'.pdf'
+        );
     }
 }

@@ -122,6 +122,18 @@ class EquipmentPdfService
     }
 
     /**
+     * Etiqueta de 50x30 mm (impresora térmica): código de barras y código en texto (insumo o unidad).
+     */
+    public function label(string $code, BarcodeService $barcodes): string
+    {
+        return $this->render(view('products.label', [
+            'code' => $code,
+            // SVG en base64: DomPDF no lee el data URI sin base64 que usa el fallback sin GD.
+            'barcodeUri' => 'data:image/svg+xml;base64,'.base64_encode($barcodes->generateSvg($code)),
+        ]), [0, 0, 141.73, 85.04]);
+    }
+
+    /**
      * Respuesta HTTP de descarga para un PDF ya generado.
      *
      * @return Response
@@ -139,7 +151,7 @@ class EquipmentPdfService
     /**
      * Renderiza una vista HTML a PDF (A4, portrait).
      */
-    private function render(View $view): string
+    private function render(View $view, array|string $paper = 'A4'): string
     {
         $options = new Options;
         $options->set('isRemoteEnabled', false);
@@ -147,7 +159,7 @@ class EquipmentPdfService
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($view->render());
-        $dompdf->setPaper('A4', 'portrait');
+        $dompdf->setPaper($paper, 'portrait');
         $dompdf->render();
 
         return $dompdf->output();

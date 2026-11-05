@@ -149,7 +149,7 @@
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/users` | `AD-01` | Listado paginado de usuarios con sus `careers`.<br>**Query Params:** `role`, `area`, `is_active`, `storeroom_id`, `career_id`, `search` (nombre/email), `per_page` (1-100). | ✅ Implementado |
+| `GET` | `/api/users` | `AD-01` | Listado paginado de usuarios con sus `careers`.<br>**Query Params:** `role`, `area`, `is_active`, `storeroom_id`, `career_id`, `search` (nombre/email), `linkable=1` (solo OC que aún esperan factura: no canceladas y sin ingreso vigente), `per_page` (1-100). | ✅ Implementado |
 | `POST` | `/api/users` | `AD-01` | Crea un nuevo usuario en el sistema.<br>**Body:** `name`, `email` (único), `role` (`AD-01`, `DIR-01`, `PAN-01`, `PRO-01`), `area` (opcional), `password`, `password_confirmation`, `is_active` (opcional), `storeroom_id` (opcional, pañol por defecto), `career_ids` (opcional, lista de carreras). | ✅ Implementado |
 | `GET` | `/api/users/{id}` | `AD-01` | Obtiene el detalle de un usuario específico. | ✅ Implementado |
 | `PUT / PATCH` | `/api/users/{id}` | `AD-01` | Actualiza los datos de un usuario (nombre, rol, área, email con validación de unicidad ignorando propio ID, contraseña opcional, `storeroom_id`, `career_ids`: si se envía reemplaza las carreras). | ✅ Implementado |
@@ -222,12 +222,13 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `GET` | `/api/products/{id}/location` | Todos (`auth`) | Obtiene la sala, cajón y descripción de ubicación física de un producto. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/location` | `AD-01`, `DIR-01`, `PAN-01` | Asigna o actualiza la ubicación física.<br>**Body:** `location_id` o combinación de `sala` y `cajon` con `descripcion` opcional. | ✅ Implementado |
 | `GET` | `/api/products/{id}/barcode` | Todos (`auth`) | Retorna el código de barras del producto, su representación vectorial en SVG y su formato Data URI / HTML. | ✅ Implementado |
+| `GET` | `/api/products/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código en texto) para impresora térmica. Solo insumos; `422` para equipo/maqueta (usar la etiqueta por unidad). | ✅ Implementado |
 
 ---
 
 #### 3.1 Unidades de equipo (`equipo` y `maqueta`)
 
-> Los productos `equipo` y `maqueta` se gestionan por **unidades** (`equipment_units`), cada una con su código (`PRO-{carrera}-000001` / `MAQ-{carrera}-000001`), serie opcional y cajón. `quantity`, `quantity_in_repair` y `quantity_written_off` del producto se **derivan** de las unidades (las `prestado` no suman). Lectura: todos; alta/edición/estado: `AD-01`, `DIR-01`, `PAN-01`; borrado: `AD-01`, `DIR-01`. Estados: `disponible`, `prestado` (solo por préstamos), `en_reparacion`, `dado_de_baja` (final).
+> Los productos `equipo` y `maqueta` se gestionan por **unidades** (`equipment_units`), cada una con su código (`EQP-{carrera}-000001` / `MAQ-{carrera}-000001`), serie opcional y cajón. `quantity`, `quantity_in_repair` y `quantity_written_off` del producto se **derivan** de las unidades (las `prestado` no suman). Lectura: todos; alta/edición/estado: `AD-01`, `DIR-01`, `PAN-01`; borrado: `AD-01`, `DIR-01`. Estados: `disponible`, `prestado` (solo por préstamos), `en_reparacion`, `dado_de_baja` (final).
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
@@ -240,6 +241,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `PATCH` | `/api/equipment-units/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado con la máquina de estados; `prestado` solo por préstamos (`422`). **Body:** `status`. | ✅ Implementado |
 | `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código de la unidad) para impresora térmica. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 
@@ -325,7 +327,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los 3+ proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `career_id` y `title` (opcionales), `supplier_ids` (mínimo 3 proveedores distintos), `notes`, `expires_at`. | ✅ Implementado |
+| `POST` | `/api/quotations` | `AD-01`, `DIR-01` | Crea la cotización, persiste ítems y proveedores contactados y **envía por correo la solicitud a los proveedores seleccionados** (`App\Services\QuotationEmailService` + `QuotationRequestMail`). Devuelve `emails_sent`.<br>**Body:** `products` (array con `id` y `quantity`, mínimo 1), `career_id` y `title` (opcionales), `supplier_ids` (mínimo 1, sin repetir), `notes`, `expires_at`. | ✅ Implementado |
 | `GET` | `/api/quotations` | `AD-01`, `DIR-01` | Historial de cotizaciones emitidas con ítems y proveedores contactados.<br>**Query Params:** `status` (alias `estado`: `pendiente`, `aceptada`, `rechazada`, `convertida`), `search` (código), `per_page`. | ✅ Implementado |
 | `GET` | `/api/quotations/{id}` | `AD-01`, `DIR-01` | Detalle de la cotización (con `responded_suppliers`, `min_quotations` y `meets_min_quotations`): ítems, proveedores contactados con su respuesta (`status`, `offer_total`, `responded_at`), orden de compra generada y transiciones permitidas. | ✅ Implementado |
 | `POST` | `/api/quotations/{id}/resend` | `AD-01`, `DIR-01` | Reintenta el correo a los proveedores que no lo recibieron (sin correo o con error). Solo cotizaciones `pendiente`. Responde `emails_sent` y `emails_failed`. Cada proveedor contactado trae `email_sent_at` y `email_error`. | ✅ Implementado |

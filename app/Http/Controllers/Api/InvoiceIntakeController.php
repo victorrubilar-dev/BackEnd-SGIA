@@ -33,7 +33,7 @@ class InvoiceIntakeController extends Controller
             'to' => ['sometimes', 'date'],
         ]);
 
-        $query = InvoiceIntake::query()->with('annualBudget');
+        $query = InvoiceIntake::query();
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -51,7 +51,7 @@ class InvoiceIntakeController extends Controller
             $query->whereDate('received_at', '<=', $request->date('to'));
         }
 
-        return InvoiceIntakeResource::collection($query->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
+        return InvoiceIntakeResource::collection($query->with(['purchase:id,code,status', 'annualBudget'])->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
     }
 
     public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service): JsonResponse
@@ -63,12 +63,12 @@ class InvoiceIntakeController extends Controller
 
         $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id, $purchase);
 
-        return (new InvoiceIntakeResource($intake->load(['annualBudget', 'items'])))->response()->setStatusCode(201);
+        return (new InvoiceIntakeResource($intake->load(['items', 'purchase', 'annualBudget'])))->response()->setStatusCode(201);
     }
 
     public function show(InvoiceIntake $invoiceIntake): InvoiceIntakeResource
     {
-        $invoiceIntake->load(['annualBudget', 'items.product']);
+        $invoiceIntake->load(['items.product.cajon.location', 'purchase', 'annualBudget']);
         Gate::authorize('view', $invoiceIntake);
 
         return new InvoiceIntakeResource($invoiceIntake);
@@ -76,7 +76,6 @@ class InvoiceIntakeController extends Controller
 
     public function file(InvoiceIntake $invoiceIntake): StreamedResponse
     {
-        $invoiceIntake->load('annualBudget');
         Gate::authorize('view', $invoiceIntake);
 
         abort_unless(
@@ -95,17 +94,17 @@ class InvoiceIntakeController extends Controller
             $request->validated('document_number'),
             $request->validated('items'),
             $request->user()->id,
+            $request->validated('purchase_id'),
             $request->validated('annual_budget_id'),
         );
 
-        return new InvoiceIntakeResource($intake->load(['annualBudget', 'items.product']));
+        return new InvoiceIntakeResource($intake->load(['items.product.cajon.location', 'purchase', 'annualBudget']));
     }
 
     public function cancel(Request $request, InvoiceIntake $invoiceIntake, InvoiceIntakeService $service): InvoiceIntakeResource
     {
-        $invoiceIntake->load('annualBudget');
         Gate::authorize('update', $invoiceIntake);
 
-        return new InvoiceIntakeResource($service->cancel($invoiceIntake, $request->user()->id)->load('annualBudget'));
+        return new InvoiceIntakeResource($service->cancel($invoiceIntake, $request->user()->id));
     }
 }

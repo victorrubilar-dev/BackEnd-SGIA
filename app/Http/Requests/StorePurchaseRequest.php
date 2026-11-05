@@ -18,9 +18,11 @@ class StorePurchaseRequest extends FormRequest
             // La compra parte siempre de una cotización aceptada (REQ-07 -> REQ-08);
             // proveedor e ítems son opcionales y, si faltan, se toman de la cotización.
             'annual_budget_id' => ['required', 'integer', 'exists:annual_budgets,id'],
-            'quotation_id' => ['required', 'integer', 'exists:quotations,id'],
+            'quotation_id' => ['required_without:quotation_ids', 'nullable', 'integer', 'exists:quotations,id'],
+            'quotation_ids' => ['nullable', 'array', 'min:3'],
+            'quotation_ids.*' => ['integer', 'distinct', 'exists:quotations,id'],
             'quotation_justification' => ['nullable', 'string', 'max:1000'],
-            'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+            'supplier_id' => ['required_with:quotation_ids', 'nullable', 'integer', 'exists:suppliers,id'],
             'quotation_reference' => ['nullable', 'string', 'max:100'],
             'expected_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -42,6 +44,7 @@ class StorePurchaseRequest extends FormRequest
             'quotation_justification.max' => 'El motivo no puede superar los 1000 caracteres.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'quotation_id.exists' => 'La cotización seleccionada no existe en el sistema.',
+            'quotation_ids.min' => 'Se requieren al menos 3 cotizaciones aceptadas para generar la orden de compra.',
             'items.array' => 'El campo items debe ser una lista.',
             'items.min' => 'La orden de compra debe incluir al menos un producto.',
             'items.*.name.required' => 'Cada producto de la orden debe tener nombre.',

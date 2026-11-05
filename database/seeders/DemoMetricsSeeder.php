@@ -11,7 +11,6 @@ use App\Models\LoanItem;
 use App\Models\Location;
 use App\Models\MaintenanceRecord;
 use App\Models\Product;
-use App\Models\Purchase;
 use App\Models\StockAlert;
 use App\Models\Student;
 use App\Models\Supplier;
@@ -255,10 +254,6 @@ class DemoMetricsSeeder extends Seeder
                 $u->forceFill(['last_maintenance_at' => $start, 'next_maintenance_at' => $start->copy()->addMonths(6)])->save();
             }
         }
-
-        Purchase::factory()->count(2)->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
-        Purchase::factory()->inTransit()->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
-        Purchase::factory()->completed()->state(['supplier_id' => $supplier->id, 'created_by' => $admin->id])->create();
 
         foreach (Product::where('type', '!=', Product::TYPE_SUPPLY)->get() as $p) {
             $units->syncProductCounters($p);

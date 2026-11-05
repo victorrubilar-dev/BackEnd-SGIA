@@ -99,12 +99,12 @@ class QuotationTest extends TestCase
         }
     }
 
-    public function test_quotation_requires_at_least_three_suppliers(): void
+    public function test_quotation_requires_at_least_one_supplier(): void
     {
         Sanctum::actingAs($this->director);
 
         $payload = $this->validPayload();
-        $payload['supplier_ids'] = [$this->suppliers[0]->id, $this->suppliers[1]->id];
+        $payload['supplier_ids'] = [];
 
         $response = $this->postJson('/api/quotations', $payload);
 

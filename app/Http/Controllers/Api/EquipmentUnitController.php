@@ -159,6 +159,20 @@ class EquipmentUnitController extends Controller
         );
     }
 
+    /**
+     * Etiqueta PDF 50x30 mm de la unidad para la impresora térmica.
+     * GET /api/equipment-units/{equipmentUnit}/label
+     */
+    public function label(EquipmentUnit $equipmentUnit, BarcodeService $barcodeService, EquipmentPdfService $pdfService): SymfonyResponse
+    {
+        Gate::authorize('view', $equipmentUnit);
+
+        return $pdfService->download(
+            $pdfService->label($equipmentUnit->code, $barcodeService),
+            'etiqueta-'.$equipmentUnit->code.'.pdf'
+        );
+    }
+
     private function loadDetail(EquipmentUnit $unit): EquipmentUnit
     {
         return $unit->load([...self::LIST_RELATIONS, 'loanItems.loan']);

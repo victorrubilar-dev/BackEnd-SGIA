@@ -32,7 +32,7 @@
 
 ### Unidades de equipo, categorías y códigos (plan `Equipos.md`, fases 2-6)
 - [x] `products.type` acepta `maqueta` (`Product::hasUnits()` = `equipo` o `maqueta`); `category_id` obligatorio en el alta, `career_id`, `maintenance_priority` (`A`/`B`/`C`), `requires_calibration`, `maintenance_frequency_months` y `reference_price` (`CodeSequenceTest`).
-- [x] Códigos de barra `PREFIJO-CARRERA-000001` (`INS`/`PRO`/`MAQ` × `ISD`/`II`/`IC`/`AP`) con `code_sequences` y `fn_generar_codigo_sgia`; insumo sin `barcode` recibe `INS-{carrera}-…` (`CodeSequenceTest`).
+- [x] Códigos de barra `PREFIJO-CARRERA-000001` (`INS`/`EQP`/`MAQ` × `ISD`/`II`/`IC`/`AP`) con `code_sequences` y `fn_generar_codigo_sgia`; insumo sin `barcode` recibe `INS-{carrera}-…` (`CodeSequenceTest`).
 - [x] Unidades (`equipment_units`) con código, serie, cajón y estado; migración de datos desde los contadores (`EquipmentUnitSchemaTest`).
 - [x] `GET/POST /api/products/{id}/units`, `GET /api/equipment-units`, `by-code/{code}`, `GET/PATCH/DELETE /api/equipment-units/{id}`, `PATCH …/status`, `GET …/barcode` (`EquipmentUnitTest`).
 - [x] Contadores de un equipo derivados de sus unidades; `quantity` y `/condition` bloqueados (`422`) en equipos (`EquipmentUnitTest`).

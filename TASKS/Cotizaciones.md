@@ -1,8 +1,8 @@
 ### REQ-07 — Envío de cotizaciones automáticas (FU-03, DIR-01)
 - [x] Endpoint `POST /api/quotations` que reciba lista de productos + cantidades.
-- [x] Servicio de envío de correo automático a **al menos 3 proveedores** por cotización.
+- [x] Servicio de envío de correo automático a **al menos 1 proveedor** por cotización.
 - [x] Persistir cada cotización con su estado y proveedores contactados.
-- [x] Validación: mínimo 1 producto, cantidad positiva, mínimo 3 proveedores.
+- [x] Validación: mínimo 1 producto, cantidad positiva, mínimo 1 proveedor.
 - [x] Registro por proveedor de si el correo salió (`email_sent_at`) o por qué falló (`email_error`), y `POST /api/quotations/{id}/resend` para reintentar solo los pendientes.
 
 ### Reglas de noviembre 2026

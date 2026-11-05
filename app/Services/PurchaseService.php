@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -120,41 +121,50 @@ class PurchaseService
      */
     public function create(array $validated, User $user, QuotationService $quotationService): Purchase
     {
-        $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
+        $quotation = null;
+        $multi = collect();
 
-        if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
-            throw ValidationException::withMessages([
-                'quotation_id' => 'Solo se puede generar una orden de compra desde una cotización aceptada '
-                    ."(estado actual: \"{$quotation->status}\").",
-            ]);
-        }
+        if (! empty($validated['quotation_ids'])) {
+            $multi = $this->loadAcceptedQuotations($validated, $quotationService);
+        } elseif (! empty($validated['quotation_id'])) {
+            $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
 
-        if (isset($validated['supplier_id']) && ! $quotationService->wasContacted($quotation, (int) $validated['supplier_id'])) {
-            throw ValidationException::withMessages([
-                'supplier_id' => 'El proveedor debe estar entre los contactados en la cotización.',
-            ]);
+            if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
+                throw ValidationException::withMessages([
+                    'quotation_id' => 'Solo se puede generar una orden de compra desde una cotización aceptada '
+                        ."(estado actual: \"{$quotation->status}\").",
+                ]);
+            }
+
+            if (isset($validated['supplier_id']) && ! $quotationService->wasContacted($quotation, (int) $validated['supplier_id'])) {
+                throw ValidationException::withMessages([
+                    'supplier_id' => 'El proveedor debe estar entre los contactados en la cotización.',
+                ]);
+            }
         }
 
         // Mínimo recomendado de proveedores que respondieron: no bloquea, pero exige un motivo.
         $justification = trim((string) ($validated['quotation_justification'] ?? ''));
 
-        if ($quotationService->respondedSuppliersCount($quotation) < $quotationService->minSuppliers() && $justification === '') {
+        // Con quotation_ids ya se exigen 3 cotizaciones aceptadas, así que solo aplica a la cotización única.
+        if ($quotation && $quotationService->respondedSuppliersCount($quotation) < $quotationService->minSuppliers() && $justification === '') {
             throw ValidationException::withMessages([
                 'quotation_justification' => "Respondieron menos de {$quotationService->minSuppliers()} proveedores: indica el motivo de comprar igual (por ejemplo, no hay más proveedores disponibles).",
             ]);
         }
 
-        $supplierId = $validated['supplier_id'] ?? $quotationService->preferredSupplierId($quotation);
+        $supplierId = $validated['supplier_id'] ?? ($quotation ? $quotationService->preferredSupplierId($quotation) : null);
 
         $items = $validated['items']
-            ?? $quotation->items->map(fn (QuotationItem $item) => [
+            ?? ($multi->isNotEmpty() ? $this->consolidateItems($multi, (int) $supplierId) : null)
+            ?? $quotation?->items->map(fn (QuotationItem $item) => [
                 'product_id' => $item->product_id,
                 'name' => $item->name,
                 'quantity' => $item->quantity,
                 'unit_price' => $this->offeredPrice($quotation, $supplierId, $item),
             ])->all();
 
-        if (empty($validated['items']) && $quotation->items->isEmpty()) {
+        if ($quotation && empty($validated['items']) && $quotation->items->isEmpty()) {
             throw ValidationException::withMessages([
                 'items' => 'La cotización no tiene ítems para copiar en la orden de compra.',
             ]);
@@ -175,7 +185,7 @@ class PurchaseService
 
         $budget = AnnualBudget::findOrFail($validated['annual_budget_id']);
 
-        $purchase = DB::transaction(function () use ($validated, $user, $quotation, $quotationService, $items, $supplierId, $budget, $justification) {
+        $purchase = DB::transaction(function () use ($validated, $user, $quotation, $multi, $quotationService, $items, $supplierId, $budget, $justification) {
             $items = collect($items);
 
             $totalCents = $items->sum(fn (array $item) => $this->budgets->cents($item['unit_price']) * $item['quantity']);
@@ -185,9 +195,9 @@ class PurchaseService
                 'supplier_id' => $supplierId,
                 'created_by' => $user->id,
                 'annual_budget_id' => $budget->id,
-                'quotation_id' => $quotation->id,
+                'quotation_id' => $quotation?->id,
                 'status' => PurchaseStateMachine::STATUS_PENDING,
-                'quotation_reference' => $validated['quotation_reference'] ?? $quotation->code,
+                'quotation_reference' => $validated['quotation_reference'] ?? ($quotation?->code ?? ($multi->isNotEmpty() ? $multi->pluck('code')->implode(', ') : null)),
                 'quotation_justification' => $justification !== '' ? $justification : null,
                 'expected_at' => $validated['expected_at'] ?? null,
                 'notes' => $validated['notes'] ?? null,
@@ -206,13 +216,68 @@ class PurchaseService
             // Crear la compra equivale a aprobarla: reserva el total en el presupuesto.
             $this->budgets->reserve($budget, $totalCents / 100, $purchase, $user->id);
 
-            // La cotización aprobada queda vinculada y convertida en OC.
-            $quotationService->markAsConverted($quotation, $purchase);
+            foreach ($multi as $q) {
+                $quotationService->markAsConverted($q, $purchase);
+            }
+
+            if ($quotation) {
+                // La cotización aprobada queda vinculada y convertida en OC.
+                $quotationService->markAsConverted($quotation, $purchase);
+            }
 
             return $purchase;
         });
 
         return $purchase;
+    }
+
+    /**
+     * Cotizaciones de `quotation_ids`: todas aceptadas y con el proveedor elegido contactado.
+     *
+     * @return Collection<int, Quotation>
+     *
+     * @throws ValidationException
+     */
+    private function loadAcceptedQuotations(array $validated, QuotationService $quotationService)
+    {
+        $quotations = Quotation::with('items')->whereIn('id', $validated['quotation_ids'])->get();
+
+        foreach ($quotations as $q) {
+            if ($q->status !== Quotation::STATUS_ACCEPTED) {
+                throw ValidationException::withMessages([
+                    'quotation_ids' => "La cotización {$q->code} no está aceptada (estado actual: \"{$q->status}\").",
+                ]);
+            }
+
+            if (! $quotationService->wasContacted($q, (int) $validated['supplier_id'])) {
+                throw ValidationException::withMessages([
+                    'supplier_id' => "El proveedor no fue contactado en la cotización {$q->code}.",
+                ]);
+            }
+        }
+
+        return $quotations;
+    }
+
+    /**
+     * Ítems consolidados por producto (suma de cantidades) con el precio ofertado por el proveedor.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function consolidateItems($quotations, int $supplierId): array
+    {
+        $rows = [];
+
+        foreach ($quotations as $q) {
+            foreach ($q->items as $item) {
+                $key = $item->product_id ?? 'n:'.$item->name;
+                $rows[$key] ??= ['product_id' => $item->product_id, 'name' => $item->name, 'quantity' => 0, 'unit_price' => null];
+                $rows[$key]['quantity'] += $item->quantity;
+                $rows[$key]['unit_price'] ??= $this->offeredPrice($q, $supplierId, $item);
+            }
+        }
+
+        return array_values($rows);
     }
 
     /**
