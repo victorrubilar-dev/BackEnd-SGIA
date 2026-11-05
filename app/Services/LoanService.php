@@ -42,16 +42,19 @@ class LoanService
     public function createRequest(array $validated, User $creator): Loan
     {
         $items = $validated['items'];
+        // Cliente antiguo sin `storeroom_id`: pañol por defecto, como hace Loan al crearse.
+        $storeroom = ! empty($validated['storeroom_id']) ? Storeroom::findOrFail($validated['storeroom_id']) : Storeroom::default();
 
-        // Disponibilidad: solo se compara con el stock actual, no con otras solicitudes ni con el
-        // rango horario. El stock se descuenta recién cuando el pañol aprueba (`approve`).
-        $this->assertItemsAvailable($items);
+        // Disponibilidad: solo se compara con el stock actual (en equipos y maquetas, las unidades
+        // disponibles del pañol pedido), no con otras solicitudes ni con el rango horario. El stock
+        // se descuenta recién cuando el pañol aprueba (`approve`).
+        $this->assertItemsAvailable($items, $storeroom);
 
         $location = ! empty($validated['location_id']) ? Location::find($validated['location_id']) : null;
         $start = $validated['start_time'] ?? null;
         $end = $validated['end_time'] ?? null;
 
-        return DB::transaction(function () use ($validated, $creator, $items, $location, $start, $end) {
+        return DB::transaction(function () use ($validated, $creator, $items, $storeroom, $location, $start, $end) {
             $loan = Loan::create([
                 'code' => Loan::generateUniqueCode(Loan::TYPE_REMOTE),
                 'type' => Loan::TYPE_REMOTE,
@@ -59,7 +62,7 @@ class LoanService
                 'borrower_name' => $creator->name,
                 'subject' => $validated['subject'],
                 'career_id' => $validated['career_id'],
-                'storeroom_id' => $validated['storeroom_id'] ?? null,
+                'storeroom_id' => $storeroom->id,
                 'location_id' => $location?->id,
                 // `room` y `time_block` siguen alimentando la cola del pañol y las exportaciones.
                 'room' => $location ? ($location->nombre ?? $location->sala) : $validated['room'],
@@ -133,7 +136,8 @@ class LoanService
      * Confirma la entrega material al docente: `en_proceso` -> `procesado`.
      *
      * `$assignments` (`[['item_id' => 1, 'unit_ids' => [..]]]`) reemplaza la asignación
-     * automática por las unidades realmente entregadas; las anteriores vuelven a `disponible`.
+     * automática por las unidades realmente entregadas, que deben estar en el pañol del préstamo;
+     * las anteriores vuelven a `disponible`.
      *
      * @param  array<int, array{item_id: int, unit_ids: array<int, int>}>  $assignments
      *
@@ -147,6 +151,7 @@ class LoanService
             }
 
             $loan->load('items.product');
+            $storeroom = Storeroom::findOrFail($loan->storeroom_id);
 
             foreach ($assignments as $index => $assignment) {
                 $item = $loan->items->firstWhere('id', (int) $assignment['item_id']);
@@ -157,7 +162,7 @@ class LoanService
                     ]);
                 }
 
-                $this->replaceUnits($item, array_map('intval', $assignment['unit_ids']), $index);
+                $this->replaceUnits($item, $storeroom, array_map('intval', $assignment['unit_ids']), $index);
             }
 
             $loan->items()->update(['delivered_quantity' => DB::raw('quantity')]);
@@ -187,10 +192,12 @@ class LoanService
     public function checkout(array $validated, User $operator): Loan
     {
         $items = $validated['items'];
+        $storeroomId = $validated['storeroom_id'] ?? $operator->storeroom_id;
+        $storeroom = $storeroomId ? Storeroom::findOrFail($storeroomId) : Storeroom::default();
 
-        $this->assertItemsAvailable($items);
+        $this->assertItemsAvailable($items, $storeroom);
 
-        return DB::transaction(function () use ($validated, $operator, $items) {
+        return DB::transaction(function () use ($validated, $operator, $items, $storeroom) {
             $student = $this->resolveStudent($validated);
 
             $loan = Loan::create([
@@ -199,7 +206,7 @@ class LoanService
                 'requested_by' => null,
                 'borrower_name' => $student?->full_name ?? $validated['borrower_name'] ?? $student?->rut,
                 'borrower_document' => $student?->rut ?? $validated['borrower_document'] ?? null,
-                'storeroom_id' => $validated['storeroom_id'] ?? $operator->storeroom_id ?? Storeroom::default()->id,
+                'storeroom_id' => $storeroom->id,
                 'student_id' => $student?->id,
                 'subject' => $validated['subject'],
                 'career_id' => $validated['career_id'],
@@ -252,7 +259,8 @@ class LoanService
      *
      * Insumos: bloquea el producto y resta la cantidad. Equipos y maquetas: asigna las
      * unidades indicadas en `$requestedUnits[item_id]` o, si no vienen, unidades `disponible`
-     * automáticas (se bloquean primero las unidades y luego el producto). Evalúa las alertas (REQ-06).
+     * automáticas; en ambos casos, solo del pañol del préstamo (se bloquean primero las unidades
+     * y luego el producto). Evalúa las alertas (REQ-06).
      *
      * @param  array<int, array<int, int>|null>  $requestedUnits  unit_ids por id de ítem
      *
@@ -260,6 +268,8 @@ class LoanService
      */
     private function deductStock(Loan $loan, array $requestedUnits = [], bool $delivered = false): void
     {
+        $storeroom = Storeroom::findOrFail($loan->storeroom_id);
+
         foreach ($loan->items as $item) {
             if ($item->product_id === null) {
                 continue;
@@ -274,7 +284,7 @@ class LoanService
             }
 
             if ($peek->hasUnits()) {
-                $this->assignUnits($item, $peek, $requestedUnits[$item->id] ?? null, $delivered);
+                $this->assignUnits($item, $peek, $storeroom, $requestedUnits[$item->id] ?? null, $delivered);
 
                 continue;
             }
@@ -298,16 +308,18 @@ class LoanService
     }
 
     /**
-     * Pasa a `prestado` las unidades del ítem y las vincula en `loan_item_units`.
+     * Pasa a `prestado` las unidades del ítem y las vincula en `loan_item_units`. Solo toma
+     * unidades guardadas en el pañol del préstamo.
      *
      * @param  array<int, int>|null  $unitIds
      *
      * @throws ValidationException
      */
-    private function assignUnits(LoanItem $item, Product $product, ?array $unitIds, bool $delivered): void
+    private function assignUnits(LoanItem $item, Product $product, Storeroom $storeroom, ?array $unitIds, bool $delivered): void
     {
         $available = EquipmentUnit::where('product_id', $product->id)
             ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+            ->inStoreroom($storeroom->id)
             ->orderBy('id');
 
         if ($unitIds) {
@@ -323,7 +335,7 @@ class LoanService
 
             if ($units->count() !== count($unitIds)) {
                 throw ValidationException::withMessages([
-                    'items' => "Alguna de las unidades indicadas para \"{$product->name}\" no existe, no pertenece al producto o no está disponible.",
+                    'items' => "Alguna de las unidades indicadas para \"{$product->name}\" no existe, no pertenece al producto, no está disponible o no está en {$storeroom->name}.",
                 ]);
             }
         } else {
@@ -331,7 +343,7 @@ class LoanService
 
             if ($units->count() < $item->quantity) {
                 throw ValidationException::withMessages([
-                    'items' => "Stock insuficiente para \"{$product->name}\": "
+                    'items' => "Stock insuficiente para \"{$product->name}\" en {$storeroom->name}: "
                         ."se requieren {$item->quantity} y hay {$units->count()} disponibles.",
                 ]);
             }
@@ -345,13 +357,14 @@ class LoanService
     }
 
     /**
-     * Sustituye las unidades asignadas a un ítem por las realmente entregadas.
+     * Sustituye las unidades asignadas a un ítem por las realmente entregadas, que deben
+     * estar en el pañol del préstamo.
      *
      * @param  array<int, int>  $unitIds
      *
      * @throws ValidationException
      */
-    private function replaceUnits(LoanItem $item, array $unitIds, int $index): void
+    private function replaceUnits(LoanItem $item, Storeroom $storeroom, array $unitIds, int $index): void
     {
         $unitIds = array_values(array_unique($unitIds));
 
@@ -369,12 +382,13 @@ class LoanService
             $units = EquipmentUnit::whereIn('id', $toTake)
                 ->where('product_id', $item->product_id)
                 ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+                ->inStoreroom($storeroom->id)
                 ->lockForUpdate()
                 ->get();
 
             if ($units->count() !== count($toTake)) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.unit_ids" => 'Alguna de las unidades indicadas no existe, no pertenece al producto o no está disponible.',
+                    "items.{$index}.unit_ids" => "Alguna de las unidades indicadas no existe, no pertenece al producto, no está disponible o no está en {$storeroom->name}.",
                 ]);
             }
         }
@@ -438,14 +452,15 @@ class LoanService
     }
 
     /**
-     * Valida que cada producto exista, esté activo y tenga stock suficiente
-     * para la cantidad solicitada.
+     * Valida que cada producto exista, esté activo y tenga stock suficiente para la cantidad
+     * solicitada: en insumos, la cantidad del producto; en equipos y maquetas, las unidades
+     * `disponible` guardadas en el pañol del préstamo.
      *
      * @param  array<int, array<string, mixed>>  $items
      *
      * @throws ValidationException
      */
-    public function assertItemsAvailable(array $items): void
+    public function assertItemsAvailable(array $items, Storeroom $storeroom): void
     {
         foreach ($items as $index => $item) {
             $product = Product::find($item['product_id'] ?? 0);
@@ -476,10 +491,19 @@ class LoanService
                 ]);
             }
 
-            if ($product->quantity < $requested) {
+            $available = $product->hasUnits()
+                ? EquipmentUnit::where('product_id', $product->id)
+                    ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+                    ->inStoreroom($storeroom->id)
+                    ->count()
+                : (int) $product->quantity;
+
+            if ($available < $requested) {
+                $where = $product->hasUnits() ? " en {$storeroom->name}" : '';
+
                 throw ValidationException::withMessages([
-                    "items.{$index}.quantity" => "Stock insuficiente para \"{$product->name}\": "
-                        ."se solicitaron {$requested} y hay {$product->quantity} disponibles.",
+                    "items.{$index}.quantity" => "Stock insuficiente para \"{$product->name}\"{$where}: "
+                        ."se solicitaron {$requested} y hay {$available} disponibles.",
                 ]);
             }
         }
@@ -586,7 +610,7 @@ class LoanService
 
             $loan->forceFill($attributes)->save();
 
-            return $loan->load('items.units');
+            return $loan->load('items.units.cajon.location');
         });
     }
 

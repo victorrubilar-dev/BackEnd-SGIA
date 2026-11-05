@@ -107,6 +107,7 @@ class Product extends Model
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /** @return HasMany<EquipmentUnit, $this> */
     public function units(): HasMany
     {
         return $this->hasMany(EquipmentUnit::class);

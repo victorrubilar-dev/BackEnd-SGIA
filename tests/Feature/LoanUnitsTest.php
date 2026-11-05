@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\StockAlert;
 use App\Models\Storeroom;
@@ -49,6 +51,29 @@ class LoanUnitsTest extends TestCase
         app(EquipmentUnitService::class)->syncProductCounters($p);
 
         return [$p->fresh(), $units];
+    }
+
+    /**
+     * Unidades del producto guardadas en un cajón de una sala del pañol indicado.
+     *
+     * @return Collection<int, EquipmentUnit>
+     */
+    private function unitsInStoreroom(Product $product, Storeroom $storeroom, int $count = 1): Collection
+    {
+        $location = Location::factory()->create(['storeroom_id' => $storeroom->id, 'tipo' => Location::TIPO_SALA]);
+        $cajon = Cajon::factory()->create(['location_id' => $location->id]);
+        $units = EquipmentUnit::factory()->count($count)->create(['product_id' => $product->id, 'cajon_id' => $cajon->id]);
+        app(EquipmentUnitService::class)->syncProductCounters($product);
+
+        return $units;
+    }
+
+    private function remoteLoan(Product $product, int $quantity, ?Storeroom $storeroom = null): array
+    {
+        $loan = Loan::factory()->create(['requested_by' => $this->teacher->id, 'storeroom_id' => $storeroom?->id ?? Storeroom::default()->id]);
+        $item = LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => $product->name, 'quantity' => $quantity]);
+
+        return [$loan, $item];
     }
 
     private function checkout(array $items, array $extra = []): TestResponse
@@ -308,5 +333,99 @@ class LoanUnitsTest extends TestCase
         $this->postJson('/api/loans/checkin', ['loan_id' => $response->json('data.id'), 'items' => [['item_id' => $response->json('data.items.0.id'), 'condition' => 'bueno']]])
             ->assertOk()->assertJsonPath('data.items.0.returned_quantity', 4);
         $this->assertSame(10, $supply->fresh()->quantity);
+    }
+
+    public function test_approve_only_assigns_units_of_the_loan_storeroom(): void
+    {
+        $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0]);
+        $other = Storeroom::factory()->create(['name' => 'Pañol Norte']);
+        $foreign = $this->unitsInStoreroom($product, $other, 2);   // id menor, otro pañol
+        $own = $this->unitsInStoreroom($product, Storeroom::default(), 1);
+        [$loan, $item] = $this->remoteLoan($product, 1);
+        Sanctum::actingAs($this->warehouse);
+
+        $this->postJson("/api/loans/{$loan->id}/approve")->assertOk()->assertJsonPath('loan.items.0.units.0.id', $own[0]->id);
+
+        $this->assertSame([$own[0]->id], $item->units()->pluck('equipment_units.id')->all());
+        $this->assertSame(['disponible', 'disponible'], $foreign->map(fn ($u) => $u->fresh()->status)->all());
+    }
+
+    public function test_approve_fails_when_the_storeroom_has_not_enough_units(): void
+    {
+        $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0, 'name' => 'Router Cisco 1941']);
+        $this->unitsInStoreroom($product, Storeroom::factory()->create(), 3);
+        $this->unitsInStoreroom($product, Storeroom::default(), 1);
+        [$loan, $item] = $this->remoteLoan($product, 2);
+        Sanctum::actingAs($this->warehouse);
+
+        $this->postJson("/api/loans/{$loan->id}/approve")->assertStatus(422)
+            ->assertJsonValidationErrors(['items' => 'Stock insuficiente para "Router Cisco 1941" en '.Storeroom::default()->name]);
+
+        $this->assertSame('pendiente', $loan->fresh()->status);
+        $this->assertSame(0, $item->units()->count());
+    }
+
+    public function test_checkout_and_deliver_reject_units_of_another_storeroom(): void
+    {
+        $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0]);
+        $other = Storeroom::factory()->create();
+        $foreign = $this->unitsInStoreroom($product, $other, 1);
+        $own = $this->unitsInStoreroom($product, Storeroom::default(), 1);
+        Sanctum::actingAs($this->warehouse);
+
+        $this->checkout([['product_id' => $product->id, 'quantity' => 1, 'unit_ids' => [$foreign[0]->id]]])
+            ->assertStatus(422)->assertJsonValidationErrors('items');
+        $this->checkout([['product_id' => $product->id, 'quantity' => 2]])
+            ->assertStatus(422)->assertJsonValidationErrors('items.0.quantity');
+
+        [$loan, $item] = $this->remoteLoan($product, 1);
+        $this->postJson("/api/loans/{$loan->id}/approve")->assertOk();
+        $this->postJson("/api/loans/{$loan->id}/deliver", ['items' => [['item_id' => $item->id, 'unit_ids' => [$foreign[0]->id]]]])
+            ->assertStatus(422)->assertJsonValidationErrors('items.0.unit_ids');
+
+        $this->assertSame('en_proceso', $loan->fresh()->status);
+        $this->assertSame([$own[0]->id], $item->units()->pluck('equipment_units.id')->all());
+        $this->assertSame('disponible', $foreign[0]->fresh()->status);
+    }
+
+    public function test_checkout_for_the_other_storeroom_takes_its_units(): void
+    {
+        $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0]);
+        $other = Storeroom::factory()->create();
+        $foreign = $this->unitsInStoreroom($product, $other, 1);
+        $this->unitsInStoreroom($product, Storeroom::default(), 1);
+        Sanctum::actingAs($this->warehouse);
+
+        $this->checkout([['product_id' => $product->id, 'quantity' => 1, 'unit_ids' => [$foreign[0]->id]]], ['storeroom_id' => $other->id])
+            ->assertCreated()->assertJsonPath('data.storeroom_id', $other->id);
+
+        $this->assertSame('prestado', $foreign[0]->fresh()->status);
+    }
+
+    public function test_approve_and_show_include_the_location_of_each_unit(): void
+    {
+        $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0]);
+        $storeroom = Storeroom::default();
+        $location = Location::factory()->create(['storeroom_id' => $storeroom->id, 'tipo' => Location::TIPO_SALA, 'nombre' => 'Laboratorio de Redes']);
+        $cajon = Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'C-02', 'descripcion' => 'Routers']);
+        $unit = EquipmentUnit::factory()->create(['product_id' => $product->id, 'cajon_id' => $cajon->id]);
+        app(EquipmentUnitService::class)->syncProductCounters($product);
+        [$loan] = $this->remoteLoan($product, 1);
+        Sanctum::actingAs($this->warehouse);
+
+        $expected = [
+            'cajon' => ['id' => $cajon->id, 'codigo' => 'C-02', 'descripcion' => 'Routers'],
+            'location' => ['id' => $location->id, 'nombre' => 'Laboratorio de Redes', 'tipo' => 'sala', 'storeroom_id' => $storeroom->id],
+        ];
+
+        $approved = $this->postJson("/api/loans/{$loan->id}/approve")->assertOk()->json('loan.items.0.units.0');
+        $this->assertSame($unit->id, $approved['id']);
+        $this->assertSame($expected, ['cajon' => $approved['cajon'], 'location' => $approved['location']]);
+
+        $shown = $this->getJson("/api/loans/{$loan->id}")->assertOk()->json('data.items.0.units.0');
+        $this->assertSame($expected, ['cajon' => $shown['cajon'], 'location' => $shown['location']]);
+
+        $delivered = $this->postJson("/api/loans/{$loan->id}/deliver")->assertOk()->json('loan.items.0.units.0');
+        $this->assertSame($expected, ['cajon' => $delivered['cajon'], 'location' => $delivered['location']]);
     }
 }

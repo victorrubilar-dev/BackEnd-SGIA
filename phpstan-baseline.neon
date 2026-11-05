@@ -433,12 +433,6 @@ parameters:
 			path: app/Http/Resources/EquipmentUnitResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$location\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Http/Resources/EquipmentUnitResource.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$pivot\.$#'
 			identifier: property.notFound
 			count: 1

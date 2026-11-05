@@ -1,6 +1,6 @@
 # Ubicación de las unidades asignadas a un préstamo
 
-Especificación para mostrarle al pañol (`PAN-01`) dónde está físicamente cada unidad de equipo o maqueta asignada a un préstamo, para que la retire del lugar correcto, y para que esas unidades salgan solo del pañol al que se le hizo la solicitud. Estado: **pendiente de implementar**. Seguimiento en `TASKS/Prestamos.md`; cambios de contrato para el frontend en `TASKS/front-end.md`.
+Especificación para mostrarle al pañol (`PAN-01`) dónde está físicamente cada unidad de equipo o maqueta asignada a un préstamo, para que la retire del lugar correcto, y para que esas unidades salgan solo del pañol al que se le hizo la solicitud. Estado: **implementado** (noviembre 2026). Seguimiento en `TASKS/Prestamos.md`; cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Contexto
 
@@ -101,10 +101,10 @@ Toda unidad tiene cajón (`equipment_units.cajon_id` es obligatorio), así que n
 - En el préstamo `en_proceso`, por cada ítem con unidades, una fila por unidad: código, número de serie, sala y cajón.
 - Ordenar o agrupar las unidades por sala y cajón para que el retiro sea un solo recorrido.
 - Mostrar la ubicación también en la respuesta de la aprobación, sin obligar a recargar el detalle.
-- Si alguna unidad no se encontró, la pantalla de entrega permite cambiarla por otra del mismo pañol. Los candidatos se listan con `GET /api/products/{id}/units?status=disponible&storeroom_id={loan.storeroom_id}` (filtro existente).
+- Si alguna unidad no se encontró, la pantalla de entrega permite cambiarla por otra del mismo pañol. Los candidatos se listan con `GET /api/equipment-units?product_id={id}&status=disponible&storeroom_id={loan.storeroom_id}` (filtros existentes; ver `TASKS/front-end.md`).
 - Insumos: sin cambios, siguen mostrando `items[].location` / `items[].cajon`.
 
-## Backend (cuando se implemente)
+## Backend
 
 - `EquipmentUnit`: scope `inStoreroom($storeroomId)` (unidades de un cajón de alguna sala del pañol). El filtro `?storeroom_id=` de `EquipmentUnitService::applyFilters()` puede reutilizarlo.
 - `LoanService`: aplicar el scope en `assertItemsAvailable()` (equipos y maquetas, con el pañol del préstamo), en `assignUnits()` (aprobación y presencial) y en `replaceUnits()` (entrega). Los mensajes de `422` nombran el pañol.

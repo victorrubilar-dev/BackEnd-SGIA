@@ -191,6 +191,9 @@ class EquipmentUnitService
 
     /**
      * Filtros del listado: producto, estado, ubicación, búsqueda y mantención vencida.
+     *
+     * @param  Builder<EquipmentUnit>  $query
+     * @return Builder<EquipmentUnit>
      */
     public function applyFilters(Builder $query, Request $request): Builder
     {
@@ -211,7 +214,7 @@ class EquipmentUnitService
         }
 
         if ($request->filled('storeroom_id')) {
-            $query->whereHas('cajon.location', fn ($q) => $q->where('storeroom_id', $request->integer('storeroom_id')));
+            $query->inStoreroom($request->integer('storeroom_id'));
         }
 
         if ($request->filled('search')) {

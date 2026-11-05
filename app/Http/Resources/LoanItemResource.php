@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\EquipmentUnit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Carbon;
@@ -39,6 +40,8 @@ class LoanItemResource extends JsonResource
                 'status' => $unit->status,
                 'returned_at' => $unit->pivot->returned_at ? Carbon::parse($unit->pivot->returned_at)->toIso8601String() : null,
                 'return_condition' => $unit->pivot->return_condition,
+                // Ubicación física de la unidad (no la del producto), para que el pañol la retire.
+                ...$this->unitPlace($unit),
             ])->values()),
             'is_returned' => $this->returned_at !== null,
             'returned_at' => $this->returned_at?->toIso8601String(),
@@ -61,6 +64,31 @@ class LoanItemResource extends JsonResource
                     'sala' => $location->sala ?? $location->nombre,
                     'cajon' => $cajon?->codigo ?? $location->cajon,
                     'descripcion' => $location->descripcion,
+                ]
+                : null,
+        ];
+    }
+
+    /**
+     * `cajon` y `location` de una unidad, si se precargó `units.cajon.location`.
+     *
+     * @return array{cajon: array<string, mixed>|null, location: array<string, mixed>|null}
+     */
+    private function unitPlace(EquipmentUnit $unit): array
+    {
+        $cajon = $unit->relationLoaded('cajon') ? $unit->cajon : null;
+        $location = $cajon?->relationLoaded('location') ? $cajon->location : null;
+
+        return [
+            'cajon' => $cajon !== null
+                ? ['id' => $cajon->id, 'codigo' => $cajon->codigo, 'descripcion' => $cajon->descripcion]
+                : null,
+            'location' => $location !== null
+                ? [
+                    'id' => $location->id,
+                    'nombre' => $location->nombre ?? $location->sala,
+                    'tipo' => $location->tipo ?? 'sala',
+                    'storeroom_id' => $location->storeroom_id,
                 ]
                 : null,
         ];
