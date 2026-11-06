@@ -52,7 +52,18 @@ class QuotationService
             }
 
             foreach ($validated['supplier_ids'] as $supplierId) {
-                $quotation->suppliers()->create(['supplier_id' => $supplierId]);
+                $contact = $quotation->suppliers()->create(['supplier_id' => $supplierId]);
+
+                // Temporal: el precio indicado al crear se registra como oferta de cada proveedor.
+                foreach ($validated['products'] as $product) {
+                    if (isset($product['unit_price'])) {
+                        $contact->offerItems()->create([
+                            'product_id' => $product['id'],
+                            'requested_quantity' => $product['quantity'],
+                            'offered_unit_price' => $product['unit_price'],
+                        ]);
+                    }
+                }
             }
 
             return $quotation;

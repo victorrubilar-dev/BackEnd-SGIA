@@ -20,6 +20,8 @@ class StoreQuotationRequest extends FormRequest
             'products' => ['required', 'array', 'min:1'],
             'products.*.id' => ['required', 'integer', 'exists:products,id'],
             'products.*.quantity' => ['required', 'integer', 'min:1'],
+            // Temporal: precio de referencia que se copia como oferta de cada proveedor contactado.
+            'products.*.unit_price' => ['nullable', 'numeric', 'min:0'],
             'products.*.name' => ['sometimes', 'string', 'max:255'],
 
             // Mínimo 1 proveedor
