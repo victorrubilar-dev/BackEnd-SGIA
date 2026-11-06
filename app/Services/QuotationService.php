@@ -153,6 +153,15 @@ class QuotationService
             'responded_at' => now(),
         ]);
 
+        // Precios por producto: son los que usa la orden de compra (`offeredPrice`).
+        $requested = $quotation->items->pluck('quantity', 'product_id');
+        foreach ($validated['items'] ?? [] as $offer) {
+            $contact->offerItems()->updateOrCreate(
+                ['product_id' => $offer['product_id']],
+                ['requested_quantity' => $requested[$offer['product_id']] ?? 1, 'offered_unit_price' => $offer['offered_unit_price']]
+            );
+        }
+
         $this->syncStatusFromResponses($quotation);
 
         return $contact->fresh();

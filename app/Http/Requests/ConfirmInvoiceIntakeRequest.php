@@ -18,6 +18,8 @@ class ConfirmInvoiceIntakeRequest extends FormRequest
             // Obligatorio si no hay orden de compra ni carrera detectada; si viene, reemplaza al del borrador.
             'annual_budget_id' => ['nullable', 'integer', 'exists:annual_budgets,id'],
             'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
+            // Solo lo honra DIR-01; otro rol recibe 403 si hay exceso.
+            'allow_over_budget' => ['sometimes', 'boolean'],
             'items' => ['required', 'array', 'min:1'],
             'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
             'items.*.quantity' => ['required', 'integer', 'min:1', 'max:100000'],

@@ -70,9 +70,9 @@ class InvoiceIntakeService
      *
      * @throws ValidationException
      */
-    public function confirm(InvoiceIntake $intake, string $documentNumber, array $items, int $userId, ?int $purchaseId = null, ?int $budgetId = null): InvoiceIntake
+    public function confirm(InvoiceIntake $intake, string $documentNumber, array $items, int $userId, ?int $purchaseId = null, ?int $budgetId = null, bool $allowOverBudget = false, bool $canAuthorizeOver = false): InvoiceIntake
     {
-        return DB::transaction(function () use ($intake, $documentNumber, $items, $userId, $purchaseId, $budgetId) {
+        return DB::transaction(function () use ($intake, $documentNumber, $items, $userId, $purchaseId, $budgetId, $allowOverBudget, $canAuthorizeOver) {
             $locked = InvoiceIntake::whereKey($intake->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->status !== InvoiceIntake::STATUS_DRAFT) {
@@ -122,6 +122,8 @@ class InvoiceIntakeService
                 default => $this->linkablePurchase($purchaseId),
             };
 
+            $this->assertNotDuplicate($locked, $documentNumber, $purchase?->supplier_id ?? ($locked->raw_ocr_payload['supplier_id'] ?? null));
+
             // Con compra manda su presupuesto; sin compra, el elegido o el del borrador (por carrera detectada).
             $budgetId ??= $locked->annual_budget_id ?? $purchase?->annual_budget_id;
 
@@ -145,10 +147,29 @@ class InvoiceIntakeService
                 'status' => InvoiceIntake::STATUS_CONFIRMED,
             ]);
 
-            $this->settle($locked, $budget, $purchase, $documentNumber, $totalCents, $userId);
+            $this->settle($locked, $budget, $purchase, $documentNumber, $totalCents, $userId, $allowOverBudget, $canAuthorizeOver);
 
             return $locked;
         });
+    }
+
+    /**
+     * Una factura vigente (borrador no cuenta) con el mismo número y proveedor ya existe.
+     *
+     * @throws ValidationException
+     */
+    private function assertNotDuplicate(InvoiceIntake $intake, string $documentNumber, ?int $supplierId): void
+    {
+        $duplicate = InvoiceIntake::with('purchase:id,supplier_id')
+            ->where('status', InvoiceIntake::STATUS_CONFIRMED)
+            ->where('document_number', $documentNumber)
+            ->whereKeyNot($intake->id)
+            ->get()
+            ->contains(fn (InvoiceIntake $other) => ($other->purchase?->supplier_id ?? ($other->raw_ocr_payload['supplier_id'] ?? null)) === $supplierId);
+
+        if ($duplicate) {
+            throw ValidationException::withMessages(['document_number' => 'Ya existe una factura vigente con ese número para el mismo proveedor.']);
+        }
     }
 
     /**
@@ -164,17 +185,16 @@ class InvoiceIntakeService
     /**
      * Con la factura ligada: libera la reserva de la orden, consume del presupuesto de la orden el
      * total facturado (queda en `annual_budget_id` para que la anulación lo reponga) y la deja `completa`.
-     * Si el total supera el disponible, `consume` lanza 422 y se revierte todo el ingreso.
+     * Si el total supera lo libre, `consume` lanza 422 (o 403 si pide autorizar quien no es DIR-01) y se revierte todo el ingreso.
      */
-    private function settle(InvoiceIntake $intake, ?AnnualBudget $budget, ?Purchase $purchase, string $documentNumber, int $totalCents, int $userId): void
+    private function settle(InvoiceIntake $intake, ?AnnualBudget $budget, ?Purchase $purchase, string $documentNumber, int $totalCents, int $userId, bool $allowOver = false, bool $canAuthorizeOver = false): void
     {
         if ($purchase !== null && $budget !== null) {
             $this->budgets->releaseReservation($budget, $purchase, $userId, $intake);
         }
 
-        // Si el total supera el disponible, `consume` lanza 422 y se revierte todo el ingreso.
         if ($budget !== null) {
-            $this->budgets->consume($budget, $totalCents / 100, $intake, $userId, $purchase);
+            $this->budgets->consume($budget, $totalCents / 100, $intake, $userId, $purchase, $allowOver, $canAuthorizeOver);
         }
 
         if ($purchase === null) {

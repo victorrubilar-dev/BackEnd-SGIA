@@ -51,7 +51,7 @@ class BudgetLedgerTest extends TestCase
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);
 
         $this->service->reserve($budget, 300000, $purchase, $this->admin->id);
-        $this->assertInvariant($budget, '700000.00', '300000.00');
+        $this->assertInvariant($budget, '1000000.00', '300000.00');
         $this->assertSame('300000.00', $purchase->fresh()->reserved_amount);
 
         $this->service->releaseReservation($budget, $purchase->fresh(), $this->admin->id);
@@ -86,7 +86,7 @@ class BudgetLedgerTest extends TestCase
             $this->assertArrayHasKey('total', $e->errors());
         }
 
-        $this->assertInvariant($budget, '20000.00', '80000.00');
+        $this->assertInvariant($budget, '100000.00', '80000.00');
         $this->assertSame(1, BudgetMovement::where('annual_budget_id', $budget->id)->count());
     }
 
@@ -121,8 +121,9 @@ class BudgetLedgerTest extends TestCase
 
         $this->patchJson("/api/budgets/{$budget->id}", ['initial_amount' => 600000])
             ->assertOk()
-            ->assertJsonPath('data.available_amount', '100000.00')
+            ->assertJsonPath('data.available_amount', '400000.00')
             ->assertJsonPath('data.reserved_amount', '300000.00')
+            ->assertJsonPath('data.free_amount', '100000.00')
             ->assertJsonPath('data.consumed_amount', '200000.00');
     }
 }

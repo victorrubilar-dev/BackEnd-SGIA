@@ -65,7 +65,7 @@ class PurchaseBudgetTest extends TestCase
             ->assertJsonPath('data.annual_budget_id', $this->budget->id);
 
         $budget = $this->budget->fresh();
-        $this->assertSame('953000.00', $budget->available_amount);
+        $this->assertSame('1000000.00', $budget->available_amount);
         $this->assertSame('47000.00', $budget->reserved_amount);
         $this->assertDatabaseHas('budget_movements', ['annual_budget_id' => $budget->id, 'type' => 'reserva', 'amount' => '47000.00']);
     }
@@ -152,7 +152,7 @@ class PurchaseBudgetTest extends TestCase
             'purchase_id' => $purchase->id,
         ])->assertCreated()->assertJsonPath('data.purchase_id', $purchase->id)->json('data.id');
 
-        $this->assertSame('900000.00', $this->budget->fresh()->available_amount);
+        $this->assertSame('1000000.00', $this->budget->fresh()->available_amount);
 
         // La factura real es menor que lo reservado: la diferencia vuelve al disponible.
         $this->postJson("/api/invoice-intakes/$intakeId/confirm", [
@@ -190,9 +190,9 @@ class PurchaseBudgetTest extends TestCase
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
             'document_number' => 'F-10',
             'items' => [['product_id' => $supply->id, 'quantity' => 1, 'unit_price' => 1100000]],
-        ])->assertStatus(422)->assertJsonValidationErrors('items');
+        ])->assertStatus(422)->assertJsonPath('code', 'over_budget');
 
-        $this->assertSame('900000.00', $this->budget->fresh()->available_amount);
+        $this->assertSame('1000000.00', $this->budget->fresh()->available_amount);
         $this->assertSame('100000.00', $purchase->fresh()->reserved_amount);
         $this->assertSame('borrador', $intake->fresh()->status);
     }

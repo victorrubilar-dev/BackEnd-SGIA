@@ -81,7 +81,8 @@ class BudgetReportTest extends TestCase
         $this->assertSame('1000000.00', $row['initial_amount']);
         $this->assertSame('250000.00', $row['reserved_amount']);
         $this->assertSame('150000.00', $row['consumed_amount']);
-        $this->assertSame('600000.00', $row['available_amount']);
+        $this->assertSame('850000.00', $row['available_amount']);
+        $this->assertSame('600000.00', $row['free_amount']);
         $this->assertEquals(40.0, $row['execution_percent']);
         $this->assertNotNull($reserve->json('data.id'));
     }

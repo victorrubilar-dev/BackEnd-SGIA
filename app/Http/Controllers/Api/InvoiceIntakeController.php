@@ -9,6 +9,7 @@ use App\Http\Resources\InvoiceIntakeResource;
 use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
 use App\Models\Purchase;
+use App\Models\User;
 use App\Services\InvoiceIntakeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -96,6 +97,8 @@ class InvoiceIntakeController extends Controller
             $request->user()->id,
             $request->validated('purchase_id'),
             $request->validated('annual_budget_id'),
+            $request->boolean('allow_over_budget'),
+            $request->user()->role === User::ROLE_DIRECTOR,
         );
 
         return new InvoiceIntakeResource($intake->load(['items.product.cajon.location', 'purchase', 'annualBudget']));

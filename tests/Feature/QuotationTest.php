@@ -196,6 +196,30 @@ class QuotationTest extends TestCase
         $response->assertJsonPath('data.allowed_transitions', [Quotation::STATUS_ACCEPTED, Quotation::STATUS_REJECTED]);
     }
 
+    public function test_response_saves_offered_unit_prices_per_product(): void
+    {
+        $quotation = Quotation::factory()->create(['created_by' => $this->director->id]);
+        $quotation->items()->create(['product_id' => $this->products[0]->id, 'name' => $this->products[0]->name, 'quantity' => 4]);
+        $contact = $quotation->suppliers()->create(['supplier_id' => $this->suppliers[0]->id]);
+        Sanctum::actingAs($this->director);
+
+        $this->patchJson("/api/quotations/{$quotation->id}/responses", [
+            'supplier_id' => $this->suppliers[0]->id,
+            'status' => QuotationSupplier::STATUS_ACCEPTED,
+            'offer_total' => 4000,
+            'items' => [['product_id' => $this->products[0]->id, 'offered_unit_price' => 1000]],
+        ])->assertStatus(201);
+
+        $this->assertSame('1000.00', $contact->offerItems()->where('product_id', $this->products[0]->id)->value('offered_unit_price'));
+        $this->assertSame(4, $contact->offerItems()->first()->requested_quantity);
+
+        $this->patchJson("/api/quotations/{$quotation->id}/responses", [
+            'supplier_id' => $this->suppliers[0]->id,
+            'status' => QuotationSupplier::STATUS_ACCEPTED,
+            'items' => [['product_id' => $this->products[0]->id]],
+        ])->assertStatus(422)->assertJsonValidationErrors('items.0.offered_unit_price');
+    }
+
     public function test_quotation_status_transitions_follow_state_machine(): void
     {
         $quotation = Quotation::factory()->create(['created_by' => $this->director->id]);

@@ -17,11 +17,13 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\BuildsProductPayload;
+use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 class InvoiceIntakeTest extends TestCase
 {
     use BuildsProductPayload;
+    use CreatesQuotations;
     use DatabaseTransactions;
 
     private const INVOICE_TEXT = <<<'TXT'
@@ -214,7 +216,7 @@ TXT;
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
             'document_number' => 'F-1',
             'items' => [['product_id' => $supply->id, 'quantity' => 10, 'unit_price' => 500]],
-        ])->assertStatus(422)->assertJsonValidationErrors('items');
+        ])->assertStatus(422)->assertJsonPath('code', 'over_budget');
 
         $this->assertSame('1000.00', $budget->fresh()->available_amount);
         $this->assertSame(3, $supply->fresh()->quantity);
@@ -268,7 +270,7 @@ TXT;
     public function test_list_filters_show_and_file_download(): void
     {
         $intake = $this->draft();
-        $other = InvoiceIntake::factory()->create(['status' => InvoiceIntake::STATUS_CONFIRMED]);
+        $other = InvoiceIntake::factory()->create(['status' => InvoiceIntake::STATUS_CONFIRMED, 'annual_budget_id' => AnnualBudget::factory()->create()->id]);
         Sanctum::actingAs($this->admin);
 
         $ids = collect($this->getJson('/api/invoice-intakes?status=borrador')->assertOk()->json('data'))->pluck('id');
@@ -378,20 +380,20 @@ TXT;
         Sanctum::actingAs($this->admin);
         $purchaseId = $this->postJson('/api/purchases', [
             'annual_budget_id' => $budget->id,
-            'supplier_id' => Supplier::factory()->create()->id,
+            'quotation_id' => $this->acceptedQuotation()->id,
             'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 5, 'unit_price' => 1000]],
         ])->assertCreated()->json('data.id');
-        $this->assertSame('995000.00', $budget->fresh()->available_amount);
+        $this->assertSame('1000000.00', $budget->fresh()->available_amount);
 
-        $intake = $this->draft();
+        $intake = $this->draft($budget);
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
             'document_number' => 'F-9',
             'items' => [['product_id' => $product->id, 'quantity' => 5, 'unit_price' => 1100]],
         ])->assertOk()->assertJsonPath('data.purchase_id', $purchaseId)
             ->assertJsonPath('data.purchase.status', 'completa')
             ->assertJsonPath('data.annual_budget.id', $budget->id)
-            ->assertJsonPath('data.annual_budget.reserved', '0.00')
-            ->assertJsonPath('data.annual_budget.available', '994500.00');
+            ->assertJsonPath('data.annual_budget.reserved_amount', '0.00')
+            ->assertJsonPath('data.annual_budget.available_amount', '994500.00');
 
         $purchase = Purchase::find($purchaseId);
         $this->assertSame(Purchase::STATUS_COMPLETED, $purchase->status);
@@ -412,7 +414,7 @@ TXT;
         Sanctum::actingAs($this->admin);
         $purchaseId = $this->postJson('/api/purchases', [
             'annual_budget_id' => $budget->id,
-            'supplier_id' => Supplier::factory()->create()->id,
+            'quotation_id' => $this->acceptedQuotation()->id,
             'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 1, 'unit_price' => 5000]],
         ])->assertCreated()->json('data.id');
 
