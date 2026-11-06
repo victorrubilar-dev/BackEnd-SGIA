@@ -29,7 +29,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Código</th><th>Estado</th><th>Solicitante</th><th>Sala</th>
+                    <th>Código</th><th>Estado</th><th>Solicitante</th><th>Asignatura</th><th>Carrera</th><th>Sala</th>
                     <th>Fecha</th><th>Vence</th><th>Devuelto</th><th>Ítems</th>
                 </tr>
             </thead>
@@ -39,6 +39,8 @@
                         <td>{{ $loan->code }}</td>
                         <td>{{ $loan->status }}</td>
                         <td>{{ $loan->borrower_name ?? $loan->requester?->name }}</td>
+                        <td>{{ $loan->subject ?? '—' }}</td>
+                        <td>{{ $loan->career?->name ?? '—' }}</td>
                         <td>{{ $loan->room }}</td>
                         <td>{{ $loan->loan_date?->format('d-m-Y') }}</td>
                         <td class="{{ $loan->isOverdue() ? 'late' : '' }}">{{ ($loan->due_date ?? $loan->loan_date)?->format('d-m-Y') }}</td>

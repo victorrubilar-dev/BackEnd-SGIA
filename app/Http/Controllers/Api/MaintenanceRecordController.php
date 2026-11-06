@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelMaintenanceRecordRequest;
 use App\Http\Requests\FinishMaintenanceRecordRequest;
+use App\Http\Requests\MaintenanceSummaryRequest;
 use App\Http\Requests\StoreMaintenanceRecordRequest;
 use App\Http\Requests\UpdateMaintenanceRecordRequest;
 use App\Http\Resources\MaintenanceRecordResource;
+use App\Http\Resources\MaintenanceSummaryResource;
 use App\Models\EquipmentUnit;
 use App\Models\MaintenanceRecord;
 use App\Services\MaintenanceRecordService;
@@ -39,6 +41,14 @@ class MaintenanceRecordController extends Controller
         return MaintenanceRecordResource::collection(
             $maintenance->listQuery($request)->with(self::LIST_RELATIONS)->paginate($this->perPage($request))
         );
+    }
+
+    /**
+     * GET /api/maintenance-records/summary — mantenciones por carrera.
+     */
+    public function summary(MaintenanceSummaryRequest $request, MaintenanceRecordService $maintenance): MaintenanceSummaryResource
+    {
+        return new MaintenanceSummaryResource($maintenance->summaryByCareer($request));
     }
 
     /**

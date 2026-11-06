@@ -184,7 +184,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} rechazado: el docente fue notificado con el motivo.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan),
+            'loan' => new LoanResource($loan->load('career')),
         ]);
     }
 
@@ -203,7 +203,7 @@ class LoanController extends Controller
         return response()->json([
             'message' => "Préstamo {$loan->code} entregado y marcado como procesado.",
             'allowed_transitions' => LoanStateMachine::allowedFrom($loan->status),
-            'loan' => new LoanResource($loan->load('items.units.cajon.location')),
+            'loan' => new LoanResource($loan->load(['items.units.cajon.location', 'career'])),
         ]);
     }
 
@@ -290,7 +290,7 @@ class LoanController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $query = Loan::with(['items.units', 'requester'])->orderBy('loan_date')->orderBy('id');
+        $query = Loan::with(['items.units', 'requester', 'career'])->orderBy('loan_date')->orderBy('id');
         $loanService->applyHistoryFilters($query, $request);
 
         if (! empty($validated['from'])) {
@@ -315,7 +315,7 @@ class LoanController extends Controller
         return response()->streamDownload(function () use ($loans) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel lea UTF-8
-            fputcsv($out, ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems']);
+            fputcsv($out, ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Carrera', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems']);
 
             foreach ($loans as $loan) {
                 fputcsv($out, [
@@ -324,6 +324,7 @@ class LoanController extends Controller
                     $loan->status,
                     $loan->borrower_name ?? $loan->requester?->name,
                     $loan->subject,
+                    $loan->career?->name,
                     $loan->room,
                     $loan->loan_date?->toDateString(),
                     ($loan->due_date ?? $loan->loan_date)?->toDateString(),
