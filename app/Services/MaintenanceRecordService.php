@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\InvalidMaintenanceRecordStatusTransition;
+use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\MaintenanceRecord;
@@ -54,6 +55,63 @@ class MaintenanceRecordService
             ->orderBy('products.maintenance_priority')
             ->orderByDesc('maintenance_records.started_at')
             ->orderByDesc('maintenance_records.id');
+    }
+
+    /**
+     * Mantenciones por carrera del producto (todas las carreras, aun en cero; `Sin carrera` solo si hay),
+     * con desglose por estado y unidades distintas. Filtros: `year`, `from`, `to` (fecha de inicio).
+     *
+     * @return array{careers: array<int, array<string, mixed>>, total: array<string, mixed>}
+     */
+    public function summaryByCareer(Request $request): array
+    {
+        $query = MaintenanceRecord::query()
+            ->join('equipment_units', 'equipment_units.id', '=', 'maintenance_records.equipment_unit_id')
+            ->join('products', 'products.id', '=', 'equipment_units.product_id');
+
+        if ($request->filled('year')) {
+            $query->whereYear('maintenance_records.started_at', $request->integer('year'));
+        }
+        if ($request->filled('from')) {
+            $query->where('maintenance_records.started_at', '>=', $request->date('from')->startOfDay());
+        }
+        if ($request->filled('to')) {
+            $query->where('maintenance_records.started_at', '<=', $request->date('to')->endOfDay());
+        }
+
+        $rows = (clone $query)->groupBy('products.career_id', 'maintenance_records.status')
+            ->selectRaw('products.career_id, maintenance_records.status, count(*) as total')
+            ->get();
+        $units = (clone $query)->groupBy('products.career_id')
+            ->selectRaw('products.career_id, count(distinct maintenance_records.equipment_unit_id) as units')
+            ->pluck('units', 'career_id');
+
+        $blank = fn (?int $id, string $name, ?string $code) => [
+            'career_id' => $id, 'name' => $name, 'code' => $code, 'total' => 0,
+            'by_status' => array_fill_keys(MaintenanceRecord::STATUSES, 0), 'units' => (int) ($units[$id] ?? 0),
+        ];
+        $careers = Career::orderBy('code')->get()->mapWithKeys(fn ($c) => [$c->id => $blank($c->id, $c->name, $c->code)])->all();
+        $careers[0] = $blank(null, 'Sin carrera', null);
+
+        foreach ($rows as $row) {
+            $key = $row->career_id ?? 0;
+            $careers[$key]['by_status'][$row->status] = (int) $row->total;
+            $careers[$key]['total'] += (int) $row->total;
+        }
+        if ($careers[0]['total'] === 0) {
+            unset($careers[0]);
+        }
+
+        $careers = array_values($careers);
+        $total = ['total' => 0, 'by_status' => array_fill_keys(MaintenanceRecord::STATUSES, 0), 'units' => $query->distinct()->count('maintenance_records.equipment_unit_id')];
+        foreach ($careers as $c) {
+            $total['total'] += $c['total'];
+            foreach ($c['by_status'] as $status => $n) {
+                $total['by_status'][$status] += $n;
+            }
+        }
+
+        return ['careers' => $careers, 'total' => $total];
     }
 
     /**

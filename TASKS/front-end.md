@@ -343,3 +343,7 @@ Especificación completa: `docs/solicitud-prestamo-profesor.md`.
 - Factura duplicada (mismo `document_number` y proveedor, vigente): `422` en `document_number`. `linked` indica si quedó asociada a una OC.
 - Nuevo `GET /api/purchases/{id}/trace` (AD-01, DIR-01, PAN-01): `{purchase, quotations[], invoices[], budget_movements[], stock_entries[]}`.
 - OCR local: detecta el número de factura en `prueba1..3` (`N* 1111`, `Ne208`, `N? 20050`).
+
+## Mantenciones por carrera
+
+- Nueva ruta `GET /api/maintenance-records/summary` (`AD-01`/`DIR-01`/`PAN-01`, `PRO-01` → `403`; query `year`, `from`, `to`; `422` si `to` < `from`). `data`: `careers[]` (`career_id`, `name`, `code`, `total`, `by_status` con `en_curso`/`finalizada`/`anulada`, `units`) y `total` (`total`, `by_status`, `units`). Ruta estática antes de `/maintenance-records/{id}`.

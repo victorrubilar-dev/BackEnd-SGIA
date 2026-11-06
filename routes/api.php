@@ -287,6 +287,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-18: Registro de mantenciones (FU-05, PAN-01 y AD-01; DIR-01 lectura)
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::get('/maintenance-records', [MaintenanceRecordController::class, 'index']);
+        Route::get('/maintenance-records/summary', [MaintenanceRecordController::class, 'summary']);
         Route::get('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'show']);
         Route::get('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'unitIndex']);
     });

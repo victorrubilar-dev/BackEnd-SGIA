@@ -71,6 +71,30 @@ class LoanRequestTest extends TestCase
         $this->getJson('/api/loans?career_id='.($career->id + 100000))->assertOk()->assertJsonCount(0, 'data');
     }
 
+    public function test_export_and_reject_response_include_subject_and_career_and_old_loans_without_them_do_not_break(): void
+    {
+        $career = Career::factory()->create(['name' => 'Ingeniería Zeta']);
+        Sanctum::actingAs($this->teacher);
+        $id = $this->postJson('/api/loans/requests', [
+            'items' => [['product_id' => $this->product->id, 'quantity' => 1]],
+            'subject' => 'Redes Zeta', 'room' => 'Sala 1', 'loan_date' => now()->addDay()->toDateString(),
+            'career_id' => $career->id,
+        ])->assertCreated()->json('data.id');
+        $old = Loan::find($id)->replicate(['code']);
+        $old->forceFill(['code' => 'LEG-'.uniqid(), 'subject' => null, 'career_id' => null])->save();
+
+        Sanctum::actingAs($this->warehouse);
+        $csv = $this->get('/api/loans/export?format=csv')->assertOk()->streamedContent();
+        $this->assertStringContainsString('Carrera', $csv);
+        $this->assertStringContainsString('Redes Zeta', $csv);
+        $this->assertStringContainsString('Ingeniería Zeta', $csv);
+        $this->get('/api/loans/export?format=pdf')->assertOk();
+
+        $this->postJson("/api/loans/$id/reject", ['rejection_reason' => 'Sin stock suficiente'])
+            ->assertOk()->assertJsonPath('loan.career.name', 'Ingeniería Zeta');
+        $this->getJson("/api/loans/{$old->id}")->assertOk()->assertJsonPath('data.subject', null)->assertJsonPath('data.career_id', null);
+    }
+
     public function test_teacher_can_send_remote_loan_request(): void
     {
         Sanctum::actingAs($this->teacher);

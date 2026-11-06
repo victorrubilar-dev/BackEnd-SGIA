@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\MaintenanceRecord;
@@ -232,5 +233,45 @@ class MaintenanceRecordTest extends TestCase
         $this->patchJson("/api/maintenance-records/{$record->id}", ['technical_notes' => 'x'])->assertForbidden();
         $this->postJson("/api/maintenance-records/{$record->id}/finish", ['result' => 'baja'])->assertForbidden();
         $this->postJson("/api/maintenance-records/{$record->id}/cancel")->assertForbidden();
+    }
+
+    public function test_summary_counts_by_career_and_status(): void
+    {
+        $isd = Career::firstOrCreate(['code' => 'ISD'], ['name' => 'Ingeniería en Sistemas', 'level' => 'profesional']);
+        $a = $this->unit(['career_id' => $isd->id]);
+        $b = $this->unit(['career_id' => null]);
+        MaintenanceRecord::factory()->create(['equipment_unit_id' => $a->id, 'status' => 'finalizada', 'started_at' => '2025-03-01']);
+        MaintenanceRecord::factory()->create(['equipment_unit_id' => $a->id, 'status' => 'en_curso', 'started_at' => '2025-04-01']);
+        MaintenanceRecord::factory()->create(['equipment_unit_id' => $b->id, 'status' => 'anulada', 'started_at' => '2024-04-01']);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
+
+        $before = $this->getJsonSummary('?year=2099');
+        $this->assertSame(0, $before['total']['total']);
+
+        $data = $this->getJsonSummary('?year=2025');
+        $row = collect($data['careers'])->firstWhere('code', 'ISD');
+        $this->assertSame(2, $row['total']);
+        $this->assertSame(1, $row['by_status']['finalizada']);
+        $this->assertSame(1, $row['units']);
+        $this->assertNull(collect($data['careers'])->firstWhere('name', 'Sin carrera'));
+        $this->assertSame(2, $data['total']['total']);
+
+        $all = $this->getJsonSummary('');
+        $this->assertSame(1, collect($all['careers'])->firstWhere('name', 'Sin carrera')['by_status']['anulada']);
+    }
+
+    private function getJsonSummary(string $qs): array
+    {
+        return $this->getJson('/api/maintenance-records/summary'.$qs)->assertOk()->json('data');
+    }
+
+    public function test_summary_forbidden_for_teacher_and_validates_dates(): void
+    {
+        $this->actingAsRole(User::ROLE_TEACHER);
+        $this->getJson('/api/maintenance-records/summary')->assertForbidden();
+
+        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->getJson('/api/maintenance-records/summary?from=2025-05-01&to=2025-01-01')->assertUnprocessable()->assertJsonValidationErrors('to');
+        $this->getJson('/api/maintenance-records/summary?year=abc')->assertUnprocessable()->assertJsonValidationErrors('year');
     }
 }
