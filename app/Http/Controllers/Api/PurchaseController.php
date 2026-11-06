@@ -7,9 +7,15 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ScanArrivalRequest;
 use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseStatusRequest;
+use App\Http\Resources\BudgetMovementResource;
+use App\Http\Resources\InvoiceIntakeResource;
 use App\Http\Resources\PurchaseResource;
+use App\Http\Resources\QuotationResource;
 use App\Models\AnnualBudget;
+use App\Models\BudgetMovement;
+use App\Models\InvoiceIntake;
 use App\Models\Purchase;
+use App\Models\Quotation;
 use App\Services\InvoiceOcrService;
 use App\Services\PurchaseService;
 use App\Services\PurchaseStateMachine;
@@ -72,6 +78,31 @@ class PurchaseController extends Controller
         Gate::authorize('view', $purchase);
 
         return new PurchaseResource($purchase->load(['supplier', 'items', 'creator', 'quotation.suppliers']));
+    }
+
+    /**
+     * Cadena OC → cotizaciones → facturas → ingreso de stock → movimientos de presupuesto (REQ-08).
+     */
+    public function trace(Purchase $purchase): JsonResponse
+    {
+        Gate::authorize('view', $purchase);
+
+        $quotations = Quotation::where('purchase_id', $purchase->id)
+            ->when($purchase->quotation_id, fn ($q, $id) => $q->orWhere('id', $id))
+            ->get();
+        $invoices = InvoiceIntake::with('items.product:id,name')->where('purchase_id', $purchase->id)->orderBy('id')->get();
+        $stock = $invoices->where('status', InvoiceIntake::STATUS_CONFIRMED)->flatMap->items
+            ->groupBy('product_id')
+            ->map(fn ($rows) => ['product_id' => $rows->first()->product_id, 'name' => $rows->first()->product->name, 'quantity' => (int) $rows->sum('quantity')])
+            ->values();
+
+        return response()->json([
+            'purchase' => new PurchaseResource($purchase->load(['supplier', 'items'])),
+            'quotations' => QuotationResource::collection($quotations),
+            'invoices' => InvoiceIntakeResource::collection($invoices),
+            'budget_movements' => BudgetMovementResource::collection(BudgetMovement::with('user')->where(fn ($q) => $q->where('purchase_id', $purchase->id)->orWhereIn('invoice_intake_id', $invoices->modelKeys()))->orderBy('id')->get()),
+            'stock_entries' => $stock,
+        ]);
     }
 
     /**

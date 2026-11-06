@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Presupuesto anual por carrera. `available_amount` nunca es negativo (CHECK en BD).
+ * Presupuesto anual por carrera. `available_amount` = inicial − consumido (puede ser negativo solo con exceso autorizado).
  */
 class AnnualBudget extends Model
 {

@@ -34,12 +34,6 @@ class FinanceModelsSchemaTest extends TestCase
         AnnualBudget::factory()->create(['career_id' => $career->id, 'year' => 2031]);
     }
 
-    public function test_available_amount_cannot_be_negative(): void
-    {
-        $this->expectException(QueryException::class);
-        AnnualBudget::factory()->create(['available_amount' => -1]);
-    }
-
     public function test_invoice_intake_relations_and_jsonb_cast(): void
     {
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => AnnualBudget::factory()->create()->id, 'raw_ocr_payload' => ['total' => 1190, 'lines' => [['name' => 'Cable']]], 'total_deducted' => 1190]);

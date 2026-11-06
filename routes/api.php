@@ -117,6 +117,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
+        Route::get('/purchases/{purchase}/trace', [PurchaseController::class, 'trace']);
         Route::patch('/purchases/{purchase}/status', [PurchaseController::class, 'updateStatus']);
         Route::post('/purchases/{purchase}/arrival-scan', [PurchaseController::class, 'arrivalScan'])->middleware('throttle:sensitive');
         Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel']);

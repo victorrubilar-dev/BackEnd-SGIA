@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BudgetExceededException;
 use App\Models\AnnualBudget;
 use App\Models\BudgetMovement;
 use App\Models\InvoiceIntake;
@@ -12,7 +13,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Única vía de escritura de montos de un presupuesto.
  *
- * Invariante: `available = initial − consumido − reservado`, nunca negativo.
+ * Invariante: `available = initial − consumido` (la reserva no lo baja); `free = available − reserved`
+ * es lo gastable. Solo una factura autorizada por DIR-01 puede dejar `free` bajo cero.
  * Cada operación bloquea el presupuesto y deja un movimiento en `budget_movements`.
  */
 class AnnualBudgetService
@@ -42,7 +44,7 @@ class AnnualBudgetService
     }
 
     /**
-     * Cambia el monto inicial y recalcula `available = initial − consumido − reservado`.
+     * Cambia el monto inicial y recalcula `available = initial − consumido`.
      * `available_amount` nunca se edita directo.
      *
      * @throws ValidationException si el nuevo monto no cubre lo consumido más lo reservado
@@ -64,7 +66,7 @@ class AnnualBudgetService
 
             $locked->update([
                 'initial_amount' => $newCents / 100,
-                'available_amount' => ($newCents - $committedCents) / 100,
+                'available_amount' => ($newCents - $this->consumedCents($locked)) / 100,
                 'updated_by' => $userId,
             ]);
 
@@ -80,7 +82,7 @@ class AnnualBudgetService
     /**
      * Reserva `$amount` para la compra (crear la compra equivale a aprobarla).
      *
-     * @throws ValidationException si supera el disponible
+     * @throws ValidationException si supera lo libre
      */
     public function reserve(AnnualBudget $budget, string|float|int $amount, Purchase $purchase, int $userId): AnnualBudget
     {
@@ -88,13 +90,13 @@ class AnnualBudgetService
             $locked = $this->lock($budget);
             $cents = $this->cents($amount);
 
-            if ($cents > $this->cents($locked->available_amount)) {
+            if ($cents > $this->freeCents($locked)) {
                 throw ValidationException::withMessages([
-                    'total' => 'El total de la compra ($'.$this->format($cents).') supera el presupuesto disponible ($'.$this->format($this->cents($locked->available_amount)).').',
+                    'total' => 'El total de la compra ($'.$this->format($cents).') supera el presupuesto libre ($'.$this->format($this->freeCents($locked)).').',
                 ]);
             }
 
-            $this->apply($locked, availableDelta: -$cents, reservedDelta: $cents, userId: $userId);
+            $this->apply($locked, availableDelta: 0, reservedDelta: $cents, userId: $userId);
             $purchase->forceFill(['reserved_amount' => $cents / 100])->save();
             $this->record($locked, BudgetMovement::TYPE_RESERVE, $cents, $userId, purchase: $purchase);
 
@@ -103,7 +105,7 @@ class AnnualBudgetService
     }
 
     /**
-     * Libera la reserva vigente de la compra y la devuelve al disponible.
+     * Libera la reserva vigente de la compra (el disponible no cambia).
      */
     public function releaseReservation(AnnualBudget $budget, Purchase $purchase, int $userId, ?InvoiceIntake $intake = null): AnnualBudget
     {
@@ -115,7 +117,7 @@ class AnnualBudgetService
                 return $locked;
             }
 
-            $this->apply($locked, availableDelta: $cents, reservedDelta: -$cents, userId: $userId);
+            $this->apply($locked, availableDelta: 0, reservedDelta: -$cents, userId: $userId);
             $purchase->forceFill(['reserved_amount' => 0])->save();
             $this->record($locked, BudgetMovement::TYPE_RELEASE, $cents, $userId, purchase: $purchase, intake: $intake);
 
@@ -124,24 +126,40 @@ class AnnualBudgetService
     }
 
     /**
-     * Consume `$amount` del disponible (factura confirmada).
+     * Consume `$amount` de lo libre (factura confirmada; la reserva propia ya se liberó).
+     * Si lo supera lanza `BudgetExceededException`: 422 sin autorización, 403 si quien la pide no es DIR-01.
+     * Con `$allowOver` y `$canAuthorize` consume igual y deja el exceso en auditoría y en el movimiento.
      *
-     * @throws ValidationException si supera el disponible
+     * @throws BudgetExceededException
      */
-    public function consume(AnnualBudget $budget, string|float|int $amount, InvoiceIntake $intake, int $userId, ?Purchase $purchase = null): AnnualBudget
+    public function consume(AnnualBudget $budget, string|float|int $amount, InvoiceIntake $intake, int $userId, ?Purchase $purchase = null, bool $allowOver = false, bool $canAuthorize = false): AnnualBudget
     {
-        return DB::transaction(function () use ($budget, $amount, $intake, $userId, $purchase) {
+        return DB::transaction(function () use ($budget, $amount, $intake, $userId, $purchase, $allowOver, $canAuthorize) {
             $locked = $this->lock($budget);
             $cents = $this->cents($amount);
+            $free = $this->freeCents($locked);
+            $over = max(0, $cents - $free);
+            $notes = null;
 
-            if ($cents > $this->cents($locked->available_amount)) {
-                throw ValidationException::withMessages([
-                    'items' => 'El total de la factura ($'.$this->format($cents).') supera el presupuesto disponible ($'.$this->format($this->cents($locked->available_amount)).').',
-                ]);
+            if ($over > 0) {
+                if (! $allowOver || ! $canAuthorize) {
+                    throw new BudgetExceededException($over, $free, $cents, $allowOver ? 403 : 422);
+                }
+
+                $notes = 'Exceso autorizado por usuario #'.$userId.': $'.$this->format($over).' sobre lo libre ($'.$this->format($free).').';
             }
 
             $this->apply($locked, availableDelta: -$cents, reservedDelta: 0, userId: $userId);
-            $this->record($locked, BudgetMovement::TYPE_CONSUME, $cents, $userId, purchase: $purchase, intake: $intake);
+            $this->record($locked, BudgetMovement::TYPE_CONSUME, $cents, $userId, purchase: $purchase, intake: $intake, notes: $notes);
+
+            if ($over > 0) {
+                AuditLogger::record('over_budget_authorized', $intake, null, [
+                    'annual_budget_id' => $locked->id,
+                    'authorized_by' => $userId,
+                    'over_by' => number_format($over / 100, 2, '.', ''),
+                    'total' => number_format($cents / 100, 2, '.', ''),
+                ]);
+            }
 
             return $locked;
         });
@@ -163,12 +181,16 @@ class AnnualBudgetService
         });
     }
 
-    /** Consumido en centavos: `initial − available − reserved`. */
+    /** Consumido en centavos: `initial − available`. */
     public function consumedCents(AnnualBudget $budget): int
     {
-        return $this->cents($budget->initial_amount)
-            - $this->cents($budget->available_amount)
-            - $this->cents($budget->reserved_amount);
+        return $this->cents($budget->initial_amount) - $this->cents($budget->available_amount);
+    }
+
+    /** Gastable en centavos: `available − reserved`. */
+    public function freeCents(AnnualBudget $budget): int
+    {
+        return $this->cents($budget->available_amount) - $this->cents($budget->reserved_amount);
     }
 
     public function cents(string|float|int $amount): int

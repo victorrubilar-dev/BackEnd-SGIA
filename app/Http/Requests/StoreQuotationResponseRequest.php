@@ -27,6 +27,9 @@ class StoreQuotationResponseRequest extends FormRequest
             'offer_total' => ['nullable', 'numeric', 'min:0'],
             'quotation_number' => ['nullable', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:1000'],
+            'items' => ['nullable', 'array'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.offered_unit_price' => ['required', 'numeric', 'min:0'],
         ];
     }
 
@@ -39,6 +42,8 @@ class StoreQuotationResponseRequest extends FormRequest
             'status.in' => 'La respuesta del proveedor debe ser "aceptada" o "rechazada".',
             'offer_total.numeric' => 'La oferta debe ser un valor numérico.',
             'offer_total.min' => 'La oferta no puede ser negativa.',
+            'items.*.offered_unit_price.required' => 'Cada producto ofertado debe tener precio unitario.',
+            'items.*.offered_unit_price.min' => 'El precio unitario no puede ser negativo.',
         ];
     }
 }

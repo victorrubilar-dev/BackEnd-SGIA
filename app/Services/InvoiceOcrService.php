@@ -40,6 +40,9 @@ class InvoiceOcrService
                 $text = $result['text'];
                 unset($result['text']);
 
+                // Textract a veces no entrega el folio: se busca en su texto y, si no, con el lector local.
+                $result['invoice_number'] ??= $this->invoiceNumber($text) ?? $this->localInvoiceNumber($file);
+
                 return $result + [
                     'supplier_id' => $this->supplierId($result['supplier_name']),
                     'career_id' => $this->careers->detect($text)?->id,
@@ -50,7 +53,24 @@ class InvoiceOcrService
             }
         }
 
-        return $this->parse($this->readText($file));
+        $parsed = $this->parse($this->readText($file));
+        $parsed['invoice_number'] ??= $this->localInvoiceNumber($file, retryOnly: true);
+
+        return $parsed;
+    }
+
+    /**
+     * Folio con Tesseract. La segmentación de página por defecto (psm 3) lee mejor los encabezados con
+     * recuadro que psm 6; con `$retryOnly` se omite el psm 6 porque `parse` ya lo intentó.
+     */
+    private function localInvoiceNumber(UploadedFile $file, bool $retryOnly = false): ?string
+    {
+        if (strtolower($file->getClientOriginalExtension()) === 'pdf') {
+            return $retryOnly ? null : $this->invoiceNumber($this->readText($file));
+        }
+
+        return ($retryOnly ? null : $this->invoiceNumber($this->tesseract($file->getRealPath())))
+            ?? $this->invoiceNumber($this->tesseract($file->getRealPath(), '3'));
     }
 
     public function readText(UploadedFile $file): string
@@ -104,8 +124,10 @@ class InvoiceOcrService
 
     private function invoiceNumber(string $text): ?string
     {
-        if (preg_match('/FACTURA[^\n\d]*?N\s*[°º.o]*\s*:?\s*(\d+)/iu', $text, $m)
-            || preg_match('/FOLIO\s*:?\s*(\d+)/iu', $text, $m)) {
+        // Tesseract lee "N°" como "N*", "N?", "Ne" o "No"; el número suele ir bajo "FACTURA ELECTRONICA".
+        if (preg_match('/FACTURA[^\n\d]*?N\s*[°º.o*?e]*\s*:?\s*(\d+)/iu', $text, $m)
+            || preg_match('/FOLIO\s*:?\s*(\d+)/iu', $text, $m)
+            || preg_match('/(?:^|\s)N\s*[°º*?e]\s*:?\s*(\d{3,})\b/mu', $text, $m)) {
             return $m[1];
         }
 
@@ -161,9 +183,9 @@ class InvoiceOcrService
         return $items;
     }
 
-    private function tesseract(string $path): string
+    private function tesseract(string $path, string $psm = '6'): string
     {
-        return $this->run(['tesseract', $path, 'stdout', '-l', config('services.tesseract.lang'), '--psm', '6']);
+        return $this->run(['tesseract', $path, 'stdout', '-l', config('services.tesseract.lang'), '--psm', $psm]);
     }
 
     /**

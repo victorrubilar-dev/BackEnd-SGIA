@@ -333,3 +333,13 @@ Especificación completa: `docs/solicitud-prestamo-profesor.md`.
 - `POST /api/purchases` acepta además `quotation_ids` (mínimo 3, aceptadas, distintas) + `supplier_id` (contactado en todas): suma los ítems por producto con el precio ofertado por ese proveedor y deja todas `convertida`. Con `quotation_ids` no aplica `quotation_justification`.
 - `GET /api/purchases?linkable=1`: órdenes que esperan factura (selector manual).
 - `POST /api/invoice-intakes/{id}/confirm` acepta `purchase_id` (manual); sin él usa la del borrador o busca la OC con los mismos productos y cantidades. Con OC se usa su presupuesto, se libera la reserva, se consume lo facturado y la OC queda `completa`. `InvoiceIntakeResource` suma `purchase{code,status}` y `linked`.
+
+- `PATCH /api/quotations/{id}/responses` acepta `items: [{product_id, offered_unit_price}]` (precio por producto de la oferta del proveedor). Sin esos precios, `POST /api/purchases` desde cotización responde 422 en `items.N.unit_price`. Toda OC exige `quotation_id` o `quotation_ids`: no hay modo manual.
+
+## Ronda TASK.md: reserva, exceso, duplicados y trazabilidad
+
+- `AnnualBudgetResource` y `BudgetSummaryResource`: nuevo `free_amount` = `available_amount` − `reserved_amount` (lo gastable). **`available_amount` ya no baja al reservar una OC** (= inicial − consumido); `consumed_amount` = inicial − available. Reservar y consumir validan contra `free_amount`. `available_amount` puede ser negativo si DIR-01 autorizó un exceso.
+- `POST /api/invoice-intakes/{id}/confirm`: si lo facturado supera lo libre responde `422 {message, code: "over_budget", over_by, free_amount, total}`. Reenviar con `allow_over_budget: true` solo funciona para `DIR-01` (otro rol: `403` con el mismo `code`).
+- Factura duplicada (mismo `document_number` y proveedor, vigente): `422` en `document_number`. `linked` indica si quedó asociada a una OC.
+- Nuevo `GET /api/purchases/{id}/trace` (AD-01, DIR-01, PAN-01): `{purchase, quotations[], invoices[], budget_movements[], stock_entries[]}`.
+- OCR local: detecta el número de factura en `prueba1..3` (`N* 1111`, `Ne208`, `N? 20050`).

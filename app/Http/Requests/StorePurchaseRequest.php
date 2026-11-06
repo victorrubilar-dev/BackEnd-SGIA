@@ -41,6 +41,7 @@ class StorePurchaseRequest extends FormRequest
             'annual_budget_id.exists' => 'El presupuesto no existe.',
             'items.*.unit_price.required_with' => 'Cada producto de la orden debe tener precio unitario.',
             'quotation_id.required' => 'Toda compra debe partir de una cotización aceptada.',
+            'quotation_id.required_without' => 'Toda compra debe partir de una cotización aceptada (o de 3 o más con quotation_ids).',
             'quotation_justification.max' => 'El motivo no puede superar los 1000 caracteres.',
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'quotation_id.exists' => 'La cotización seleccionada no existe en el sistema.',
