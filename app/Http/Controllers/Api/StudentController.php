@@ -7,6 +7,7 @@ use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Resources\LoanResource;
 use App\Http\Resources\StudentResource;
+use App\Models\Loan;
 use App\Models\Student;
 use App\Rules\ChileanRut;
 use Illuminate\Http\JsonResponse;
@@ -107,7 +108,8 @@ class StudentController extends Controller
     {
         Gate::authorize('view', $student);
 
-        $loans = $student->loans()
+        $loans = Loan::visibleTo($request->user())
+            ->where('student_id', $student->id)
             ->with(['items.product.location', 'items.units.cajon.location', 'requester'])
             ->orderByDesc('loan_date')
             ->orderByDesc('id')

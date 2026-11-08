@@ -41,13 +41,13 @@ class LoanPolicy
     }
 
     /**
-     * Determine whether the user can view the loan: el pañol, el director y
-     * el administrador ven el historial completo; el docente solo lo suyo.
+     * Determine whether the user can view the loan: el director y el administrador ven
+     * todos; el pañolero, los de su pañol; el docente, solo los suyos.
      */
     public function view(User $user, Loan $loan): bool
     {
         if ($this->viewAny($user)) {
-            return true;
+            return $this->reaches($user, $loan);
         }
 
         return $user->is_active
@@ -57,7 +57,8 @@ class LoanPolicy
 
     /**
      * Operaciones del pañol sobre los préstamos (REQ-10): ver pendientes,
-     * aprobar, rechazar, confirmar entrega y registrar préstamos presenciales.
+     * aprobar, rechazar, confirmar entrega y registrar préstamos presenciales. El pañolero
+     * solo opera los préstamos de su pañol.
      */
     public function pending(User $user): bool
     {
@@ -66,17 +67,17 @@ class LoanPolicy
 
     public function approve(User $user, Loan $loan): bool
     {
-        return $this->operates($user);
+        return $this->operates($user) && $this->reaches($user, $loan);
     }
 
     public function reject(User $user, Loan $loan): bool
     {
-        return $this->operates($user);
+        return $this->operates($user) && $this->reaches($user, $loan);
     }
 
     public function deliver(User $user, Loan $loan): bool
     {
-        return $this->operates($user);
+        return $this->operates($user) && $this->reaches($user, $loan);
     }
 
     /**
@@ -88,6 +89,14 @@ class LoanPolicy
     }
 
     /**
+     * Registrar la devolución de este préstamo en particular.
+     */
+    public function checkinLoan(User $user, Loan $loan): bool
+    {
+        return $this->operates($user) && $this->reaches($user, $loan);
+    }
+
+    /**
      * El docente solo cancela solicitudes propias que siguen pendientes de revisión.
      */
     public function cancel(User $user, Loan $loan): bool
@@ -95,9 +104,29 @@ class LoanPolicy
         return $this->viewOwnRequests($user, $loan);
     }
 
-    public function checkout(User $user): bool
+    /**
+     * El pañolero solo registra préstamos presenciales en su pañol. Un `storeroom_id` no numérico
+     * se deja pasar para que la validación responda `422`.
+     */
+    public function checkout(User $user, mixed $storeroomId = null): bool
     {
-        return $this->operates($user);
+        if (! $this->operates($user)) {
+            return false;
+        }
+
+        $own = $user->loanStoreroomId();
+
+        return $own === null || ! is_numeric($storeroomId) || (int) $storeroomId === $own;
+    }
+
+    /**
+     * El préstamo está al alcance del usuario: el pañolero solo llega a los de su pañol.
+     */
+    private function reaches(User $user, Loan $loan): bool
+    {
+        $storeroomId = $user->loanStoreroomId();
+
+        return $storeroomId === null || (int) $loan->storeroom_id === $storeroomId;
     }
 
     private function operates(User $user): bool

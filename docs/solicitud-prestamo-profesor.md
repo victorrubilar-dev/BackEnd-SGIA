@@ -49,10 +49,13 @@ La solicitud se valida contra el **stock actual** del producto, igual que antes.
 | `GET /api/loans/requests` | Solo `PRO-01`, únicamente sus propias solicitudes. |
 | `DELETE /api/loans/requests/{id}` | Solo `PRO-01`, solo las propias (`403` si es ajena, `422` si ya no está `pendiente`). |
 | `GET /api/loans/pending` (cola) | `PAN-01` y `AD-01`. |
+| Ver y operar una solicitud (`GET /api/loans/{id}`, `/review`, `/approve`, `/reject`, `/deliver`, `POST /api/loans/checkin`) | `PAN-01` solo si es de su pañol (`403` si no); `AD-01` todas. `GET /api/loans/{id}` también permite a `DIR-01` ver todas y al profesor las suyas. |
 
 ### Cola del pañol
 
 `PAN-01` ve únicamente las solicitudes pendientes de **su** pañol (`users.storeroom_id`; si no tiene uno asignado, las del pañol por defecto). `AD-01` ve todas y puede filtrar con `?storeroom_id=`.
+
+El pañol que elige el profesor decide quién atiende la solicitud: un `PAN-01` de otro pañol no la ve en la cola ni en el historial, la exportación o el historial del estudiante, y tampoco puede operarla aunque conozca su id. La misma regla vale para los préstamos presenciales, que además solo puede registrar en su pañol, y para el préstamo que muestra la ficha o la hoja de vida de una unidad. Pruebas en `tests/Feature/LoanStoreroomAccessTest.php`.
 
 ## Respuesta
 

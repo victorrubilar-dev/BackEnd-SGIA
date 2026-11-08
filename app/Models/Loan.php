@@ -143,6 +143,13 @@ class Loan extends Model
             && $due->lt(today());
     }
 
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        $storeroomId = $user->loanStoreroomId();
+
+        return $storeroomId === null ? $query : $query->where('storeroom_id', $storeroomId);
+    }
+
     public function scopeOverdue(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_PROCESSED)

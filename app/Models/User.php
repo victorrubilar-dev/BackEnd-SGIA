@@ -58,6 +58,19 @@ class User extends Authenticatable
     }
 
     /**
+     * Pañol que limita los préstamos que ve y opera el usuario: el suyo si es pañolero (o el pañol
+     * por defecto si no tiene uno asignado). `null` para los demás roles, que no se limitan por pañol.
+     */
+    public function loanStoreroomId(): ?int
+    {
+        if (! $this->hasRole(self::ROLE_WAREHOUSE)) {
+            return null;
+        }
+
+        return $this->storeroom_id ?? Storeroom::default()->id;
+    }
+
+    /**
      * Usuarios con alguno de los roles indicados (por código).
      *
      * @param  Builder<User>  $query

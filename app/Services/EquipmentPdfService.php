@@ -6,6 +6,7 @@ use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Loan;
 use App\Models\Product;
+use App\Models\User;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\View\View;
@@ -85,15 +86,16 @@ class EquipmentPdfService
     /**
      * Hoja de vida de una unidad: producto, ubicación, mantenciones, documentos vigentes, préstamos e informes.
      */
-    public function unitTechnicalSheet(EquipmentUnit $unit): string
+    public function unitTechnicalSheet(EquipmentUnit $unit, ?User $viewer = null): string
     {
-        return $this->render($this->unitTechnicalSheetView($unit));
+        return $this->render($this->unitTechnicalSheetView($unit, $viewer));
     }
 
     /**
-     * Vista de la hoja de vida con sus relaciones cargadas (sin renderizar a PDF).
+     * Vista de la hoja de vida con sus relaciones cargadas (sin renderizar a PDF). Si se indica
+     * `$viewer`, el historial de préstamos solo incluye los que ese usuario puede ver por pañol.
      */
-    public function unitTechnicalSheetView(EquipmentUnit $unit): View
+    public function unitTechnicalSheetView(EquipmentUnit $unit, ?User $viewer = null): View
     {
         $unit->load([
             'product.category',
@@ -103,6 +105,15 @@ class EquipmentPdfService
             'maintenanceDocuments' => fn ($q) => $q->current()->orderBy('document_type'),
             'incidentReports',
         ]);
+
+        $storeroomId = $viewer?->loanStoreroomId();
+
+        if ($storeroomId !== null) {
+            $unit->setRelation('loanItems', $unit->loanItems()
+                ->whereHas('loan', fn ($loan) => $loan->where('storeroom_id', $storeroomId))
+                ->with('loan')
+                ->get());
+        }
 
         return view('equipment.unit-technical-sheet', ['unit' => $unit]);
     }

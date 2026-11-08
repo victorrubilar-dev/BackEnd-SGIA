@@ -8,11 +8,17 @@
 - [x] Endpoint `GET /api/loans/pending` (incluye cantidad solicitada, disponible y ubicación).
 - [x] Endpoint `POST /api/loans/{id}/approve` → descuenta stock y notifica al solicitante.
 - [x] Endpoint `POST /api/loans/{id}/reject` (requiere motivo) → notifica al solicitante.
+- [x] Endpoint `GET /api/loans/{id}/review`: unidades propuestas por el sistema y disponibles del pañol, cada una con sala y cajón; insumos con la ubicación del producto; `shortage` y `can_approve` (`LoanReviewTest`, `ResourceContractTest`; `docs/revision-solicitud-prestamo.md`).
+- [x] `POST /api/loans/{id}/approve` acepta `items: [{item_id, unit_ids}]` para que el pañol cambie unidades; los ítems no indicados se asignan solos, sin chocar con las elegidas; `422` por campo y sin cambios si falla (`LoanReviewTest`).
 - [x] Endpoint para registrar préstamo presencial directo (profesor/estudiante, insumo, cantidad, asignatura, sala, fecha).
+- [x] `PAN-01` solo revisa, aprueba, rechaza, entrega y registra devoluciones de préstamos de su pañol (`users.storeroom_id`, o el pañol por defecto): `403` si son de otro; `AD-01` no se limita (`LoanStoreroomAccessTest`).
+- [x] `POST /api/loans/checkout`: `PAN-01` solo registra préstamos presenciales en su pañol (`403` si `storeroom_id` es de otro); `AD-01` en cualquiera (`LoanStoreroomAccessTest`, `LoanUnitsTest`).
 
 ### REQ-11 — Historial y listado de préstamos (FU-04, PAN-01, DIR-01 y AD-01)
 - [x] Endpoint `GET /api/loans` con filtros (insumo, profesor, sala, estado).
 - [x] Diferenciar en la respuesta préstamos `procesados` vs `en_proceso` (campo de estado explícito para que el cliente aplique el estilo visual).
+- [x] `PAN-01` solo ve los préstamos de su pañol en `GET /api/loans`, `GET /api/loans/{id}`, `GET /api/loans/export` y `GET /api/students/{id}/loans`; `DIR-01` y `AD-01` ven todos (`LoanStoreroomAccessTest`).
+- [x] `PAN-01` tampoco ve préstamos de otro pañol en `active_loan` de `GET /api/equipment-units/{id}` ni en el historial de la hoja de vida de la unidad (`LoanStoreroomAccessTest`).
 
 ### Devoluciones y vencimiento (FU-04, PAN-01 y AD-01)
 - [x] `due_date` por préstamo (por defecto, el día del préstamo; no puede ser anterior a `loan_date`).

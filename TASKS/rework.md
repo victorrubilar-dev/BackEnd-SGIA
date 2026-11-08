@@ -68,6 +68,8 @@ Esto es lo que más se aleja de lo que dicen los checkboxes.
 - [x] **Dashboards (REQ-14):** `POST /api/metrics` (GraphQL, `webonyx/graphql-php`) con `executiveKpis` y `customMetric`, contrato idéntico al del frontend; `MetricsService` + `DashboardPeriod` (incluye `SEMESTER_PREVIOUS` y `YEAR_TO_DATE`). Límites de profundidad/complejidad y sin introspección en producción. `CAREERS.level` (tabla `careers`) y la distinción equipo/insumo (`products.type`) ya tienen dato (ver `front-end.md`, C1b). Los endpoints REST `/api/dashboard/*` se mantienen hasta que el frontend migre.
 - [x] **Devoluciones y atrasos de préstamos:** `due_date`, `returned_at`, `POST /api/loans/checkin` (total o parcial, con condición por ítem), `DELETE /api/loans/requests/{id}`, `GET /api/loans/export` (CSV/PDF) y filtros `atrasado` / `devuelto`. Pendiente: notificar vencimientos.
 - [x] **Estado "en taller" / "dado de baja"** de activos: `quantity_in_repair`, `quantity_written_off`, `estado` y `PATCH /api/products/{id}/condition`. "En préstamo" se calcula desde los ítems entregados y no devueltos (para los KPIs).
+- [x] **Revisión de solicitudes remotas:** el pañol ve las unidades propuestas con su ubicación y puede cambiarlas antes de aprobar (`GET /api/loans/{id}/review`, `items` en `approve`; `docs/revision-solicitud-prestamo.md`, `LoanReviewTest`).
+- [x] **Préstamos por pañol:** `PAN-01` solo ve y opera los préstamos de su pañol, y solo registra presenciales ahí; antes solo la cola estaba limitada (`LoanPolicy`, `Loan::visibleTo`, `LoanStoreroomAccessTest`).
 - [x] **Cotizaciones:** el envío es síncrono y un fallo por proveedor ya no se pierde: queda en `email_sent_at` / `email_error` y `POST /api/quotations/{id}/resend` reintenta solo los pendientes.
 
 ## Fase 6 — Pruebas

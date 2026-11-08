@@ -4,12 +4,13 @@ Especificación para mostrarle al pañol (`PAN-01`) dónde está físicamente ca
 
 ## Contexto
 
-Las unidades de una solicitud remota no las elige nadie: el sistema las asigna solo al aprobar.
+El sistema propone las unidades de una solicitud remota y el pañol puede cambiarlas antes de aprobar (`docs/revision-solicitud-prestamo.md`).
 
 | Paso | Ruta | Qué pasa con las unidades |
 |---|---|---|
 | Solicitud del profesor | `POST /api/loans/requests` | Solo producto y cantidad. No se asigna ni se reserva ninguna unidad. |
-| Aprobación | `POST /api/loans/{id}/approve` | Se asignan las primeras N unidades `disponible` del producto (por `id`), pasan a `prestado` y se vinculan en `loan_item_units`. |
+| Revisión | `GET /api/loans/{id}/review` | Propone las primeras N unidades `disponible` del pañol (por `id`) y lista todas las disponibles, con su ubicación. No reserva nada. |
+| Aprobación | `POST /api/loans/{id}/approve` | Se asignan las unidades elegidas (`items[].unit_ids`) o, si no vienen, las primeras N `disponible` del pañol (por `id`); pasan a `prestado` y se vinculan en `loan_item_units`. |
 | Entrega | `POST /api/loans/{id}/deliver` | El pañolero puede reemplazar las unidades asignadas con `items[].unit_ids`; las que suelta vuelven a `disponible`. |
 
 Hoy `items[].units[]` solo trae `id`, `code`, `serial_number`, `status`, `returned_at` y `return_condition`. La ubicación física de una unidad vive en la unidad (`equipment_units.cajon_id` → cajón → sala), no en el producto, así que la ubicación que ya viene en `items[].location` / `items[].cajon` (la del producto) no sirve para encontrar una unidad concreta.
@@ -17,7 +18,7 @@ Hoy `items[].units[]` solo trae `id`, `code`, `serial_number`, `status`, `return
 ## Alcance
 
 - Solo productos con unidades (`equipo` y `maqueta`). Los insumos ya traen la ubicación del producto en `items[].location` / `items[].cajon` y no cambian.
-- La ubicación se ve **desde que el préstamo queda `en_proceso`**, porque recién ahí tiene unidades. En `pendiente`, `units` viene vacío.
+- En `items[].units[]`, la ubicación se ve **desde que el préstamo queda `en_proceso`**, porque recién ahí tiene unidades. En `pendiente`, `units` viene vacío y la ubicación de las unidades propuestas viene en `GET /api/loans/{id}/review`.
 - Como es el mismo Resource, los préstamos presenciales (`POST /api/loans/checkout`) y los ya procesados también traen la ubicación de sus unidades.
 
 ## Unidades solo del pañol solicitado
@@ -27,8 +28,8 @@ Una unidad pertenece al pañol de la sala de su cajón (`equipment_units.cajon_i
 | Momento | Regla |
 |---|---|
 | Solicitud del profesor (`POST /api/loans/requests`) | La disponibilidad de equipos y maquetas cuenta solo las unidades `disponible` del `storeroom_id` pedido (clientes antiguos sin `storeroom_id`: el pañol por defecto). Si no alcanzan, `422` en `items.{i}.quantity`, aunque haya unidades en otro pañol. |
-| Aprobación (`POST /api/loans/{id}/approve`) | La asignación automática toma solo unidades del pañol del préstamo. Si no alcanzan, `422` en `items` y la solicitud sigue `pendiente`. |
-| Préstamo presencial (`POST /api/loans/checkout`) | La disponibilidad y las `unit_ids` indicadas deben ser del pañol del préstamo (`storeroom_id`, o el del pañolero, o el por defecto). Una unidad de otro pañol responde `422`. |
+| Aprobación (`POST /api/loans/{id}/approve`) | La asignación automática toma solo unidades del pañol del préstamo. Si no alcanzan, `422` en `items` y la solicitud sigue `pendiente`. Una unidad elegida de otro pañol responde `422` en `items.{i}.unit_ids`. |
+| Préstamo presencial (`POST /api/loans/checkout`) | La disponibilidad y las `unit_ids` indicadas deben ser del pañol del préstamo (`storeroom_id`, o el del pañolero, o el por defecto). Una unidad de otro pañol responde `422`. Un `PAN-01` solo registra en su pañol (`403` si `storeroom_id` es de otro); `AD-01`, en cualquiera. |
 | Entrega (`POST /api/loans/{id}/deliver`) | Las unidades de reemplazo en `items[].unit_ids` deben ser del pañol del préstamo. Una de otro pañol responde `422` en `items.{i}.unit_ids`. |
 
 Los insumos no cambian: se siguen validando por la cantidad del producto.
@@ -112,7 +113,7 @@ Toda unidad tiene cajón (`equipment_units.cajon_id` es obligatorio), así que n
 - `LoanController` y `StudentController`: donde hoy se precarga `items.units`, precargar `items.units.cajon.location` (sin N+1).
 - Pruebas:
   - `LoanUnitsTest`: la aprobación ignora unidades de otro pañol aunque tengan `id` menor, y responde `422` si las del pañol no alcanzan.
-  - `LoanUnitsTest`: el presencial y la entrega rechazan `unit_ids` de otro pañol; un presencial con `storeroom_id` de ese otro pañol sí las toma.
+  - `LoanUnitsTest`: el presencial y la entrega rechazan `unit_ids` de otro pañol; un presencial de `AD-01` con `storeroom_id` de ese otro pañol sí las toma.
   - `LoanRemoteRequestTest`: la solicitud cuenta solo las unidades del pañol pedido.
   - `LoanUnitsTest`: la respuesta de `approve` y `GET /api/loans/{id}` traen `cajon` y `location` correctos en cada unidad.
 - Mismo cambio:
@@ -123,7 +124,6 @@ Toda unidad tiene cajón (`equipment_units.cajon_id` es obligatorio), así que n
 
 ## Fuera de alcance
 
-- Elegir unidades al aprobar: la aprobación sigue asignándolas solas.
 - Escanear el código de barras en la entrega para confirmar la unidad real. Es el siguiente paso natural y la API ya lo permite (`GET /api/equipment-units/by-code/{code}` + `deliver` con `unit_ids`).
-- Mostrar en la cola `pendiente` cuántas unidades disponibles hay por ubicación.
+- Mostrar en la cola `pendiente` cuántas unidades disponibles hay por ubicación (se ven al revisar cada solicitud).
 - Un estado intermedio "reservado" o asignar las unidades recién en la entrega (hoy quedan `prestado` desde la aprobación).

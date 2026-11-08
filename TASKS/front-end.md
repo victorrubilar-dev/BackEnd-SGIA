@@ -201,7 +201,7 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 
 - `LoanItemResource` añade `delivered_quantity`, `returned_quantity` y `units` (`id`, `code`, `serial_number`, `status`, `returned_at`, `return_condition`; solo si el ítem es un equipo/maqueta y las unidades vienen cargadas: detalle, historial, pendientes, checkout, checkin, deliver).
 - `POST /api/loans/checkout`: `items.*.unit_ids` opcional (prohibido en insumos; debe haber exactamente `quantity` ids, del mismo producto y `disponible`); `storeroom_id` opcional (por defecto el del pañolero). Sin `unit_ids` se asignan unidades automáticas. Si `borrower_document` es un RUT válido se crea/reutiliza el `Student`.
-- `POST /api/loans/{id}/approve`: asigna unidades automáticas.
+- `POST /api/loans/{id}/approve`: asigna unidades automáticas; desde noviembre 2026 también acepta las elegidas por el pañol (ver "Revisión de la solicitud remota").
 - `POST /api/loans/{id}/deliver`: cuerpo opcional `items: [{item_id, unit_ids}]` para reemplazar las unidades asignadas por las realmente entregadas.
 - `POST /api/loans/checkin`: `items.*.unit_ids` opcional para devolución parcial por unidad; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja`. El ítem queda devuelto cuando todas sus unidades lo están (`return_condition` = la peor).
 - Export CSV/PDF: los códigos de las unidades van entre corchetes junto al nombre del ítem.
@@ -347,3 +347,24 @@ Especificación completa: `docs/solicitud-prestamo-profesor.md`.
 ## Mantenciones por carrera
 
 - Nueva ruta `GET /api/maintenance-records/summary` (`AD-01`/`DIR-01`/`PAN-01`, `PRO-01` → `403`; query `year`, `from`, `to`; `422` si `to` < `from`). `data`: `careers[]` (`career_id`, `name`, `code`, `total`, `by_status` con `en_curso`/`finalizada`/`anulada`, `units`) y `total` (`total`, `by_status`, `units`). Ruta estática antes de `/maintenance-records/{id}`.
+
+## Revisión de la solicitud remota (noviembre 2026)
+
+Contrato completo en `docs/revision-solicitud-prestamo.md`. Sin cambios incompatibles.
+
+- **Nuevo** `GET /api/loans/{id}/review` (`PAN-01`, `AD-01`): `data` con `loan_id`, `code`, `status`, `storeroom`, `can_approve` e `items[]` (`item_id`, `product_id`, `name`, `quantity`, `has_units`, `available_quantity`, `shortage`, `location`, `cajon`, `suggested_units`, `available_units`). `422` en `status` si la solicitud ya no está `pendiente`.
+- `POST /api/loans/{id}/approve`: cuerpo opcional `items: [{item_id, unit_ids}]`. Sin `items` o con `items: []` sigue asignando automáticamente. La forma de la respuesta no cambia: el préstamo viene en `loan`, no en `data`.
+- **422 nuevos en `approve`:** `items.{i}.item_id`, `items.{i}.unit_ids` e `items.{i}.unit_ids.{j}`.
+- La revisión no reserva unidades: otra operación puede tomarlas antes de aprobar. Ante un `422`, volver a pedir la revisión.
+
+## Préstamos limitados al pañol de `PAN-01` (noviembre 2026) — Pronto
+
+El profesor decide a qué pañol envía la solicitud, y solo ese pañol la atiende. El pañol de un `PAN-01` es `users.storeroom_id` o, si no tiene uno, el pañol por defecto. `DIR-01` y `AD-01` no se limitan.
+
+- `GET /api/loans`, `GET /api/loans/export` y `GET /api/students/{id}/loans`: `PAN-01` recibe solo préstamos de su pañol. Un filtro `storeroom_id` de otro pañol devuelve una lista vacía, así que no conviene ofrecerle ese filtro.
+- `GET /api/loans/{id}`, `GET /api/loans/{id}/review` y `POST /api/loans/{id}/approve`, `/reject` y `/deliver`: `403` si el préstamo es de otro pañol.
+- `POST /api/loans/checkin`: `403` si `loan_id` es de otro pañol.
+- `POST /api/loans/checkout`: `403` si `storeroom_id` es de otro pañol. Sin `storeroom_id` se usa su pañol, como hasta ahora; el mostrador web no lo envía.
+- `GET /api/equipment-units/{id}`: `active_loan` viene `null` si el préstamo es de otro pañol, aunque la unidad esté `prestado`.
+- `GET /api/equipment-units/{id}/technical-sheet`: el historial de préstamos solo incluye los de su pañol.
+- Sin cambios: `GET /api/loans/pending`.

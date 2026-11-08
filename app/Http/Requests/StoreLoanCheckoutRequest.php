@@ -28,7 +28,7 @@ class StoreLoanCheckoutRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return $this->user()?->can('checkout', Loan::class) ?? false;
+        return $this->user()?->can('checkout', [Loan::class, $this->input('storeroom_id')]) ?? false;
     }
 
     public function rules(): array

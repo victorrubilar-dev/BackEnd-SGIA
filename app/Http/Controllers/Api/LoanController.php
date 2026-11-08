@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\InvalidLoanStatusTransition;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ApproveLoanRequest;
 use App\Http\Requests\DeliverLoanRequest;
 use App\Http\Requests\RejectLoanRequest;
 use App\Http\Requests\StoreLoanCheckinRequest;
 use App\Http\Requests\StoreLoanCheckoutRequest;
 use App\Http\Requests\StoreLoanRequest;
 use App\Http\Resources\LoanResource;
+use App\Http\Resources\LoanReviewResource;
 use App\Models\Loan;
-use App\Models\Storeroom;
 use App\Models\User;
 use App\Services\EquipmentPdfService;
 use App\Services\LoanService;
@@ -99,7 +100,8 @@ class LoanController extends Controller
     {
         Gate::authorize('viewAny', Loan::class);
 
-        $query = Loan::with(['items.product.location', 'items.units.cajon.location', 'requester', 'student', 'career', 'storeroom', 'location'])
+        $query = Loan::visibleTo($request->user())
+            ->with(['items.product.location', 'items.units.cajon.location', 'requester', 'student', 'career', 'storeroom', 'location'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -138,10 +140,8 @@ class LoanController extends Controller
             ->orderBy('created_at');
 
         // La cola de cada pañolero es la de su pañol; el administrador ve todas (y puede filtrar).
-        $user = $request->user();
-        if ($user->hasRole(User::ROLE_WAREHOUSE)) {
-            $query->where('storeroom_id', $user->storeroom_id ?? Storeroom::default()->id);
-        } elseif ($request->filled('storeroom_id')) {
+        $query->visibleTo($request->user());
+        if (! $request->user()->hasRole(User::ROLE_WAREHOUSE) && $request->filled('storeroom_id')) {
             $query->where('storeroom_id', $request->integer('storeroom_id'));
         }
 
@@ -151,14 +151,27 @@ class LoanController extends Controller
     }
 
     /**
-     * Aprueba la solicitud: descuenta el stock y notifica al docente (REQ-10).
+     * Revisión previa a la aprobación: unidades propuestas y disponibles con su ubicación (REQ-10).
      */
-    public function approve(Request $request, Loan $loan, LoanService $loanService): JsonResponse
+    public function review(Loan $loan, LoanService $loanService): LoanReviewResource|JsonResponse
     {
         Gate::authorize('approve', $loan);
 
         try {
-            $loanService->approve($loan, $request->user());
+            return new LoanReviewResource($loanService->review($loan));
+        } catch (InvalidLoanStatusTransition $e) {
+            return $this->invalidTransitionResponse($e, $loan);
+        }
+    }
+
+    /**
+     * Aprueba la solicitud: descuenta el stock, asigna las unidades elegidas en la revisión o,
+     * si no vienen, automáticas, y notifica al docente (REQ-10).
+     */
+    public function approve(ApproveLoanRequest $request, Loan $loan, LoanService $loanService): JsonResponse
+    {
+        try {
+            $loanService->approve($loan, $request->user(), $request->validated('items', []));
         } catch (InvalidLoanStatusTransition $e) {
             return $this->invalidTransitionResponse($e, $loan);
         }
@@ -248,6 +261,8 @@ class LoanController extends Controller
      */
     public function checkin(StoreLoanCheckinRequest $request, LoanService $loanService): JsonResponse
     {
+        Gate::authorize('checkinLoan', Loan::findOrFail($request->validated('loan_id')));
+
         $loan = $loanService->checkin($request->validated(), $request->user());
 
         $message = $loan->returned_at !== null
@@ -290,7 +305,7 @@ class LoanController extends Controller
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
 
-        $query = Loan::with(['items.units', 'requester', 'career'])->orderBy('loan_date')->orderBy('id');
+        $query = Loan::visibleTo($request->user())->with(['items.units', 'requester', 'career'])->orderBy('loan_date')->orderBy('id');
         $loanService->applyHistoryFilters($query, $request);
 
         if (! empty($validated['from'])) {
