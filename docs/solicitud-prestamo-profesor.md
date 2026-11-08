@@ -39,7 +39,9 @@ Un cliente es **antiguo** cuando envía `room` y no envía `location_id` ni `sto
 
 ## Disponibilidad de stock
 
-La solicitud se valida contra el **stock actual** del producto, igual que antes. **No** se consideran otras solicitudes pendientes ni el rango horario: el stock se descuenta recién cuando el pañol aprueba la solicitud (`POST /api/loans/{id}/approve`), que vuelve a validar.
+La solicitud se valida contra el **stock actual**: en equipos y maquetas, las unidades `disponible` del pañol elegido; en insumos, la cantidad total del producto. **No** se consideran otras solicitudes pendientes ni el rango horario: el stock se descuenta recién cuando el pañol aprueba la solicitud (`POST /api/loans/{id}/approve`), que vuelve a validar.
+
+Hoy el panel muestra `quantity`, que suma todos los pañoles, por lo que puede mostrar existencias que el pañol elegido no tiene. La corrección está planificada en `docs/disponibilidad-por-panol.md`.
 
 ## Autorización
 
@@ -100,7 +102,7 @@ Las relaciones (`career`, `storeroom`, `location`, `teacher`) vienen en el alta,
 | `GET /api/storerooms` | Lectura (todos los roles autenticados). |
 | `GET /api/locations?tipo=sala\|taller&storeroom_id={id}` | Lectura (todos los roles autenticados). |
 | `GET /api/careers` y `GET /api/careers/{id}` | **Lectura agregada** para `PRO-01` (solo lectura; el listado es completo, no depende de sus carreras). |
-| `GET /api/products?is_active=1` | Lectura (todos los roles autenticados); `quantity` es el stock disponible. |
+| `GET /api/products?is_active=1` | Lectura (todos los roles autenticados); `quantity` es el stock disponible total, sin separar por pañol. |
 
 ## Base de datos
 
