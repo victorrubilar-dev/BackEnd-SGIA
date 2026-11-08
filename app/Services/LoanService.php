@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\LoanStatusNotification;
 use App\Rules\ChileanRut;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
@@ -82,14 +83,52 @@ class LoanService
     }
 
     /**
+     * Datos de la revisión de una solicitud pendiente: carga en cada ítem la relación
+     * `availableUnits` con las unidades disponibles del pañol del préstamo. No reserva nada;
+     * las unidades cambian de estado recién al aprobar.
+     *
+     * @throws InvalidLoanStatusTransition si la solicitud ya no se puede aprobar
+     */
+    public function review(Loan $loan): Loan
+    {
+        if (! LoanStateMachine::canTransition($loan->status, LoanStateMachine::STATUS_IN_PROGRESS)) {
+            throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_IN_PROGRESS);
+        }
+
+        $items = LoanItem::where('loan_id', $loan->id)
+            ->with(['product.location', 'product.cajon.location'])
+            ->orderBy('id')
+            ->get();
+
+        $unitsByProduct = EquipmentUnit::whereIn('product_id', $items->pluck('product_id')->filter())
+            ->where('status', EquipmentUnit::STATUS_AVAILABLE)
+            ->inStoreroom($loan->storeroom_id)
+            ->with('cajon.location')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('product_id');
+
+        foreach ($items as $item) {
+            $item->setRelation('availableUnits', $unitsByProduct->get($item->product_id, new EloquentCollection));
+        }
+
+        return $loan->load('storeroom')->setRelation('items', $items);
+    }
+
+    /**
      * Aprueba la solicitud remota: descuenta el stock de cada producto,
      * deja el préstamo `en_proceso` y notifica al solicitante (REQ-10).
      *
+     * `$assignments` (`[['item_id' => 1, 'unit_ids' => [..]]]`) indica las unidades elegidas por
+     * el pañol en la revisión; los ítems no indicados se asignan automáticamente.
+     *
+     * @param  array<int, array{item_id: int, unit_ids: array<int, int>}>  $assignments
+     *
      * @throws InvalidLoanStatusTransition|ValidationException
      */
-    public function approve(Loan $loan, User $approver): Loan
+    public function approve(Loan $loan, User $approver, array $assignments = []): Loan
     {
-        $loan = DB::transaction(function () use ($loan, $approver) {
+        $loan = DB::transaction(function () use ($loan, $approver, $assignments) {
             $loan->loadMissing('items');
 
             // Valida la máquina de estados antes de tocar el stock.
@@ -97,7 +136,10 @@ class LoanService
                 throw new InvalidLoanStatusTransition($loan->status, LoanStateMachine::STATUS_IN_PROGRESS);
             }
 
-            $this->deductStock($loan);
+            // Las elegidas van primero para que la asignación automática no las tome.
+            $assignedItemIds = $this->assignChosenUnits($loan, $assignments);
+
+            $this->deductStock($loan, skipItemIds: $assignedItemIds);
 
             $this->transition($loan, LoanStateMachine::STATUS_IN_PROGRESS, [
                 'approved_by' => $approver->id,
@@ -263,14 +305,15 @@ class LoanService
      * y luego el producto). Evalúa las alertas (REQ-06).
      *
      * @param  array<int, array<int, int>|null>  $requestedUnits  unit_ids por id de ítem
+     * @param  array<int, int>  $skipItemIds  ítems que ya tienen sus unidades asignadas
      *
      * @throws ValidationException
      */
-    private function deductStock(Loan $loan, array $requestedUnits = [], bool $delivered = false): void
+    private function deductStock(Loan $loan, array $requestedUnits = [], bool $delivered = false, array $skipItemIds = []): void
     {
         $storeroom = Storeroom::findOrFail($loan->storeroom_id);
 
-        foreach ($loan->items as $item) {
+        foreach ($loan->items->whereNotIn('id', $skipItemIds) as $item) {
             if ($item->product_id === null) {
                 continue;
             }
@@ -308,6 +351,41 @@ class LoanService
     }
 
     /**
+     * Asigna las unidades elegidas por el pañol al aprobar y devuelve los ítems atendidos.
+     *
+     * @param  array<int, array{item_id: int, unit_ids: array<int, int>}>  $assignments
+     * @return array<int, int>
+     *
+     * @throws ValidationException
+     */
+    private function assignChosenUnits(Loan $loan, array $assignments): array
+    {
+        $assignedItemIds = [];
+
+        if ($assignments === []) {
+            return $assignedItemIds;
+        }
+
+        $storeroom = Storeroom::findOrFail($loan->storeroom_id);
+
+        foreach ($assignments as $index => $assignment) {
+            $item = LoanItem::whereKey((int) $assignment['item_id'])->where('loan_id', $loan->id)->first();
+            $product = $item !== null ? Product::find($item->product_id) : null;
+
+            if ($product === null || ! $product->hasUnits() || in_array($item->id, $assignedItemIds, true)) {
+                throw ValidationException::withMessages([
+                    "items.{$index}.item_id" => 'El ítem no pertenece a este préstamo, no se gestiona por unidades o está repetido.',
+                ]);
+            }
+
+            $this->assignUnits($item, $product, $storeroom, $assignment['unit_ids'], false, "items.{$index}.unit_ids");
+            $assignedItemIds[] = $item->id;
+        }
+
+        return $assignedItemIds;
+    }
+
+    /**
      * Pasa a `prestado` las unidades del ítem y las vincula en `loan_item_units`. Solo toma
      * unidades guardadas en el pañol del préstamo.
      *
@@ -315,7 +393,7 @@ class LoanService
      *
      * @throws ValidationException
      */
-    private function assignUnits(LoanItem $item, Product $product, Storeroom $storeroom, ?array $unitIds, bool $delivered): void
+    private function assignUnits(LoanItem $item, Product $product, Storeroom $storeroom, ?array $unitIds, bool $delivered, string $errorKey = 'items'): void
     {
         $available = EquipmentUnit::where('product_id', $product->id)
             ->where('status', EquipmentUnit::STATUS_AVAILABLE)
@@ -327,7 +405,7 @@ class LoanService
 
             if (count($unitIds) !== (int) $item->quantity) {
                 throw ValidationException::withMessages([
-                    'items' => "Debes indicar exactamente {$item->quantity} unidad(es) para \"{$product->name}\".",
+                    $errorKey => "Debes indicar exactamente {$item->quantity} unidad(es) para \"{$product->name}\".",
                 ]);
             }
 
@@ -335,7 +413,7 @@ class LoanService
 
             if ($units->count() !== count($unitIds)) {
                 throw ValidationException::withMessages([
-                    'items' => "Alguna de las unidades indicadas para \"{$product->name}\" no existe, no pertenece al producto, no está disponible o no está en {$storeroom->name}.",
+                    $errorKey => "Alguna de las unidades indicadas para \"{$product->name}\" no existe, no pertenece al producto, no está disponible o no está en {$storeroom->name}.",
                 ]);
             }
         } else {
@@ -343,7 +421,7 @@ class LoanService
 
             if ($units->count() < $item->quantity) {
                 throw ValidationException::withMessages([
-                    'items' => "Stock insuficiente para \"{$product->name}\" en {$storeroom->name}: "
+                    $errorKey => "Stock insuficiente para \"{$product->name}\" en {$storeroom->name}: "
                         ."se requieren {$item->quantity} y hay {$units->count()} disponibles.",
                 ]);
             }

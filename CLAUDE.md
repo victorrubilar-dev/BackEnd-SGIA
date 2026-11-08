@@ -24,7 +24,7 @@ Antes de dar una tarea por terminada: `php artisan test` en verde, `pint --dirty
 |---|---|---|
 | `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
 | `DIR-01` | Director de Carrera (de área) | Facturas, cotizaciones, compras, dashboards; presupuestos de todas las carreras del Área de Informática |
-| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos, informes |
+| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), informes |
 | `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 
 Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` (grueso) y Policies en `app/Policies` (por recurso). `EnsureUserIsActive` (`active`) bloquea tokens de usuarios desactivados.
@@ -58,6 +58,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `TASKS/`: requisitos (REQ-xx) por módulo con checkboxes; `TASKS/README.md` tiene el índice FU → archivo y la regla: marcar `[x]` solo si está hecho **y** tiene test.
 - `docs/autenticacion.md`: guía técnica de Sanctum y CORS.
 - `docs/solicitud-prestamo-profesor.md`: especificación de la solicitud remota de préstamo del profesor (horario, laboratorio, pañol, cola por pañol).
+- `docs/revision-solicitud-prestamo.md`: contrato de la revisión de solicitudes remotas por el pañol y de la elección de unidades al aprobar.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
 - `TASKS/front-end.md`: cambios del backend que afectan al frontend. Actualizarlo cuando un cambio rompa o modifique el contrato de la API.
 - `README.md`: puesta en marcha para humanos.

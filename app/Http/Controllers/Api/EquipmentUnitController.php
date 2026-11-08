@@ -149,12 +149,12 @@ class EquipmentUnitController extends Controller
     /**
      * GET /api/equipment-units/{equipmentUnit}/technical-sheet
      */
-    public function technicalSheet(EquipmentUnit $equipmentUnit, EquipmentPdfService $pdfService): SymfonyResponse
+    public function technicalSheet(Request $request, EquipmentUnit $equipmentUnit, EquipmentPdfService $pdfService): SymfonyResponse
     {
         Gate::authorize('view', $equipmentUnit);
 
         return $pdfService->download(
-            $pdfService->unitTechnicalSheet($equipmentUnit),
+            $pdfService->unitTechnicalSheet($equipmentUnit, $request->user()),
             'hoja-de-vida-'.$equipmentUnit->code.'.pdf'
         );
     }

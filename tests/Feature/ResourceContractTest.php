@@ -15,6 +15,7 @@ use App\Http\Resources\InvoiceIntakeItemResource;
 use App\Http\Resources\InvoiceIntakeResource;
 use App\Http\Resources\LoanItemResource;
 use App\Http\Resources\LoanResource;
+use App\Http\Resources\LoanReviewResource;
 use App\Http\Resources\LocationResource;
 use App\Http\Resources\MaintenanceDocumentResource;
 use App\Http\Resources\MaintenanceRecordResource;
@@ -52,6 +53,7 @@ use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Models\UserChart;
+use App\Services\LoanService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
@@ -121,6 +123,7 @@ class ResourceContractTest extends TestCase
 
         $this->assertKeys(LoanResource::class, $loan, explode(',', 'allowed_transitions,approved_at,approved_by,borrower_document,borrower_name,career_id,code,created_at,due_date,end_time,id,is_in_progress,is_overdue,is_pending,is_processed,is_rejected,is_returned,loan_date,location_id,notes,processed_at,processed_by,rejection_reason,requested_by,return_notes,returned_at,returned_by,room,start_time,status,status_label,storeroom_id,student_id,subject,time_block,type,updated_at'));
         $this->assertKeys(LoanItemResource::class, $item, explode(',', 'available_stock,cajon,delivered_quantity,id,is_returned,loan_id,location,name,product_id,quantity,return_condition,returned_at,returned_quantity'));
+        $this->assertKeys(LoanReviewResource::class, app(LoanService::class)->review($loan), explode(',', 'can_approve,code,items,loan_id,status,storeroom'));
     }
 
     public function test_purchase_and_quotation_resources(): void
