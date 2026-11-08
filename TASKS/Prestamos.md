@@ -61,3 +61,12 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 - [x] `GET /api/careers` de solo lectura para `PRO-01`; `GET /api/locations?storeroom_id=` (`LoanRemoteRequestTest`, `CareerManagementTest`).
 - [x] `LoanResource` suma `storeroom`, `location`, `start_time`, `end_time` y `teacher` (`ResourceContractTest`).
 - [ ] La disponibilidad no considera otras solicitudes ni el rango horario (solo el stock actual); queda documentado, sin reserva por horario.
+
+### Disponibilidad por pañol en el panel del profesor (plan en `docs/disponibilidad-por-panol.md`)
+El panel muestra `quantity` (todos los pañoles), pero la solicitud valida solo el pañol elegido: puede mostrar 8 existencias y rechazar con "hay 0 disponibles".
+- [ ] `GET /api/products?storeroom_id=` suma `available_in_storeroom`: unidades `disponible` del pañol en equipos y maquetas, `quantity` en insumos; sin el parámetro, la respuesta no cambia.
+- [ ] `storeroom_id` inválido o inexistente responde `422` con `errors.storeroom_id`.
+- [ ] El listado y `assertItemsAvailable` comparten la misma regla: pedir más de lo informado da `422` y pedir esa cantidad exacta se acepta.
+- [ ] El listado con `storeroom_id` no introduce N+1 (`ListQueryPerformanceTest`).
+- [ ] `ProductStoreroomAvailabilityTest` y `ResourceContractTest` cubren el contrato.
+- [ ] `ENDPOINTS.md`, `TASKS/front-end.md` y el documento del plan quedan actualizados como implementado.
