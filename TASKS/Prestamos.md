@@ -60,13 +60,13 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 - [x] La cola `GET /api/loans/pending` de `PAN-01` muestra solo su pañol; `AD-01` ve todas (`LoanRemoteRequestTest`).
 - [x] `GET /api/careers` de solo lectura para `PRO-01`; `GET /api/locations?storeroom_id=` (`LoanRemoteRequestTest`, `CareerManagementTest`).
 - [x] `LoanResource` suma `storeroom`, `location`, `start_time`, `end_time` y `teacher` (`ResourceContractTest`).
-- [ ] La disponibilidad no considera otras solicitudes ni el rango horario (solo el stock actual); queda documentado, sin reserva por horario.
+- [x] Las unidades quedan `prestado` desde la aprobación y `sgia:release-expired-loans` (cada 5 min) las devuelve a `disponible` al llegar `loan_date` + `end_time` (hora de Chile) si el pañol no registró la devolución; el préstamo queda con `returned_at` y una nota. No hay reserva por horario futuro: la disponibilidad es el estado actual (`ReleaseExpiredLoansTest`).
 
 ### Disponibilidad por pañol en el panel del profesor (plan en `docs/disponibilidad-por-panol.md`)
 El panel muestra `quantity` (todos los pañoles), pero la solicitud valida solo el pañol elegido: puede mostrar 8 existencias y rechazar con "hay 0 disponibles".
-- [ ] `GET /api/products?storeroom_id=` suma `available_in_storeroom`: unidades `disponible` del pañol en equipos y maquetas, `quantity` en insumos; sin el parámetro, la respuesta no cambia.
-- [ ] `storeroom_id` inválido o inexistente responde `422` con `errors.storeroom_id`.
-- [ ] El listado y `assertItemsAvailable` comparten la misma regla: pedir más de lo informado da `422` y pedir esa cantidad exacta se acepta.
-- [ ] El listado con `storeroom_id` no introduce N+1 (`ListQueryPerformanceTest`).
-- [ ] `ProductStoreroomAvailabilityTest` y `ResourceContractTest` cubren el contrato.
-- [ ] `ENDPOINTS.md`, `TASKS/front-end.md` y el documento del plan quedan actualizados como implementado.
+- [x] `GET /api/products?storeroom_id=` suma `available_in_storeroom`: unidades `disponible` del pañol en equipos y maquetas, `quantity` en insumos; sin el parámetro, la respuesta no cambia.
+- [x] `storeroom_id` inválido o inexistente responde `422` con `errors.storeroom_id`.
+- [x] El listado y `assertItemsAvailable` comparten la misma regla: pedir más de lo informado da `422` y pedir esa cantidad exacta se acepta.
+- [x] El listado con `storeroom_id` no introduce N+1 (`ListQueryPerformanceTest`).
+- [x] `ProductStoreroomAvailabilityTest` y `ResourceContractTest` cubren el contrato.
+- [x] `ENDPOINTS.md`, `TASKS/front-end.md` y el documento del plan quedan actualizados como implementado.

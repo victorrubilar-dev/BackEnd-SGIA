@@ -13,6 +13,7 @@ use App\Models\Student;
 use App\Models\User;
 use App\Notifications\LoanStatusNotification;
 use App\Rules\ChileanRut;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -571,8 +572,7 @@ class LoanService
 
             $available = $product->hasUnits()
                 ? EquipmentUnit::where('product_id', $product->id)
-                    ->where('status', EquipmentUnit::STATUS_AVAILABLE)
-                    ->inStoreroom($storeroom->id)
+                    ->availableInStoreroom($storeroom->id)
                     ->count()
                 : (int) $product->quantity;
 
@@ -690,6 +690,100 @@ class LoanService
 
             return $loan->load('items.units.cajon.location');
         });
+    }
+
+    /**
+     * Libera automáticamente las unidades de los préstamos cuyo horario de término ya pasó.
+     *
+     * Las unidades quedan `prestado` desde la aprobación; al llegar `loan_date` + `end_time`
+     * (hora de Chile) y si el pañol no registró la devolución, vuelven a `disponible` y se
+     * devuelven como `bueno` con una nota. Los insumos no se tocan (se consumen). Si luego
+     * hay daño o pérdida, el pañol corrige el estado de la unidad.
+     *
+     * @return int unidades liberadas
+     */
+    public function releaseExpiredUnits(?CarbonInterface $now = null): int
+    {
+        $now = ($now ?? now())->copy()->setTimezone('America/Santiago');
+        $today = $now->toDateString();
+
+        $loans = Loan::query()
+            ->whereIn('status', [LoanStateMachine::STATUS_IN_PROGRESS, LoanStateMachine::STATUS_PROCESSED])
+            ->whereNull('returned_at')
+            ->whereNotNull('end_time')
+            ->where(fn ($q) => $q->where('loan_date', '<', $today)
+                ->orWhere(fn ($q) => $q->where('loan_date', $today)->where('end_time', '<=', $now->format('H:i:s'))))
+            ->whereHas('items.units', fn ($u) => $u->whereNull('loan_item_units.returned_at'))
+            ->pluck('id');
+
+        $released = 0;
+
+        foreach ($loans as $loanId) {
+            $released += DB::transaction(fn () => $this->releaseLoanUnits((int) $loanId));
+        }
+
+        return $released;
+    }
+
+    private function releaseLoanUnits(int $loanId): int
+    {
+        $loan = Loan::whereKey($loanId)->lockForUpdate()->first();
+
+        if ($loan === null || $loan->returned_at !== null) {
+            return 0;
+        }
+
+        $loan->load('items.product');
+        $released = 0;
+        $touched = [];
+
+        foreach ($loan->items as $item) {
+            $pending = DB::table('loan_item_units')
+                ->where('loan_item_id', $item->id)
+                ->whereNull('returned_at')
+                ->lockForUpdate()
+                ->pluck('equipment_unit_id')
+                ->all();
+
+            if ($pending === []) {
+                continue;
+            }
+
+            $released += EquipmentUnit::whereIn('id', $pending)
+                ->where('status', EquipmentUnit::STATUS_ON_LOAN)
+                ->update(['status' => EquipmentUnit::STATUS_AVAILABLE]);
+
+            DB::table('loan_item_units')
+                ->where('loan_item_id', $item->id)
+                ->whereIn('equipment_unit_id', $pending)
+                ->update(['returned_at' => now(), 'return_condition' => LoanItem::CONDITION_GOOD, 'updated_at' => now()]);
+
+            $returned = (int) $item->returned_quantity + count($pending);
+            $attributes = ['returned_quantity' => $returned];
+
+            if ($returned >= $item->quantity) {
+                $attributes += ['returned_at' => now(), 'return_condition' => $this->worstCondition($item)];
+            }
+
+            $item->forceFill($attributes)->save();
+
+            if ($item->product !== null) {
+                $touched[$item->product->id] = $item->product;
+            }
+        }
+
+        foreach ($touched as $product) {
+            $this->equipmentUnits->syncProductCounters($product);
+        }
+
+        if ($loan->items()->whereNull('returned_at')->doesntExist()) {
+            $loan->forceFill([
+                'returned_at' => now(),
+                'return_notes' => trim(($loan->return_notes ?? '').' Liberado automáticamente al finalizar el horario del préstamo.'),
+            ])->save();
+        }
+
+        return $released;
     }
 
     /**

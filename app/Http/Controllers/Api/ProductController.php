@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\ListProductsRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateLocationRequest;
 use App\Http\Requests\UpdateProductConditionRequest;
@@ -21,7 +22,6 @@ use App\Services\ProductService;
 use App\Services\StockAlertService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
@@ -34,11 +34,16 @@ class ProductController extends Controller
     /**
      * Display a listing of products with filters.
      */
-    public function index(Request $request, ProductService $products): AnonymousResourceCollection
+    public function index(ListProductsRequest $request, ProductService $products): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', Product::class);
 
         $query = $products->applyFilters(Product::with(['supplier', 'cajon.location', 'location']), $request);
+
+        if ($request->filled('storeroom_id')) {
+            $storeroomId = $request->integer('storeroom_id');
+            $query->withCount(['units as available_in_storeroom' => fn ($units) => $units->availableInStoreroom($storeroomId)]);
+        }
 
         $perPage = $this->perPage($request);
 
