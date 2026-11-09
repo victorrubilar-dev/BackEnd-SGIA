@@ -369,9 +369,9 @@ El profesor decide a qué pañol envía la solicitud, y solo ese pañol la atien
 - `GET /api/equipment-units/{id}/technical-sheet`: el historial de préstamos solo incluye los de su pañol.
 - Sin cambios: `GET /api/loans/pending`.
 
-## Disponibilidad por pañol en la solicitud del profesor (planificado, sin implementar) — Pronto
+## Disponibilidad por pañol en la solicitud del profesor (ya implementado en el backend) — Pronto
 
-El panel muestra `quantity`, que es el total de todos los pañoles, pero `POST /api/loans/requests` valida solo el pañol elegido. Por eso un producto puede mostrar 8 existencias y rechazarse con "hay 0 disponibles". Plan y contrato completos en `docs/disponibilidad-por-panol.md`. Sin cambios incompatibles.
+El panel muestra `quantity`, que es el total de todos los pañoles, pero `POST /api/loans/requests` valida solo el pañol elegido. Por eso un producto puede mostrar 8 existencias y rechazarse con "hay 0 disponibles". Plan y contrato completos en `docs/disponibilidad-por-panol.md`. Ya disponible: `GET /api/products?storeroom_id={id}` suma `available_in_storeroom`. Sin cambios incompatibles.
 
 - **Nuevo parámetro** `GET /api/products?storeroom_id={id}`: cada producto suma `available_in_storeroom` (entero). No excluye productos; sin el parámetro, la respuesta no cambia. `422` en `errors.storeroom_id` si no es válido.
 - Al elegir el pañol, volver a pedir los productos con `storeroom_id`, mostrar `available_in_storeroom` como existencias y usarlo como máximo de la cantidad.

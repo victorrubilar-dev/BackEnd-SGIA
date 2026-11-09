@@ -10,7 +10,7 @@ class ProductResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
-     * @return array<string, mixed>
+     * @return array<int|string, mixed>
      */
     public function toArray(Request $request): array
     {
@@ -45,6 +45,12 @@ class ProductResource extends JsonResource
             'reference_price' => $this->reference_price,
             'photo_url' => $this->photo_url,
             'is_active' => (bool) $this->is_active,
+            // Solo con `?storeroom_id=`: equipos/maquetas cuentan unidades disponibles del pañol; los insumos, su total.
+            $this->mergeWhen(isset($this->resource->available_in_storeroom), fn () => [
+                'available_in_storeroom' => $this->resource->hasUnits()
+                    ? (int) $this->resource->available_in_storeroom
+                    : (int) $this->resource->quantity,
+            ]),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,
             'created_at' => $this->created_at?->toIso8601String(),

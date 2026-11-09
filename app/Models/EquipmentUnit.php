@@ -84,6 +84,17 @@ class EquipmentUnit extends Model
         $query->whereHas('cajon.location', fn (Builder $location) => $location->where('storeroom_id', $storeroomId));
     }
 
+    /**
+     * Unidades `disponible` guardadas en el pañol indicado. Es la regla única de disponibilidad
+     * por pañol: la usan la validación de préstamos y el listado de productos.
+     *
+     * @param  Builder<EquipmentUnit>  $query
+     */
+    public function scopeAvailableInStoreroom(Builder $query, int $storeroomId): void
+    {
+        $query->where('status', self::STATUS_AVAILABLE)->inStoreroom($storeroomId);
+    }
+
     public function incidentReports(): HasMany
     {
         return $this->hasMany(IncidentReport::class);

@@ -1,6 +1,6 @@
 # Disponibilidad de productos por pañol
 
-**Estado: planificado, sin implementar.** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Prestamos.md`.
+**Estado: backend implementado (fases 1 a 3); panel web implementado (fase 4, `CatalogPanel` y `LoanRequestForm`).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Prestamos.md`.
 
 ## Problema
 
@@ -56,7 +56,7 @@ Roles: los mismos del listado (todos los autenticados).
 ### Límites
 
 - El dato es informativo y no reserva nada. Otra operación puede tomar la unidad antes de enviar o aprobar la solicitud, así que `POST /api/loans/requests` y `approve` siguen validando y pueden responder `422`.
-- Tampoco considera otras solicitudes pendientes ni el rango horario, igual que la validación actual.
+- Tampoco considera otras solicitudes pendientes ni reserva por horario futuro. Las unidades aprobadas quedan `prestado` (no cuentan) desde la aprobación hasta la devolución o hasta `end_time`, cuando `sgia:release-expired-loans` las libera sola.
 - `GET /api/products/{id}` no cambia: el panel trabaja con el listado.
 
 ## Plan de implementación

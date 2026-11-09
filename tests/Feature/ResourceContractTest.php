@@ -111,6 +111,12 @@ class ResourceContractTest extends TestCase
 
         $this->assertKeys(ProductResource::class, $product, explode(',', 'area,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,name,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by'));
 
+        // Con `?storeroom_id=` el listado suma `available_in_storeroom`.
+        $withAvailability = Product::factory()->create();
+        $withAvailability->setAttribute('available_in_storeroom', 2);
+        $keys = explode(',', 'area,available_in_storeroom,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,name,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by');
+        $this->assertKeys(ProductResource::class, $withAvailability, $keys);
+
         $alert = StockAlert::create(['product_id' => $product->id, 'alert_type' => 'warning', 'current_stock' => 1, 'stock_minimo' => 1, 'message' => 'm', 'is_resolved' => false]);
         $this->assertKeys(StockAlertResource::class, $alert, explode(',', 'alert_type,created_at,current_stock,id,is_resolved,message,product_barcode,product_id,product_name,stock_minimo'));
     }

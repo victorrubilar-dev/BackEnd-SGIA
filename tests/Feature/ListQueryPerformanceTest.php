@@ -109,7 +109,7 @@ class ListQueryPerformanceTest extends TestCase
         }
 
         foreach ([
-            '/api/products', '/api/suppliers', '/api/locations', '/api/cajones',
+            '/api/products', '/api/products?storeroom_id='.$location->storeroom_id, '/api/suppliers', '/api/locations', '/api/cajones',
             '/api/purchases', '/api/quotations', '/api/loans', '/api/loans/pending',
             '/api/alerts/critical-stock', '/api/users', '/api/tokens',
             "/api/equipment/{$products[0]->id}/reports",
