@@ -241,13 +241,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // REQ-12: Fichas técnicas de equipos (FU-05)
     // /equipment/{id}/technical-sheet: PDF con datos, proveedor,
-    // ubicación física e historial de novedades (todos los autenticados).
+    // ubicación física e historial de novedades (todos los autenticados; quien no
+    // atiende informes solo ve los que reportó).
     Route::get('/equipment/{product}/technical-sheet', [EquipmentController::class, 'technicalSheet']);
     // /equipment/{id}/reports: informes de novedades asociados al equipo,
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
     Route::get('/equipment/{product}/reports', [EquipmentReportController::class, 'index']);
-    // REQ-13: informe de novedades del docente (formulario con firma, solo PRO-01).
-    Route::middleware(['role:PRO-01', 'throttle:sensitive'])->post('/incident-reports', [IncidentReportController::class, 'store']);
+    // REQ-13: informe de novedades (formulario con firma, PRO-01 y PAN-01).
+    Route::middleware(['role:PRO-01,PAN-01', 'throttle:sensitive'])->post('/incident-reports', [IncidentReportController::class, 'store']);
     // Estática: antes de /incident-reports/{incidentReport}
     Route::middleware('role:PRO-01')->get('/incident-reports/mine', [IncidentReportController::class, 'mine']);
     Route::get('/incident-reports', [EquipmentReportController::class, 'all']);

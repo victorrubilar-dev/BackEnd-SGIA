@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Product;
 use App\Models\User;
@@ -103,6 +104,76 @@ class TechnicalSheetTest extends TestCase
         $this->assertStringContainsString('Multimetro Digital Fluke', $text);
         $this->assertStringContainsString('SGIA-7777000111', $text);
         $this->assertStringContainsString('Falla en pantalla', $text);
+    }
+
+    public function test_teacher_only_sees_their_own_reports_in_product_and_unit_sheets(): void
+    {
+        $unit = EquipmentUnit::factory()->create(['product_id' => $this->product->id]);
+        $otherTeacher = User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true]);
+        foreach (['Novedad propia' => $this->teacher, 'Novedad ajena' => $otherTeacher] as $title => $reporter) {
+            IncidentReport::factory()->create([
+                'product_id' => $this->product->id,
+                'equipment_unit_id' => $unit->id,
+                'reported_by' => $reporter->id,
+                'title' => $title,
+            ]);
+        }
+
+        Sanctum::actingAs($this->teacher);
+
+        foreach (["/api/equipment/{$this->product->id}/technical-sheet", "/api/equipment-units/{$unit->id}/technical-sheet"] as $url) {
+            $text = $this->pdfText((string) $this->get($url)->assertOk()->getContent());
+
+            $this->assertStringContainsString('Novedad propia', $text);
+            $this->assertStringNotContainsString('Novedad ajena', $text);
+            // El CSS del PDF deja los títulos en mayúsculas.
+            $this->assertStringContainsString('MIS INFORMES', $text);
+        }
+    }
+
+    public function test_teacher_without_reports_sees_no_reports_of_others_in_sheets(): void
+    {
+        $unit = EquipmentUnit::factory()->create(['product_id' => $this->product->id]);
+        IncidentReport::factory()->create([
+            'product_id' => $this->product->id,
+            'equipment_unit_id' => $unit->id,
+            'title' => 'Novedad ajena',
+        ]);
+
+        Sanctum::actingAs($this->teacher);
+
+        foreach (["/api/equipment/{$this->product->id}/technical-sheet", "/api/equipment-units/{$unit->id}/technical-sheet"] as $url) {
+            $text = $this->pdfText((string) $this->get($url)->assertOk()->getContent());
+
+            $this->assertStringNotContainsString('Novedad ajena', $text);
+            $this->assertStringContainsString('No has reportado', $text);
+        }
+    }
+
+    public function test_staff_sees_all_reports_in_product_and_unit_sheets(): void
+    {
+        $unit = EquipmentUnit::factory()->create(['product_id' => $this->product->id]);
+        IncidentReport::factory()->create([
+            'product_id' => $this->product->id,
+            'equipment_unit_id' => $unit->id,
+            'reported_by' => $this->teacher->id,
+            'title' => 'Novedad del docente',
+        ]);
+        $staff = [
+            $this->director,
+            User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]),
+            User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]),
+        ];
+
+        foreach ($staff as $user) {
+            Sanctum::actingAs($user);
+
+            foreach (["/api/equipment/{$this->product->id}/technical-sheet", "/api/equipment-units/{$unit->id}/technical-sheet"] as $url) {
+                $text = $this->pdfText((string) $this->get($url)->assertOk()->getContent());
+
+                $this->assertStringContainsString('Novedad del docente', $text);
+            }
+        }
     }
 
     public function test_technical_sheet_returns_404_for_unknown_equipment(): void

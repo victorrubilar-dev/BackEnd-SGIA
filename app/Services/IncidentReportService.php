@@ -16,7 +16,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Informe de novedades del docente (REQ-13): guarda el formulario, la firma y la foto en
+ * Informe de novedades (REQ-13): guarda el formulario, la firma y la foto en
  * disco privado, asocia el equipo por código y avisa a pañol, administración y dirección.
  */
 class IncidentReportService
@@ -24,7 +24,7 @@ class IncidentReportService
     /**
      * @param  array<string, mixed>  $data  datos validados por StoreIncidentReportRequest
      */
-    public function create(array $data, User $teacher, ?UploadedFile $photo): IncidentReport
+    public function create(array $data, User $reporter, ?UploadedFile $photo): IncidentReport
     {
         [$product, $unit] = $this->resolveEquipment($data['equipment_code'] ?? null);
 
@@ -42,8 +42,8 @@ class IncidentReportService
             'code' => IncidentReport::generateUniqueCode(),
             'product_id' => $product?->id,
             'equipment_unit_id' => $unit?->id,
-            'reported_by' => $teacher->id,
-            'teacher_name' => $teacher->name,
+            'reported_by' => $reporter->id,
+            'teacher_name' => $reporter->name,
             'subject' => $data['subject'],
             'report_date' => $data['report_date'],
             'location_id' => $data['location_id'],
@@ -65,13 +65,13 @@ class IncidentReportService
     }
 
     /**
-     * Avisa al docente que reportó cuando cambia el estado de su informe.
+     * Avisa a quien reportó cuando otra persona cambia el estado de su informe.
      */
-    public function notifyStatusChange(IncidentReport $report, string $from): void
+    public function notifyStatusChange(IncidentReport $report, string $from, User $actor): void
     {
         $reporter = User::find($report->reported_by);
 
-        if ($reporter && $reporter->is_active) {
+        if ($reporter && $reporter->is_active && $reporter->id !== $actor->id) {
             $reporter->notify(new IncidentReportNotification(
                 $report,
                 "Tu informe {$report->code} pasó de \"{$from}\" a \"{$report->status}\"."
@@ -129,6 +129,7 @@ class IncidentReportService
     {
         $recipients = User::withRole([User::ROLE_WAREHOUSE, User::ROLE_ADMIN, User::ROLE_DIRECTOR])
             ->where('is_active', true)
+            ->whereKeyNot($report->reported_by)
             ->get();
 
         if ($recipients->isNotEmpty()) {
