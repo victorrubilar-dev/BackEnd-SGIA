@@ -24,7 +24,7 @@ Antes de dar una tarea por terminada: `php artisan test` en verde, `pint --dirty
 |---|---|---|
 | `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
 | `DIR-01` | Director de Carrera (de área) | Facturas, cotizaciones, compras, dashboards; presupuestos de todas las carreras del Área de Informática |
-| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), informes |
+| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), crear y atender informes de novedades |
 | `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 
 Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` (grueso) y Policies en `app/Policies` (por recurso). `EnsureUserIsActive` (`active`) bloquea tokens de usuarios desactivados.

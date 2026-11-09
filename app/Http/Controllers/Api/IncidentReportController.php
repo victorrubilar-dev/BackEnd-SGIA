@@ -17,14 +17,14 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Informe de novedades del docente (REQ-13): crear, ver los propios, firma y PDF.
+ * Informe de novedades (REQ-13): crear, ver los propios, firma y PDF.
  */
 class IncidentReportController extends Controller
 {
     private const RELATIONS = ['reporter', 'location', 'product', 'equipmentUnit'];
 
     /**
-     * POST /api/incident-reports (solo PRO-01).
+     * POST /api/incident-reports (PRO-01 y PAN-01).
      */
     public function store(StoreIncidentReportRequest $request, IncidentReportService $service): JsonResponse
     {
@@ -52,7 +52,7 @@ class IncidentReportController extends Controller
     }
 
     /**
-     * GET /api/incident-reports/{id}: personal de pañol/administración/dirección o el docente dueño.
+     * GET /api/incident-reports/{id}: personal de pañol/administración/dirección o quien lo reportó.
      */
     public function show(IncidentReport $incidentReport): IncidentReportResource
     {

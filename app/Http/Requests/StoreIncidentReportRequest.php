@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Formulario del informe de novedades (solo docentes): asignatura, fecha, laboratorio,
+ * Formulario del informe de novedades (docentes y pañoleros): asignatura, fecha, laboratorio,
  * problemas marcados con su descripción, sugerencia, firma, y foto y equipo opcionales.
  */
 class StoreIncidentReportRequest extends FormRequest
@@ -18,7 +18,7 @@ class StoreIncidentReportRequest extends FormRequest
 
     public function prepareForValidation(): void
     {
-        // La fecha es la de hoy salvo que el docente indique otra.
+        // La fecha es la de hoy salvo que se indique otra.
         if (! $this->filled('report_date')) {
             $this->merge(['report_date' => today()->toDateString()]);
         }
@@ -82,7 +82,7 @@ class StoreIncidentReportRequest extends FormRequest
             'problems.*.description.required' => 'Describe cada problema marcado.',
             'problems.*.description.max' => 'La descripción de un problema no puede superar los 1000 caracteres.',
             'suggestion.max' => 'La sugerencia no puede superar los 2000 caracteres.',
-            'signature.required' => 'La firma del profesor es obligatoria.',
+            'signature.required' => 'La firma es obligatoria.',
             'evidence_photo.mimes' => 'La foto debe ser jpg, png o webp.',
             'evidence_photo.max' => 'La foto no puede superar los 10 MB.',
         ];
