@@ -64,7 +64,8 @@ class StoreLoanRequest extends FormRequest
             'items.*.quantity' => ['required', 'integer', 'min:1'],
             'career_id' => ['required', 'integer', 'exists:careers,id'],
             'subject' => ['required', 'string', 'max:255'],
-            'loan_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:today'],
+            // El día lo define Chile: la app corre en UTC y de noche ya sería mañana.
+            'loan_date' => ['required', 'date_format:Y-m-d', 'after_or_equal:'.now('America/Santiago')->toDateString()],
             'due_date' => ['nullable', 'date', 'after_or_equal:loan_date'],
             'start_time' => [$legacy ? 'nullable' : 'required', 'date_format:H:i'],
             'end_time' => [$legacy ? 'nullable' : 'required', 'date_format:H:i', 'after:start_time'],
