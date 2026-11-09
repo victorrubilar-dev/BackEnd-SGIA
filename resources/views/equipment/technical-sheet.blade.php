@@ -154,9 +154,9 @@
     </div>
 
     <div class="section">
-        <h2>Historial de novedades ({{ $reportsTotal }} en total · últimos {{ $reports->count() }})</h2>
+        <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Historial de novedades' }} ({{ $reportsTotal }} en total · últimos {{ $reports->count() }})</h2>
         @if ($reports->isEmpty())
-            <p class="empty">Este equipo no tiene informes de novedades registrados.</p>
+            <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en este equipo.' : 'Este equipo no tiene informes de novedades registrados.' }}</p>
         @else
             <table class="list">
                 <thead>

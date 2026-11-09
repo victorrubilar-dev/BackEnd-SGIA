@@ -127,9 +127,9 @@
     </div>
 
     <div class="section">
-        <h2>Informes de novedades ({{ $unit->incidentReports->count() }})</h2>
+        <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Informes de novedades' }} ({{ $unit->incidentReports->count() }})</h2>
         @if ($unit->incidentReports->isEmpty())
-            <p class="empty">La unidad no tiene informes de novedades.</p>
+            <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en esta unidad.' : 'La unidad no tiene informes de novedades.' }}</p>
         @else
             <table class="list">
                 <thead><tr><th>Código</th><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead>
