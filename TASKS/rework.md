@@ -55,7 +55,7 @@ Cambios mecánicos; hacerlos en un commit propio para no mezclar con lógica.
 - [x] Controladores gruesos (`ProductController` 340 líneas, `LoanController` 283, `PurchaseController` 268): lógica movida a `ProductService` (filtros y resolución de ubicación), `LoanService` (filtros del historial) y `PurchaseService` (creación y filtros). Los controladores quedaron en 181-223 líneas.
 - [x] Los filtros de listados están implementados a mano en cada controlador; los de productos, préstamos y compras (los largos) pasaron a sus Services; el resto tiene 1-3 filtros simples y se dejó. El cálculo de `per_page` estaba repetido 12 veces y ahora es `Controller::perPage()`.
 - [x] Índices en BD para los filtros usados (`loans.estado`, `purchases.status`, `products.area`/`cajon_id`); migración `2026_10_28_000000_add_foreign_key_indexes` (claves foráneas; `status`, `type`, `area` y `loan_date` ya estaban indexados) y `Model::preventLazyLoading()` fuera de producción, con `ListQueryPerformanceTest`.
-- [x] Revisar zona horaria: `APP_TIMEZONE=UTC` en testing; decisión: la API y la BD quedan en UTC (cambiarla desplazaría los datos guardados); las fechas-hora salen en ISO 8601 y los clientes las muestran en America/Santiago. Documentado en `ENDPOINTS.md`.
+- [x] Revisar zona horaria: `APP_TIMEZONE=UTC` en testing; decisión inicial: la API y la BD quedan en UTC. **Reemplazada el 2026-11-09:** la app y la sesión de PostgreSQL pasan a `America/Santiago`, y la migración `2026_11_17_000000_convert_timestamps_from_utc_to_chile` convierte los datos guardados. Las fechas-hora salen en ISO 8601 con zona. Documentado en `ENDPOINTS.md`.
 
 ## Fase 5 — Funcionalidad simulada o incompleta
 
