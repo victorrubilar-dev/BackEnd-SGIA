@@ -9,7 +9,7 @@
 
 ## Convenciones y Roles de Usuario
 
-> **Fechas:** los campos de fecha-hora se devuelven en ISO 8601 con zona (UTC, p. ej. `2026-10-28T15:30:00+00:00`); el cliente debe mostrarlas en `America/Santiago`. Los campos solo-fecha (p. ej. `loan_date`) vienen como `YYYY-MM-DD`.
+> **Fechas:** la API opera en `America/Santiago`. Los campos de fecha-hora se devuelven en ISO 8601 con zona: `2026-10-28T15:30:00-03:00` o, en los serializados por defecto, en UTC (`2026-10-28T18:30:00.000000Z`). Ambos son el mismo instante; el cliente debe interpretarlos con su zona y mostrarlos en `America/Santiago`. Los campos solo-fecha (p. ej. `loan_date`) vienen como `YYYY-MM-DD`.
 >
 > **Errores:** siempre `{"message": "..."}` en español; **todos** los `422` (validación y reglas de negocio) añaden `errors` (campo → lista de mensajes), a veces con claves extra como `allowed_transitions`. 404 es `Recurso no encontrado.` y 401 es `No autenticado.`.
 >

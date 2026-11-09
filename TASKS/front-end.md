@@ -49,7 +49,7 @@ Se eliminaron `/user`, `/change-password` y `/tokens/revoke-all`. El frontend ya
 Todos los errores traen `message` en español; los 422 añaden `errors`. Cambió el texto de 401 (`No autenticado.`), 403 por permisos (`No tienes permisos para realizar esta acción.`) y 404 (`Recurso no encontrado.`), antes en inglés o con el nombre de la clase. El cliente no depende de esos textos, solo del código HTTP.
 
 ### B2b. Fechas — Informativo
-Las fecha-hora llegan en ISO 8601 UTC; mostrarlas en `America/Santiago`. Las fechas sin hora (`loan_date`) llegan como `YYYY-MM-DD` y no deben convertirse de zona.
+Las fecha-hora llegan en ISO 8601 con zona (`-03:00`/`-04:00` o `Z`, según el campo); interpretarlas con su zona y mostrarlas en `America/Santiago`. Las fechas sin hora (`loan_date`) llegan como `YYYY-MM-DD` y no deben convertirse de zona.
 
 ### B3. Eliminaciones responden 204 — Informativo (hecho)
 Todos los `DELETE` (ubicaciones, cajones, productos, usuarios, proveedores y `/tokens/{id}`) responden 204 sin cuerpo. El frontend ya lo tolera. Excepción: `DELETE /api/suppliers/{id}` con productos asociados responde 200 con el proveedor desactivado.
