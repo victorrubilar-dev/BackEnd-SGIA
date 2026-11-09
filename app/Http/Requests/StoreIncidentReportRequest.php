@@ -8,7 +8,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * Formulario del informe de novedades (solo docentes): asignatura, fecha, laboratorio,
+ * Formulario del informe de novedades (docentes y pañoleros): asignatura, fecha, laboratorio,
  * problemas marcados con su descripción, sugerencia, firma, y foto y equipo opcionales.
  */
 class StoreIncidentReportRequest extends FormRequest
@@ -18,7 +18,7 @@ class StoreIncidentReportRequest extends FormRequest
 
     public function prepareForValidation(): void
     {
-        // La fecha es la de hoy salvo que el docente indique otra.
+        // La fecha es la de hoy salvo que se indique otra.
         if (! $this->filled('report_date')) {
             $this->merge(['report_date' => today()->toDateString()]);
         }
@@ -34,7 +34,7 @@ class StoreIncidentReportRequest extends FormRequest
         return [
             'subject' => ['required', 'string', 'max:100'],
             'report_date' => ['required', 'date', 'before_or_equal:today'],
-            'location_id' => ['required', 'integer', 'exists:locations,id'],
+            'location_id' => ['required', 'integer', Rule::exists('locations', 'id')->whereIn('tipo', IncidentReport::LOCATION_TYPES)],
             'problems' => ['required', 'array', 'min:1', 'max:'.count(IncidentReport::PROBLEM_LABELS)],
             'problems.*.type' => ['required', 'string', Rule::in(array_keys(IncidentReport::PROBLEM_LABELS)), 'distinct'],
             'problems.*.description' => ['required', 'string', 'max:1000'],
@@ -72,8 +72,8 @@ class StoreIncidentReportRequest extends FormRequest
             'subject.max' => 'La asignatura no puede superar los 100 caracteres.',
             'report_date.before_or_equal' => 'La fecha no puede ser futura.',
             'report_date.date' => 'La fecha debe ser válida.',
-            'location_id.required' => 'El laboratorio es obligatorio.',
-            'location_id.exists' => 'El laboratorio seleccionado no existe.',
+            'location_id.required' => 'El laboratorio o pañol es obligatorio.',
+            'location_id.exists' => 'Selecciona una sala, un taller o un pañol existente.',
             'problems.required' => 'Marca al menos un problema.',
             'problems.min' => 'Marca al menos un problema.',
             'problems.*.type.required' => 'Cada problema debe indicar su tipo.',
@@ -82,7 +82,7 @@ class StoreIncidentReportRequest extends FormRequest
             'problems.*.description.required' => 'Describe cada problema marcado.',
             'problems.*.description.max' => 'La descripción de un problema no puede superar los 1000 caracteres.',
             'suggestion.max' => 'La sugerencia no puede superar los 2000 caracteres.',
-            'signature.required' => 'La firma del profesor es obligatoria.',
+            'signature.required' => 'La firma es obligatoria.',
             'evidence_photo.mimes' => 'La foto debe ser jpg, png o webp.',
             'evidence_photo.max' => 'La foto no puede superar los 10 MB.',
         ];

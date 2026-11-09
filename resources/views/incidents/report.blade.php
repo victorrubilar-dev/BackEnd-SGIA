@@ -34,10 +34,10 @@
     <div class="section">
         <h2>Datos generales</h2>
         <table class="data">
-            <tr><td class="label">Nombre docente</td><td>{{ $report->teacher_name ?? $report->reporter?->name ?? '—' }}</td></tr>
-            <tr><td class="label">Asignatura</td><td>{{ $report->subject ?? '—' }}</td></tr>
+            <tr><td class="label">Reportado por</td><td>{{ $report->teacher_name ?? $report->reporter?->name ?? '—' }}</td></tr>
+            <tr><td class="label">Asignatura o actividad</td><td>{{ $report->subject ?? '—' }}</td></tr>
             <tr><td class="label">Fecha</td><td>{{ $report->report_date?->format('d-m-Y') ?? '—' }}</td></tr>
-            <tr><td class="label">Laboratorio</td><td>{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td></tr>
+            <tr><td class="label">Laboratorio o pañol</td><td>{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td></tr>
             @if ($report->product)
                 <tr>
                     <td class="label">Equipo</td>
@@ -76,7 +76,7 @@
     @endif
 
     <div class="section signature">
-        <h2>Firma del profesor</h2>
+        <h2>Firma</h2>
         @if ($signature)
             <img src="{{ $signature }}" alt="Firma">
         @else

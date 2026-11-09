@@ -10,7 +10,7 @@ use Illuminate\Notifications\Notification;
 
 /**
  * Aviso de informe de novedades: nuevo informe (pañol, administración y dirección)
- * o cambio de estado (docente que lo reportó).
+ * o cambio de estado (quien lo reportó).
  */
 class IncidentReportNotification extends Notification implements ShouldQueue
 {

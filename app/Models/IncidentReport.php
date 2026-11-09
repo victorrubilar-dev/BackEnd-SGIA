@@ -54,6 +54,9 @@ class IncidentReport extends Model
 
     public const PROBLEM_OTHER = 'otros';
 
+    /** Tipos de ubicación donde se puede reportar: salas, talleres y pañoles (no bodegas). */
+    public const LOCATION_TYPES = [Location::TIPO_SALA, Location::TIPO_TALLER, Location::TIPO_PANOL];
+
     /** Casillas del formulario: falla de equipos / instrumento / software, falta de equipamiento, falta de insumo, otros. */
     public const PROBLEM_LABELS = [
         self::PROBLEM_EQUIPMENT_FAILURE => 'Falla de equipos / instrumento / software',
