@@ -16,7 +16,7 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * REQ-13: informe de novedades del docente (formulario con problemas marcados, foto, equipo por código y firma).
+ * REQ-13: informe de novedades de docentes y pañoleros (formulario con problemas marcados, foto, equipo por código y firma).
  */
 class IncidentReportTest extends TestCase
 {
@@ -124,9 +124,45 @@ class IncidentReportTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('evidence_photo');
     }
 
-    public function test_only_teachers_can_register_reports(): void
+    public function test_warehouse_registers_a_report_and_is_not_notified_about_their_own_actions(): void
     {
-        foreach ([$this->warehouse, $this->director, $this->admin] as $user) {
+        $otherWarehouse = User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]);
+        Notification::fake();
+        Sanctum::actingAs($this->warehouse);
+
+        $id = $this->postJson('/api/incident-reports', $this->payload())
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'reportado')
+            ->assertJsonPath('data.teacher_name', $this->warehouse->name)
+            ->assertJsonPath('data.reporter.id', $this->warehouse->id)
+            ->json('data.id');
+
+        // Avisa al resto del personal, no a quien lo creó.
+        Notification::assertSentTo([$otherWarehouse, $this->admin, $this->director], IncidentReportNotification::class);
+        Notification::assertNotSentTo($this->warehouse, IncidentReportNotification::class);
+
+        // Cambiar el estado de un informe propio no genera un aviso a uno mismo.
+        $this->patchJson("/api/incident-reports/$id/status", ['status' => 'en_revision'])->assertOk();
+        Notification::assertNotSentTo($this->warehouse, IncidentReportNotification::class);
+
+        // Si lo cambia otra persona, sí se avisa a quien reportó.
+        Sanctum::actingAs($this->director);
+        $this->patchJson("/api/incident-reports/$id/status", ['status' => 'resuelto'])->assertOk();
+        Notification::assertSentTo($this->warehouse, IncidentReportNotification::class);
+    }
+
+    public function test_warehouse_form_is_validated(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        $this->postJson('/api/incident-reports', [])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['subject', 'location_id', 'problems', 'signature']);
+    }
+
+    public function test_only_teachers_and_warehouse_can_register_reports(): void
+    {
+        foreach ([$this->director, $this->admin] as $user) {
             Sanctum::actingAs($user);
             $this->postJson('/api/incident-reports', $this->payload())->assertForbidden();
         }

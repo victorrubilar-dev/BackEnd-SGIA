@@ -184,7 +184,7 @@ class EquipmentReportController extends Controller
 
         $from = $incidentReport->status;
         $incidentReport->update(['status' => $to]);
-        $reports->notifyStatusChange($incidentReport, $from);
+        $reports->notifyStatusChange($incidentReport, $from, $request->user());
 
         return response()->json([
             'message' => 'Estado del informe actualizado.',

@@ -293,6 +293,12 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - **Compras** (`POST /api/purchases`): `quotation_id` es **obligatorio** (ya no se crean compras desde cero; `supplier_id` e `items` pasan a ser opcionales). El mínimo de 3 proveedores que respondieron es una recomendación: con menos hay que enviar `quotation_justification` (motivo) o responde `422` en ese campo. `PurchaseResource` trae `quotation_justification`, `min_quotations` y, con la cotización cargada (detalle), `responded_suppliers` y `meets_min_quotations` (mostrar un aviso cuando es `false`).
 - **Facturas**: el OCR detecta la carrera (nombre o sigla) y, si encuentra una sola, el borrador se crea con el presupuesto de esa carrera del año actual. `InvoiceIntakeResource` trae `detected_career_id` y `needs_budget`. Cuando `needs_budget` es `true` hay que pedir al usuario el presupuesto (`GET /api/budgets`) y enviarlo en `POST /api/invoice-intakes/{id}/confirm` como `annual_budget_id`; si falta responde `422` en ese campo. `POST /api/invoices/scan` devuelve además `career_id` (o `null`).
 
+## Informe de novedades del pañolero (noviembre 2026)
+
+- `POST /api/incident-reports` ahora acepta `PRO-01` y `PAN-01` con el mismo formulario. Esto reemplaza el `403` para `PAN-01` indicado en la sección siguiente: el botón de crear ya puede mostrarse en pañol.
+- `teacher_name` guarda el nombre de quien reportó, aunque sea pañolero; la clave no cambia. `GET /api/incident-reports/mine` sigue siendo solo `PRO-01`, porque el pañolero ve sus informes en la bandeja.
+- Quien crea un informe no recibe el aviso de creación, y no recibe el de cambio de estado si lo cambia él mismo.
+
 ## Informe de novedades del docente (noviembre 2026)
 
 - **Rompe:** `POST /api/equipment/{id}/reports` ya no existe. El informe se crea con `POST /api/incident-reports` y **solo `PRO-01`** puede (`PAN-01` recibe `403`; quitar el botón en pañol).
