@@ -242,7 +242,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código de la unidad) para impresora térmica. | ✅ Implementado |
-| `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. `AD-01`, `DIR-01` y `PAN-01` ven todos los informes; el resto, solo los que reportó. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 
 ---
@@ -394,7 +394,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/equipment/{id}/technical-sheet` | Todos (`auth`) | Descarga la ficha técnica en PDF: datos del equipo, proveedor, ubicación física e historial de novedades. | ✅ Implementado |
+| `GET` | `/api/equipment/{id}/technical-sheet` | Todos (`auth`) | Descarga la ficha técnica en PDF: datos del equipo, proveedor, ubicación física e historial de novedades. `AD-01`, `DIR-01` y `PAN-01` ven todos los informes; el resto, solo los que reportó. | ✅ Implementado |
 | `GET` | `/api/equipment/{id}/reports` | Todos (`auth`) | Informes de novedades del equipo, paginados en JSON o en PDF con `?format=pdf`.<br>**Query Params:** `severity` (`leve`, `media`, `critica`), `status`, `per_page` (1-100). | ✅ Implementado |
 
 ### 12.1 Mantenciones (`FU-05` / `REQ-18`)

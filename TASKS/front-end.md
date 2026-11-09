@@ -298,6 +298,7 @@ Estas recomendaciones son del lado cliente y evitan sobrecargar la API o dejar a
 - `POST /api/incident-reports` ahora acepta `PRO-01` y `PAN-01` con el mismo formulario. Esto reemplaza el `403` para `PAN-01` indicado en la sección siguiente: el botón de crear ya puede mostrarse en pañol.
 - `teacher_name` guarda el nombre de quien reportó, aunque sea pañolero; la clave no cambia. `GET /api/incident-reports/mine` sigue siendo solo `PRO-01`, porque el pañolero ve sus informes en la bandeja.
 - Quien crea un informe no recibe el aviso de creación, y no recibe el de cambio de estado si lo cambia él mismo.
+- Fichas técnicas (`/equipment/{id}/technical-sheet` y `/equipment-units/{id}/technical-sheet`): siguen abiertas a todos, pero un docente ahora solo ve sus propios informes en el PDF. La ruta y su formato no cambian.
 
 ## Informe de novedades del docente (noviembre 2026)
 

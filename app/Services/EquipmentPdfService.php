@@ -10,6 +10,7 @@ use App\Models\User;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
@@ -22,13 +23,13 @@ class EquipmentPdfService
 {
     /**
      * Ficha técnica formal del equipo en PDF: datos del producto,
-     * proveedor, ubicación física e historial de novedades.
+     * proveedor, ubicación física e historial de novedades visible para `$viewer`.
      */
-    public function technicalSheet(Product $product): string
+    public function technicalSheet(Product $product, User $viewer): string
     {
         $product->loadMissing(['supplier', 'cajon.location', 'location']);
 
-        $reports = $product->incidentReports()
+        $reports = $this->visibleReports($product->incidentReports(), $viewer)
             ->with('reporter')
             ->latest()
             ->limit(10)
@@ -39,7 +40,8 @@ class EquipmentPdfService
             'units' => $product->units()->with('cajon.location')->orderBy('id')->limit(200)->get(),
             'unitsTotal' => $product->units()->count(),
             'reports' => $reports,
-            'reportsTotal' => $product->incidentReports()->count(),
+            'reportsTotal' => $this->visibleReports($product->incidentReports(), $viewer)->count(),
+            'ownReportsOnly' => ! $viewer->can('viewAny', IncidentReport::class),
         ]));
     }
 
@@ -93,7 +95,8 @@ class EquipmentPdfService
 
     /**
      * Vista de la hoja de vida con sus relaciones cargadas (sin renderizar a PDF). Si se indica
-     * `$viewer`, el historial de préstamos solo incluye los que ese usuario puede ver por pañol.
+     * `$viewer`, el historial de préstamos solo incluye los que ese usuario puede ver por pañol,
+     * y los informes, los que puede ver según `IncidentReportPolicy`.
      */
     public function unitTechnicalSheetView(EquipmentUnit $unit, ?User $viewer = null): View
     {
@@ -103,7 +106,7 @@ class EquipmentPdfService
             'loanItems.loan',
             'maintenanceRecords.responsible',
             'maintenanceDocuments' => fn ($q) => $q->current()->orderBy('document_type'),
-            'incidentReports',
+            'incidentReports' => fn ($q) => $this->visibleReports($q, $viewer),
         ]);
 
         $storeroomId = $viewer?->loanStoreroomId();
@@ -115,7 +118,25 @@ class EquipmentPdfService
                 ->get());
         }
 
-        return view('equipment.unit-technical-sheet', ['unit' => $unit]);
+        return view('equipment.unit-technical-sheet', [
+            'unit' => $unit,
+            'ownReportsOnly' => $viewer !== null && ! $viewer->can('viewAny', IncidentReport::class),
+        ]);
+    }
+
+    /**
+     * Personal de atención: todos los informes. Resto de usuarios: solo los que reportaron.
+     *
+     * @param  HasMany<IncidentReport, Product|EquipmentUnit>  $reports
+     * @return HasMany<IncidentReport, Product|EquipmentUnit>
+     */
+    private function visibleReports(HasMany $reports, ?User $viewer): HasMany
+    {
+        if ($viewer === null || $viewer->can('viewAny', IncidentReport::class)) {
+            return $reports;
+        }
+
+        return $reports->where('reported_by', $viewer->id);
     }
 
     /**

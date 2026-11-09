@@ -241,7 +241,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // REQ-12: Fichas técnicas de equipos (FU-05)
     // /equipment/{id}/technical-sheet: PDF con datos, proveedor,
-    // ubicación física e historial de novedades (todos los autenticados).
+    // ubicación física e historial de novedades (todos los autenticados; quien no
+    // atiende informes solo ve los que reportó).
     Route::get('/equipment/{product}/technical-sheet', [EquipmentController::class, 'technicalSheet']);
     // /equipment/{id}/reports: informes de novedades asociados al equipo,
     // en JSON (paginado) o descargables en PDF con ?format=pdf.
