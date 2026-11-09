@@ -11,6 +11,7 @@ use App\Models\Product;
 use App\Models\Storeroom;
 use App\Models\User;
 use App\Services\EquipmentUnitService;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -103,7 +104,7 @@ class LoanRemoteRequestTest extends TestCase
         $post(['career_id' => 999999], 'career_id');
         $post(['subject' => null], 'subject');
         $post(['subject' => str_repeat('a', 256)], 'subject');
-        $post(['loan_date' => today()->subDay()->toDateString()], 'loan_date');
+        $post(['loan_date' => today()->subDays(2)->toDateString()], 'loan_date');
         $post(['loan_date' => '05/11/2026'], 'loan_date');
         $post(['start_time' => null], 'start_time');
         $post(['start_time' => '8:30 am'], 'start_time');
@@ -205,6 +206,20 @@ class LoanRemoteRequestTest extends TestCase
 
         Sanctum::actingAs($this->teacher);
         $this->deleteJson("/api/loans/requests/$id")->assertNoContent();
+    }
+
+    public function test_loan_date_uses_chile_today_when_utc_is_already_tomorrow(): void
+    {
+        // 01:00 UTC del 10 de noviembre son las 22:00 del 9 de noviembre en Temuco.
+        $this->travelTo(CarbonImmutable::parse('2026-11-10 01:00:00', 'UTC'));
+        Sanctum::actingAs($this->teacher);
+
+        $this->postJson('/api/loans/requests', $this->payload(['loan_date' => '2026-11-09']))
+            ->assertCreated();
+
+        $this->postJson('/api/loans/requests', $this->payload(['loan_date' => '2026-11-08']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('loan_date');
     }
 
     public function test_my_requests_filters_by_storeroom_career_and_date(): void
