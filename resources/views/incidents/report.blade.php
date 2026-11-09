@@ -37,7 +37,7 @@
             <tr><td class="label">Reportado por</td><td>{{ $report->teacher_name ?? $report->reporter?->name ?? '—' }}</td></tr>
             <tr><td class="label">Asignatura o actividad</td><td>{{ $report->subject ?? '—' }}</td></tr>
             <tr><td class="label">Fecha</td><td>{{ $report->report_date?->format('d-m-Y') ?? '—' }}</td></tr>
-            <tr><td class="label">Laboratorio</td><td>{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td></tr>
+            <tr><td class="label">Laboratorio o pañol</td><td>{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td></tr>
             @if ($report->product)
                 <tr>
                     <td class="label">Equipo</td>

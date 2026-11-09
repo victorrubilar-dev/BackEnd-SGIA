@@ -172,6 +172,25 @@ class IncidentReportTest extends TestCase
         $this->postJson('/api/equipment/'.Product::factory()->supply()->create()->id.'/reports', [])->assertStatus(405);
     }
 
+    public function test_report_location_can_be_a_room_workshop_or_storeroom_but_not_a_warehouse(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        foreach ([Location::TIPO_SALA, Location::TIPO_TALLER, Location::TIPO_PANOL] as $tipo) {
+            $location = Location::factory()->create(['tipo' => $tipo]);
+
+            $this->postJson('/api/incident-reports', $this->payload(['location_id' => $location->id]))
+                ->assertCreated()
+                ->assertJsonPath('data.location_id', $location->id);
+        }
+
+        $warehouse = Location::factory()->create(['tipo' => Location::TIPO_BODEGA]);
+
+        $this->postJson('/api/incident-reports', $this->payload(['location_id' => $warehouse->id]))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('location_id');
+    }
+
     public function test_past_date_and_optional_photo_are_accepted(): void
     {
         Sanctum::actingAs($this->teacher);
