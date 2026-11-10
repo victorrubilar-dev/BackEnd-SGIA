@@ -137,6 +137,18 @@ class InvoiceIntakeService
                 ]);
             }
 
+            // Sin asociar, la reserva de la OC quedaría colgada y el gasto se contaría doble: se obliga a elegir la OC.
+            // shortcut: no hay forma de facturar sin OC mientras el presupuesto tenga OC pendientes; agregar un flag si hace falta.
+            if ($purchase === null) {
+                $pending = $this->linkableQuery()->where('annual_budget_id', $budgetId)->where('reserved_amount', '>', 0)->pluck('code');
+
+                if ($pending->isNotEmpty()) {
+                    throw ValidationException::withMessages([
+                        'purchase_id' => 'No se pudo asociar la factura a una orden de compra. Selecciona una de este presupuesto: '.$pending->implode(', ').'.',
+                    ]);
+                }
+            }
+
             $budget = $budgetId ? AnnualBudget::whereKey($budgetId)->lockForUpdate()->firstOrFail() : null;
 
             $locked->update([
