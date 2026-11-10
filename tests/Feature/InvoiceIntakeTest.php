@@ -349,6 +349,18 @@ TXT;
             ->assertOk()->assertJsonPath('data.purchase_id', null)->assertJsonPath('data.linked', false);
     }
 
+    public function test_confirm_without_link_is_rejected_when_the_budget_has_pending_reserved_purchases(): void
+    {
+        $a = Product::factory()->supply()->create();
+        $budget = AnnualBudget::factory()->create();
+        $this->purchaseFor([[$a, 5]], ['annual_budget_id' => $budget->id, 'reserved_amount' => 500]);
+        $this->purchaseFor([[$a, 5]], ['annual_budget_id' => $budget->id, 'reserved_amount' => 500]);
+        Sanctum::actingAs($this->admin);
+
+        $this->postJson("/api/invoice-intakes/{$this->draft($budget)->id}/confirm", $this->confirmPayload([[$a, 5]]))
+            ->assertStatus(422)->assertJsonValidationErrors('purchase_id');
+    }
+
     public function test_confirm_ambiguity_is_resolved_by_invoice_number(): void
     {
         $a = Product::factory()->supply()->create();

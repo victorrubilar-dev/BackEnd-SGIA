@@ -201,9 +201,6 @@ class QuotationPurchaseFlowTest extends TestCase
         ];
 
         $two = $this->acceptedQuotation(null, 2);
-        $this->postJson('/api/purchases', $payload($two))
-            ->assertStatus(422)->assertJsonValidationErrors('quotation_justification');
-
         $this->postJson('/api/purchases', $payload($two) + ['quotation_justification' => 'Solo dos proveedores en la región.'])
             ->assertCreated()
             ->assertJsonPath('data.quotation_justification', 'Solo dos proveedores en la región.')

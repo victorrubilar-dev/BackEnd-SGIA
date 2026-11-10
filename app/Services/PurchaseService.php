@@ -143,15 +143,8 @@ class PurchaseService
             }
         }
 
-        // Mínimo recomendado de proveedores que respondieron: no bloquea, pero exige un motivo.
+        // La justificación es opcional (demo: una cotización con un solo proveedor se compra sin motivo).
         $justification = trim((string) ($validated['quotation_justification'] ?? ''));
-
-        // Con quotation_ids ya se exigen 3 cotizaciones aceptadas, así que solo aplica a la cotización única.
-        if ($quotation && $quotationService->respondedSuppliersCount($quotation) < $quotationService->minSuppliers() && $justification === '') {
-            throw ValidationException::withMessages([
-                'quotation_justification' => "Respondieron menos de {$quotationService->minSuppliers()} proveedores: indica el motivo de comprar igual (por ejemplo, no hay más proveedores disponibles).",
-            ]);
-        }
 
         $supplierId = $validated['supplier_id'] ?? ($quotation ? $quotationService->preferredSupplierId($quotation) : null);
 
