@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\AnnualBudget;
 use App\Models\Purchase;
-use App\Models\Supplier;
 use App\Models\User;
 use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
@@ -13,12 +12,10 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
-use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
 class PurchaseStatusTest extends TestCase
 {
-    use CreatesQuotations;
     use DatabaseTransactions;
 
     protected User $director;
@@ -61,65 +58,24 @@ class PurchaseStatusTest extends TestCase
         ], $attributes));
     }
 
-    public function test_director_can_create_purchase_order_with_items(): void
+    public function test_purchase_creation_endpoint_was_retired(): void
     {
-        Sanctum::actingAs($this->director);
-
-        $supplier = Supplier::factory()->create();
-
-        $response = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation($supplier)->id,
-            'notes' => 'Compra de materiales para taller',
-            'items' => [
-                ['name' => 'Cable THW 1.5mm', 'quantity' => 10, 'unit_price' => 1500],
-                ['name' => 'Pinza de presión', 'quantity' => 4, 'unit_price' => 8000],
-            ],
-        ]);
-
-        $response->assertStatus(201);
-        $response->assertJsonPath('data.status', Purchase::STATUS_PENDING);
-        $response->assertJsonPath('data.supplier.id', $supplier->id);
-
-        $this->assertStringStartsWith('OC-', $response->json('data.code'));
-        $this->assertEquals(10 * 1500 + 4 * 8000, $response->json('data.total'));
-        $this->assertCount(2, $response->json('data.items'));
-
-        $this->assertDatabaseHas('purchases', [
-            'id' => $response->json('data.id'),
-            'status' => Purchase::STATUS_PENDING,
-            'created_by' => $this->director->id,
-        ]);
-        $this->assertDatabaseCount('purchase_items', 2);
+        // Las OC se crean solo desde la solicitud de compra (`POST /api/purchase-requests/{id}/order`).
+        foreach ([$this->director, $this->warehouse] as $user) {
+            Sanctum::actingAs($user);
+            $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id])->assertStatus(405);
+        }
     }
 
-    public function test_create_purchase_requires_at_least_one_item(): void
+    public function test_purchases_linkable_filter_lists_orders_awaiting_invoice(): void
     {
+        $open = Purchase::factory()->create(['status' => Purchase::STATUS_PENDING]);
+        $cancelled = Purchase::factory()->create(['status' => Purchase::STATUS_CANCELLED]);
         Sanctum::actingAs($this->director);
 
-        $supplier = Supplier::factory()->create();
-
-        $response = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation($supplier)->id,
-            'items' => [],
-        ]);
-
-        $response->assertStatus(422);
-        $response->assertJsonValidationErrors('items');
-    }
-
-    public function test_warehouse_cannot_create_purchase_order(): void
-    {
-        Sanctum::actingAs($this->warehouse);
-
-        $response = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['name' => 'Multímetro', 'quantity' => 2]],
-        ]);
-
-        $response->assertStatus(403);
+        $ids = collect($this->getJson('/api/purchases?linkable=1&per_page=100')->assertOk()->json('data'))->pluck('id');
+        $this->assertTrue($ids->contains($open->id));
+        $this->assertFalse($ids->contains($cancelled->id));
     }
 
     public function test_teacher_cannot_list_purchases(): void

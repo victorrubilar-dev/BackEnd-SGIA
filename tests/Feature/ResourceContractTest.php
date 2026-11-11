@@ -21,6 +21,10 @@ use App\Http\Resources\MaintenanceDocumentResource;
 use App\Http\Resources\MaintenanceRecordResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\PurchaseItemResource;
+use App\Http\Resources\PurchaseRequestItemResource;
+use App\Http\Resources\PurchaseRequestQuotationResource;
+use App\Http\Resources\PurchaseRequestResource;
+use App\Http\Resources\PurchaseRequestSupplierResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\QuotationItemResource;
 use App\Http\Resources\QuotationResource;
@@ -47,6 +51,7 @@ use App\Models\MaintenanceDocument;
 use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\PurchaseRequest;
 use App\Models\Quotation;
 use App\Models\StockAlert;
 use App\Models\Student;
@@ -81,7 +86,7 @@ class ResourceContractTest extends TestCase
     public function test_user_and_catalog_resources(): void
     {
         $this->assertKeys(UserResource::class, User::factory()->create(), explode(',', 'area,created_at,email,id,is_active,last_login_at,name,role,storeroom_id,updated_at'));
-        $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
+        $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,areas,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
 
         $location = Location::factory()->create();
         $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,created_at,created_by,descripcion,floor,id,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
@@ -139,13 +144,27 @@ class ResourceContractTest extends TestCase
 
         $purchase = Purchase::factory()->create(['created_by' => $user->id]);
         $purchaseItem = $purchase->items()->create(['name' => 'a', 'quantity' => 1, 'unit_price' => 1]);
-        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,annual_budget_id,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,id,invoice_number,min_quotations,notes,quotation_id,quotation_justification,quotation_reference,received_at,reserved_amount,status,supplier_id,total,updated_at'));
+        $this->assertKeys(PurchaseResource::class, $purchase, explode(',', 'allowed_transitions,annual_budget_id,arrival_document,arrival_document_url,code,created_at,created_by,expected_at,guide_number,has_order_file,id,invoice_number,min_quotations,notes,order_file_url,order_number,purchase_request_id,quotation_id,quotation_justification,quotation_reference,received_at,reserved_amount,status,supplier_id,total,updated_at'));
         $this->assertKeys(PurchaseItemResource::class, $purchaseItem, explode(',', 'id,name,product_id,purchase_id,quantity,unit_price'));
 
         $quotation = Quotation::factory()->create(['created_by' => $user->id]);
         $this->assertKeys(QuotationResource::class, $quotation, explode(',', 'allowed_transitions,career_id,code,converted_at,created_at,created_by,expires_at,id,meets_min_quotations,min_quotations,notes,purchase_id,responded_suppliers,status,title,updated_at'));
         $this->assertKeys(QuotationItemResource::class, $quotation->items()->create(['name' => 'a', 'quantity' => 1]), explode(',', 'id,name,product_id,quantity,quotation_id'));
         $this->assertKeys(QuotationSupplierResource::class, $quotation->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'contacted_at,email_error,email_sent_at,has_backup_file,id,notes,offer_total,quotation_id,quotation_number,responded_at,status,supplier_id'));
+    }
+
+    public function test_purchase_request_resources(): void
+    {
+        $user = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $supplier = Supplier::factory()->create();
+        $request = PurchaseRequest::create(['code' => 'SC-2099-0001', 'status' => PurchaseRequest::STATUS_DRAFT, 'annual_budget_id' => AnnualBudget::factory()->create()->id, 'created_by' => $user->id]);
+
+        $this->assertKeys(PurchaseRequestResource::class, $request, explode(',', 'annual_budget_id,approved_at,approved_by,can_approve,can_cancel,can_edit,can_issue_order,can_remove_quotation,can_resend,can_select_quotation,can_send,can_upload_quotation,code,created_at,created_by,id,min_quotations,notes,selected_quotation_id,sent_at,status,status_label,updated_at'));
+        $item = $request->items()->create(['product_id' => Product::factory()->create()->id, 'quantity' => 1]);
+        $this->assertKeys(PurchaseRequestItemResource::class, $item, explode(',', 'id,product_id,purchase_request_id,quantity'));
+        $this->assertKeys(PurchaseRequestSupplierResource::class, $request->suppliers()->create(['supplier_id' => $supplier->id]), explode(',', 'email_error,email_sent_at,email_status,id,purchase_request_id,supplier_id'));
+        $quotation = $request->quotations()->create(['supplier_id' => $supplier->id, 'file_path' => 'x.pdf', 'total' => 1, 'received_at' => now()]);
+        $this->assertKeys(PurchaseRequestQuotationResource::class, $quotation, explode(',', 'created_at,file_url,id,original_name,purchase_request_id,received_at,supplier_id,total,uploaded_by'));
     }
 
     public function test_equipment_unit_resource(): void

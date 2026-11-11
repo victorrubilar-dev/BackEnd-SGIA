@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Solicitud de cotización {{ $quotation->code }}</title>
+    <title>Solicitud de cotización {{ $purchaseRequest->code }}</title>
 </head>
 <body style="font-family: Arial, Helvetica, sans-serif; color: #1f2937; line-height: 1.6;">
-    <h2 style="color: #1d4ed8;">Solicitud de cotización {{ $quotation->code }}</h2>
+    <h2 style="color: #1d4ed8;">Solicitud de cotización {{ $purchaseRequest->code }}</h2>
 
     <p>Estimado/a {{ $supplier->contact_name ?: $supplier->name }},</p>
 
@@ -24,24 +24,20 @@
         <tbody>
             @foreach ($items as $item)
                 <tr>
-                    <td>{{ $item->name }}</td>
+                    <td>{{ $item->product?->name }}</td>
                     <td align="center">{{ $item->quantity }}</td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
-    @if ($quotation->notes)
-        <p><strong>Observaciones:</strong> {{ $quotation->notes }}</p>
+    @if ($purchaseRequest->notes)
+        <p><strong>Observaciones:</strong> {{ $purchaseRequest->notes }}</p>
     @endif
 
-    @if ($quotation->expires_at)
-        <p><strong>Fecha límite de respuesta:</strong> {{ $quotation->expires_at->format('d-m-Y') }}</p>
-    @endif
-
-    <p>Por favor responda este correo con su propuesta de precio y plazo de entrega.</p>
+    <p>Por favor responda este correo con su cotización (precio unitario, total y plazo de entrega), indicando el código <strong>{{ $purchaseRequest->code }}</strong>.</p>
 
     <p>Saludos cordiales,<br>
-    <strong>{{ $quotation->creator?->name ?: 'Equipo SGIA' }}</strong></p>
+    <strong>{{ $purchaseRequest->creator?->name ?: 'Equipo SGIA' }}</strong></p>
 </body>
 </html>

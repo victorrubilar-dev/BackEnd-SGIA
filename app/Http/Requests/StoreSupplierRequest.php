@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\SupplierArea;
 use App\Models\Supplier;
 use App\Rules\ChileanRut;
 use Illuminate\Foundation\Http\FormRequest;
@@ -25,6 +26,8 @@ class StoreSupplierRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'category' => ['nullable', 'string', 'max:100'],
             'is_active' => ['sometimes', 'boolean'],
+            'areas' => ['required', 'array', 'min:1'],
+            'areas.*' => ['required', 'string', 'distinct', Rule::enum(SupplierArea::class)],
         ];
     }
 
@@ -34,6 +37,10 @@ class StoreSupplierRequest extends FormRequest
             'name.required' => 'El nombre del proveedor es obligatorio.',
             'rut.unique' => 'Ya existe un proveedor con ese RUT.',
             'email.email' => 'El correo del proveedor debe ser una dirección válida.',
+            'areas.required' => 'Indica al menos un área del proveedor.',
+            'areas.min' => 'Indica al menos un área del proveedor.',
+            'areas.*.enum' => 'El área debe ser: '.implode(', ', SupplierArea::values()).'.',
+            'areas.*.distinct' => 'Las áreas no pueden repetirse.',
         ];
     }
 }

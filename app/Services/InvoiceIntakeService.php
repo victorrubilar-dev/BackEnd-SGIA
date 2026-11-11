@@ -23,18 +23,21 @@ class InvoiceIntakeService
         private readonly StockAlertService $stockAlerts,
         private readonly AnnualBudgetService $budgets,
         private readonly PurchaseService $purchases,
+        private readonly PurchaseRequestService $purchaseRequests,
     ) {}
 
     /**
      * Guarda el archivo en el disco privado y crea el ingreso en `borrador` con el resultado del OCR.
      * Si el OCR no está disponible el borrador queda sin ítems detectados (ingreso manual).
+     * `$requireReservation = false` (OC de una solicitud `con_oc`, ya validada): acepta la OC aunque su reserva
+     * se haya liberado al anular una factura anterior, igual que cuando se liga al confirmar.
      */
-    public function createDraft(UploadedFile $file, ?AnnualBudget $budget, int $userId, ?Purchase $purchase = null): InvoiceIntake
+    public function createDraft(UploadedFile $file, ?AnnualBudget $budget, int $userId, ?Purchase $purchase = null, bool $requireReservation = true): InvoiceIntake
     {
         if ($purchase) {
             // Sin presupuesto explícito se usa el de la compra.
             $budget ??= $purchase->annual_budget_id ? AnnualBudget::find($purchase->annual_budget_id) : null;
-            $this->assertPurchaseBillable($purchase, $budget);
+            $this->assertPurchaseBillable($purchase, $budget, $requireReservation);
         }
 
         $payload = ['invoice_number' => null, 'supplier_name' => null, 'supplier_id' => null, 'career_id' => null, 'items' => []];
@@ -218,6 +221,9 @@ class InvoiceIntakeService
         } else {
             $this->purchases->completeFromArrival($purchase, ['invoice_number' => $documentNumber]);
         }
+
+        // La factura confirmada equivale a la recepción: la solicitud de compra queda `facturada`.
+        $this->purchaseRequests->markInvoiced($purchase, $userId);
     }
 
     /**
@@ -285,7 +291,8 @@ class InvoiceIntakeService
     /**
      * Anula un ingreso. Un `borrador` solo cambia de estado; uno `confirmado` se revierte entero
      * (todo o nada): resta el stock de insumos, da de baja las unidades creadas y repone el
-     * monto al presupuesto. Si la factura estaba ligada a una compra, la compra no cambia.
+     * monto al presupuesto. Si la factura estaba ligada a una compra, la compra no cambia; su solicitud
+     * de compra (si tiene) vuelve de `facturada` a `con_oc`.
      *
      * @throws ValidationException
      */
@@ -370,6 +377,15 @@ class InvoiceIntakeService
         if ($budget) {
             $this->budgets->restore($budget, $intake->total_deducted ?? 0, $intake, $userId);
         }
+
+        // La solicitud de compra vuelve a `con_oc` para recibir la factura correcta.
+        if ($intake->purchase_id !== null) {
+            $purchase = Purchase::find($intake->purchase_id);
+
+            if ($purchase !== null) {
+                $this->purchaseRequests->revertInvoiced($purchase, $userId);
+            }
+        }
     }
 
     /**
@@ -377,13 +393,13 @@ class InvoiceIntakeService
      *
      * @throws ValidationException
      */
-    private function assertPurchaseBillable(Purchase $purchase, ?AnnualBudget $budget): void
+    private function assertPurchaseBillable(Purchase $purchase, ?AnnualBudget $budget, bool $requireReservation = true): void
     {
         if ($purchase->annual_budget_id !== $budget?->id) {
             throw ValidationException::withMessages(['purchase_id' => 'La compra pertenece a otro presupuesto.']);
         }
 
-        if ($purchase->status === Purchase::STATUS_CANCELLED || $this->budgets->cents($purchase->reserved_amount) === 0) {
+        if ($purchase->status === Purchase::STATUS_CANCELLED || ($requireReservation && $this->budgets->cents($purchase->reserved_amount) === 0)) {
             throw ValidationException::withMessages(['purchase_id' => 'La compra está cancelada o ya fue facturada.']);
         }
     }

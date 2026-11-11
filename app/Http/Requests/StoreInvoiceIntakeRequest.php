@@ -17,6 +17,8 @@ class StoreInvoiceIntakeRequest extends FormRequest
             'file' => ['required', 'file', 'mimes:pdf,png,jpg,jpeg,webp', 'max:10240'],
             'annual_budget_id' => ['nullable', 'integer', 'exists:annual_budgets,id'],
             'purchase_id' => ['nullable', 'integer', 'exists:purchases,id'],
+            // Atajo del flujo nuevo: liga la factura a la OC de la solicitud `SC-AAAA-NNNN`.
+            'purchase_request_code' => ['nullable', 'string', 'max:20'],
         ];
     }
 

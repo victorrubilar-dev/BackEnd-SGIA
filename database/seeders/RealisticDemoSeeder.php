@@ -15,16 +15,17 @@ use App\Models\Location;
 use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\PurchaseRequest;
 use App\Models\Quotation;
 use App\Models\QuotationSupplier;
 use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\AnnualBudgetService;
 use App\Services\CodeSequenceService;
 use App\Services\EquipmentUnitService;
 use App\Services\InvoiceIntakeService;
 use App\Services\PurchaseService;
-use App\Services\QuotationService;
 use App\Services\StockAlertService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
@@ -70,8 +71,8 @@ class RealisticDemoSeeder extends Seeder
         $this->incidents($teachers, $locations, $products);
 
         $this->command?->info(sprintf(
-            'Demo realista: %d productos, %d unidades, %d préstamos, %d OC, %d facturas, %d alertas. Factura 1 (Electroplus) pendiente.',
-            Product::count(), EquipmentUnit::count(), Loan::count(), Purchase::count(), InvoiceIntake::count(), DB::table('stock_alerts')->count()
+            'Demo realista: %d productos, %d unidades, %d préstamos, %d OC, %d solicitudes de compra, %d facturas, %d alertas. Factura 1 (Electroplus) pendiente.',
+            Product::count(), EquipmentUnit::count(), Loan::count(), Purchase::count(), PurchaseRequest::count(), InvoiceIntake::count(), DB::table('stock_alerts')->count()
         ));
     }
 
@@ -99,22 +100,10 @@ class RealisticDemoSeeder extends Seeder
         return [Location::with('cajones')->get()->keyBy('nombre'), Cajon::all()->keyBy('codigo')];
     }
 
+    /** Proveedores de demostración con sus áreas (≥3 activos por área). */
     private function suppliers()
     {
-        // clave => [razón social, RUT, dirección, correo, teléfono, rubro, contacto]
-        return collect([
-            'electroplus' => ['Soc. Electroplus Ltda.', '77.929.326-2', 'General Mackenna #494, Temuco', 'electro2024temuco@gmail.com', '+56 9 6109 6655', 'Artículos eléctricos', 'Electroplus'],
-            'arbol' => ['Árbolvisual SpA', '77.883.292-5', 'Nueva York 53 of 61, Santiago', 'mgonzalez@arbolvisual.cl', '+56 2 2638 4410', 'Material publicitario y arte oficina', 'M. González'],
-            'systelec' => ['Systelec Electrónica Limitada', '78.481.580-3', 'Conchalí, Santiago', 'systelec@systelec.cl', '+56 2 2736 2200', 'Equipamiento e insumos electrónicos', 'Ventas Systelec'],
-            'zenner' => ['Sociedad de Inversiones en Tecnología ZE', '76.088.347-6', 'Porvenir 474, Santiago', 'carlos.iglesias@zenner.cl', '+56 2 2840 1500', 'Automatización', 'Carlos Iglesias'],
-            'microtec' => ['Microtec SpA', '96.532.730-4', 'Salar Ascotán, Parque Enea 1281, Santiago', 'eduardopalma@micro.cl', '+56 2 2595 4600', 'Instrumentación industrial', 'Cristián Flores'],
-            'redsur' => ['Redes del Sur SpA', '76.412.905-1', 'Manuel Montt 1120, Temuco', 'ventas@redesdelsur.cl', '+56 45 2218 770', 'Redes y telecomunicaciones', 'Marcela Aravena'],
-            'compintegral' => ['Computación Integral Ltda.', '79.554.210-6', 'Bulnes 540, Temuco', 'cotizaciones@compintegral.cl', '+56 45 2234 900', 'Computación y notebooks', 'Rodrigo Henríquez'],
-            'ciberlab' => ['CiberLab Chile SpA', '77.120.668-K', 'Av. Providencia 1760, Santiago', 'contacto@ciberlab.cl', '+56 2 2951 3300', 'Ciberseguridad y forense', 'Natalia Pizarro'],
-        ])->map(fn ($d) => Supplier::updateOrCreate(['rut' => $d[1]], [
-            'name' => $d[0], 'address' => $d[2], 'email' => $d[3], 'phone' => $d[4],
-            'category' => $d[5], 'contact_name' => $d[6], 'is_active' => true,
-        ]));
+        return DemoSupplierSeeder::suppliers();
     }
 
     private function catalog(User $admin, $careers, $suppliers, $locations, $cajones)
@@ -231,18 +220,17 @@ class RealisticDemoSeeder extends Seeder
     private function purchasing(User $admin, User $director, $suppliers, $products, $budgets): void
     {
         $purchases = app(PurchaseService::class);
-        $quotations = app(QuotationService::class);
         $intakes = app(InvoiceIntakeService::class);
 
         $price = fn (string $k) => (float) $products[$k]->reference_price;
         $lines = fn (array $l) => collect($l)->map(fn ($x) => [
             'product_id' => $products[$x[0]]->id, 'name' => $products[$x[0]]->name, 'quantity' => $x[1], 'unit_price' => $price($x[0]),
         ])->all();
-        $makeOc = function (string $sup, string $budget, string $ref, string $expected, string $notes, array $l, ?int $daysAgo = null) use ($purchases, $quotations, $suppliers, $budgets, $admin, $lines) {
-            $p = $purchases->create([
+        $makeOc = function (string $sup, string $budget, string $ref, string $expected, string $notes, array $l, ?int $daysAgo = null) use ($purchases, $suppliers, $budgets, $admin, $lines) {
+            $p = $purchases->createReserved([
                 'supplier_id' => $suppliers[$sup]->id, 'annual_budget_id' => $budgets[$budget]->id,
                 'quotation_reference' => $ref, 'expected_at' => $expected, 'notes' => $notes, 'items' => $lines($l),
-            ], $admin, $quotations);
+            ], $admin);
             if ($daysAgo !== null) {
                 $p->forceFill(['created_at' => now()->subDays($daysAgo)])->saveQuietly();
             }
@@ -285,6 +273,92 @@ class RealisticDemoSeeder extends Seeder
         $purchases->cancel($cancelled, $admin);
 
         $this->quotations($admin, $suppliers, $products);
+        $this->purchaseRequests($director, $suppliers, $products, $budgets);
+    }
+
+    /**
+     * Solicitudes de compra del flujo nuevo, una por estado. Se arman directo en la BD (sin enviar correos).
+     * Las cotizaciones y la OC tienen un PDF de muestra en el disco privado.
+     */
+    private function purchaseRequests(User $director, $suppliers, $products, $budgets): void
+    {
+        $codes = app(CodeSequenceService::class);
+        $budgetService = app(AnnualBudgetService::class);
+        $pdf = "%PDF-1.4\n% Documento de demostración SGIA\n%%EOF\n";
+
+        // [estado, presupuesto, notas, [[producto, cantidad]], áreas, [[proveedor, factor de precio]], índice elegido, días atrás]
+        $defs = [
+            [PurchaseRequest::STATUS_DRAFT, 'ISD', 'Cable de consola para el laboratorio de redes.', [['consola', 15]], [], [], null, 1],
+            [PurchaseRequest::STATUS_APPROVED, 'II', 'Pasta térmica para la mantención de notebooks.', [['pasta', 20]], [], [], null, 3],
+            [PurchaseRequest::STATUS_SENT, 'ISD', 'Conectores RJ45 y cable UTP para el semestre.', [['utp', 200], ['rj45', 150]], ['telecomunicaciones'], [], null, 6],
+            [PurchaseRequest::STATUS_QUOTED, 'IC', 'Pendrives de arranque forense.', [['pendrive', 30]], ['ciberseguridad', 'informatica'], [['ciberlab', 1.15], ['compintegral', 1.1], ['systelec', 1.2]], 1, 9],
+            [PurchaseRequest::STATUS_ORDERED, 'AP', 'Reposición de pilas AAA para multímetros.', [['aaa', 40]], ['telecomunicaciones'], [['electroplus', 1.0], ['systelec', 0.97], ['microtec', 1.05]], 0, 14],
+            [PurchaseRequest::STATUS_CANCELLED, 'ISD', 'Switches para ampliar el laboratorio (se posterga al próximo año).', [['switch', 4]], [], [], null, 20],
+        ];
+
+        foreach ($defs as [$status, $budget, $notes, $lines, $areas, $quotes, $selected, $daysAgo]) {
+            $when = now()->subDays($daysAgo);
+            $approvedAt = $status === PurchaseRequest::STATUS_DRAFT ? null : $when->copy()->addHours(2);
+            $request = PurchaseRequest::create([
+                'code' => $codes->forPurchaseRequest(), 'status' => $status, 'annual_budget_id' => $budgets[$budget]->id,
+                'notes' => $notes, 'created_by' => $director->id, 'updated_by' => $director->id,
+                'approved_by' => $approvedAt ? $director->id : null,
+                'approved_at' => $approvedAt,
+                'sent_at' => $areas === [] ? null : $when->copy()->addDay(),
+            ]);
+            $request->forceFill(['created_at' => $when])->saveQuietly();
+            $items = collect($lines)->map(fn ($l) => $request->items()->create(['product_id' => $products[$l[0]]->id, 'quantity' => $l[1]]));
+
+            foreach ($areas as $area) {
+                $request->areas()->create(['area' => $area]);
+            }
+            if ($areas !== []) {
+                foreach (Supplier::where('is_active', true)->inAreas($areas)->pluck('id') as $supplierId) {
+                    $request->suppliers()->create(['supplier_id' => $supplierId, 'email_sent_at' => $when->copy()->addDay()]);
+                }
+            }
+
+            $quotationIds = [];
+            foreach ($quotes as $i => [$sup, $factor]) {
+                $request->suppliers()->firstOrCreate(['supplier_id' => $suppliers[$sup]->id], ['email_sent_at' => $when->copy()->addDay()]);
+                $path = "purchase-requests/quotations/demo-{$request->code}-{$sup}.pdf";
+                Storage::disk('local')->put($path, $pdf);
+                $prices = $items->map(fn ($item) => round($products->firstWhere('id', $item->product_id)->reference_price * $factor));
+                $quotation = $request->quotations()->create([
+                    'supplier_id' => $suppliers[$sup]->id, 'file_path' => $path, 'original_name' => "cotizacion-{$sup}.pdf",
+                    'total' => $items->values()->sum(fn ($item, $k) => $prices[$k] * $item->quantity),
+                    'received_at' => $when->copy()->addDays(2 + $i), 'uploaded_by' => $director->id,
+                ]);
+                foreach ($items->values() as $k => $item) {
+                    $quotation->items()->create(['purchase_request_item_id' => $item->id, 'unit_price' => $prices[$k]]);
+                }
+                $quotationIds[] = $quotation->id;
+            }
+
+            if ($selected !== null) {
+                $request->forceFill(['selected_quotation_id' => $quotationIds[$selected]])->saveQuietly();
+            }
+
+            if ($status === PurchaseRequest::STATUS_ORDERED) {
+                $chosen = $request->selectedQuotation()->with('items')->firstOrFail();
+                $path = "purchase-requests/orders/demo-{$request->code}.pdf";
+                Storage::disk('local')->put($path, $pdf);
+                $purchase = Purchase::create([
+                    'code' => Purchase::generateUniqueCode(), 'supplier_id' => $chosen->supplier_id, 'created_by' => $director->id,
+                    'annual_budget_id' => $request->annual_budget_id, 'purchase_request_id' => $request->id,
+                    'order_number' => '4500'.str_pad((string) $request->id, 6, '0', STR_PAD_LEFT), 'order_file_path' => $path,
+                    'status' => Purchase::STATUS_PENDING, 'quotation_reference' => $request->code, 'notes' => $notes,
+                    'total' => $chosen->total, 'expected_at' => now()->addDays(10)->toDateString(),
+                ]);
+                foreach ($items as $item) {
+                    $purchase->items()->create([
+                        'product_id' => $item->product_id, 'name' => $products->firstWhere('id', $item->product_id)->name,
+                        'quantity' => $item->quantity, 'unit_price' => $chosen->items->firstWhere('purchase_request_item_id', $item->id)?->unit_price,
+                    ]);
+                }
+                $budgetService->reserve($budgets[$budget]->refresh(), $chosen->total, $purchase, $director->id);
+            }
+        }
     }
 
     private function quotations($admin, $suppliers, $products): void

@@ -29,6 +29,9 @@ class Purchase extends Model
         'supplier_id',
         'created_by',
         'quotation_id',
+        'purchase_request_id',
+        'order_number',
+        'order_file_path',
         'status',
         'quotation_reference',
         'quotation_justification',
@@ -86,6 +89,22 @@ class Purchase extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);
+    }
+
+    /**
+     * Solicitud de compra desde la que se subió esta OC (null en compras históricas).
+     *
+     * @return BelongsTo<PurchaseRequest, $this>
+     */
+    public function purchaseRequest(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseRequest::class);
+    }
+
+    /** @return HasMany<InvoiceIntake, $this> */
+    public function invoiceIntakes(): HasMany
+    {
+        return $this->hasMany(InvoiceIntake::class);
     }
 
     public function isCompleted(): bool

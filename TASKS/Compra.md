@@ -51,7 +51,7 @@ Base técnica de los REQ siguientes.
 ### REQ-22 — Compras con reserva de presupuesto (FU-03, DIR-01 y AD-01)
 Crear la compra equivale a aprobarla.
 - [x] Migración `purchases.annual_budget_id` (FK `restrictOnDelete`, **nullable solo para filas históricas**) y `invoice_intakes.purchase_id` (FK nullable).
-- [x] `POST /api/purchases`: `annual_budget_id` obligatorio y `unit_price` obligatorio en todos los ítems (`total` deja de ser nullable en compras nuevas). En la misma transacción de `PurchaseService::create` se reserva el `total`. `422` si supera `available_amount` (error en `total`). DIR-01 puede usar el presupuesto de cualquier carrera del área. Si la compra nace de una cotización, `unit_price` se toma de la oferta elegida (`quotation_offer_items`) cuando exista; si no, se exige en el body.
+- [x] (Ruta retirada en la Fase 7 del nuevo flujo; la reserva al crear sigue en `PurchaseService::createReserved` y en `POST /api/purchase-requests/{id}/order`.) `POST /api/purchases`: `annual_budget_id` obligatorio y `unit_price` obligatorio en todos los ítems (`total` deja de ser nullable en compras nuevas). En la misma transacción de `PurchaseService::create` se reserva el `total`. `422` si supera `available_amount` (error en `total`). DIR-01 puede usar el presupuesto de cualquier carrera del área. Si la compra nace de una cotización, `unit_price` se toma de la oferta elegida (`quotation_offer_items`) cuando exista; si no, se exige en el body.
 - [x] Nuevo estado `cancelada` en `PurchaseStateMachine`: `pendiente` → `cancelada` y `en_camino` → `cancelada`; `completa` y `cancelada` son finales. `POST /api/purchases/{purchase}/cancel` (AD-01; DIR-01 si la compra tiene presupuesto): libera la reserva (`releaseReservation`). `422` (`InvalidPurchaseStatusTransition`) desde `completa` o `cancelada`. Actualizar el filtro de estado de `PurchaseService::applyFilters` y su mensaje de error.
 - [x] `POST /api/invoice-intakes` acepta `purchase_id` opcional; si viene, debe tener el mismo `annual_budget_id`. Al **confirmar** un ingreso con `purchase_id`: se libera la reserva de esa compra y se consume el monto real de la factura (`total_deducted`), en una sola transacción; la diferencia (reserva − real) vuelve a `available_amount`. `422` si el real supera `available_amount + reserva` liberada. Un ingreso sin `purchase_id` consume directo, como hoy.
 - [x] `PurchaseResource`: `annual_budget_id`, `reserved_amount` (reserva vigente, `0` si cancelada o ya facturada). Actualizar `ResourceContractTest`, `ENDPOINTS.md`, `front-end.md` (rompe contrato: campos obligatorios nuevos en `POST /api/purchases`).
@@ -79,5 +79,14 @@ Reemplaza la regla actual de REQ-17 "un ingreso confirmado no se anula".
 **Notas de implementación:** el test de "reservas concurrentes" de REQ-21 se cubre con reservas secuenciales + `lockForUpdate` y los `CHECK` de BD (no hay prueba con procesos paralelos). `GET /budgets/{id}/monthly` acepta un `year` opcional (año calendario del ledger; por defecto el del presupuesto). Tests: `BudgetLedgerTest`, `PurchaseBudgetTest`, `InvoiceIntakeCancellationTest`, `BudgetReportTest`.
 
 ### Reglas de noviembre 2026
-- [x] Toda compra parte de una cotización aceptada (`quotation_id` obligatorio); con menos de 3 proveedores que respondieron se exige `quotation_justification` (`QuotationPurchaseFlowTest`).
+- [x] ~~Toda compra parte de una cotización aceptada~~ (retirado en la Fase 7 junto con `POST /api/purchases`).
 - [x] Facturas: el OCR detecta la carrera (nombre o sigla) y asigna el presupuesto del año; si no la detecta, `confirm` exige `annual_budget_id` (`InvoiceIntakeTest`).
+
+---
+
+### Refactor nov 2026 — OC desde la solicitud de compra (reemplaza las reglas de "Reglas de noviembre 2026")
+La OC se emite **fuera del sistema** y se sube ligada al código de la solicitud (`POST /api/purchase-requests/{id}/order`); ahí se reserva el presupuesto con el `total` de la cotización elegida. `POST /api/purchases` se retiró (Fase 7): las OC se crean solo desde la solicitud. Recepción (`arrival-scan`) y factura (`invoice-intakes`) se mantienen; la factura acepta `purchase_request_code`. Plan en `NUEVO-FLUJO-COMPRAS.md`.
+- [x] Fase 5: subir OC y reservar presupuesto (sin estado de recepción: la factura la implica) (`PurchaseRequestOrderTest`).
+- [x] Fase 6: factura ligada a la solicitud; anular repone y devuelve la solicitud a `con_oc` (`PurchaseRequestInvoiceTest`).
+- [x] Fase 7: `POST /api/purchases` retirado (`405`, `PurchaseStatusTest`/`PurchaseBudgetTest`); las OC históricas de seeders y tests usan `PurchaseService::createReserved` (sin ruta). Tablas `quotation*` conservadas. `ENDPOINTS.md` actualizado.
+- [x] Re-facturar por `purchase_request_code` aunque la reserva ya se haya liberado (`PurchaseRequestInvoiceTest`).

@@ -12,8 +12,9 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
-use Tests\Concerns\CreatesQuotations;
+use Tests\Concerns\CreatesPurchases;
 use Tests\TestCase;
 
 /**
@@ -21,7 +22,7 @@ use Tests\TestCase;
  */
 class PurchaseBudgetTest extends TestCase
 {
-    use CreatesQuotations;
+    use CreatesPurchases;
     use DatabaseTransactions;
 
     private User $director;
@@ -36,33 +37,22 @@ class PurchaseBudgetTest extends TestCase
         $this->director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
     }
 
-    private function payload(array $override = []): array
-    {
-        return $override + [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['name' => 'Cable', 'quantity' => 10, 'unit_price' => 1500], ['name' => 'Pinza', 'quantity' => 4, 'unit_price' => 8000]],
-        ];
-    }
-
     private function purchase(int $total = 47000): Purchase
     {
         Sanctum::actingAs($this->director);
-        $payload = $this->payload(['items' => [['name' => 'Ítem', 'quantity' => 1, 'unit_price' => $total]]]);
-        $id = $this->postJson('/api/purchases', $payload)->assertCreated()->json('data.id');
 
-        return Purchase::findOrFail($id);
+        return $this->reservedPurchase($this->budget, [['name' => 'Ítem', 'quantity' => 1, 'unit_price' => $total]], user: $this->director);
     }
 
     public function test_creating_a_purchase_reserves_its_total(): void
     {
-        Sanctum::actingAs($this->director);
+        $purchase = $this->reservedPurchase($this->budget, [
+            ['name' => 'Cable', 'quantity' => 10, 'unit_price' => 1500], ['name' => 'Pinza', 'quantity' => 4, 'unit_price' => 8000],
+        ], user: $this->director);
 
-        $this->postJson('/api/purchases', $this->payload())
-            ->assertCreated()
-            ->assertJsonPath('data.total', 47000)
-            ->assertJsonPath('data.reserved_amount', '47000.00')
-            ->assertJsonPath('data.annual_budget_id', $this->budget->id);
+        $this->assertEquals(47000, $purchase->total);
+        $this->assertSame('47000.00', $purchase->fresh()->reserved_amount);
+        $this->assertSame(Purchase::STATUS_PENDING, $purchase->status);
 
         $budget = $this->budget->fresh();
         $this->assertSame('1000000.00', $budget->available_amount);
@@ -70,33 +60,32 @@ class PurchaseBudgetTest extends TestCase
         $this->assertDatabaseHas('budget_movements', ['annual_budget_id' => $budget->id, 'type' => 'reserva', 'amount' => '47000.00']);
     }
 
-    public function test_insufficient_funds_missing_price_and_foreign_career_are_rejected(): void
+    public function test_insufficient_funds_and_missing_price_are_rejected(): void
     {
-        Sanctum::actingAs($this->director);
-
-        $this->postJson('/api/purchases', $this->payload(['items' => [['name' => 'Caro', 'quantity' => 1, 'unit_price' => 2000000]]]))
-            ->assertStatus(422)->assertJsonValidationErrors('total');
+        $this->assertThrows(
+            fn () => $this->reservedPurchase($this->budget, [['name' => 'Caro', 'quantity' => 1, 'unit_price' => 2000000]]),
+            ValidationException::class,
+            'supera el presupuesto libre',
+        );
         $this->assertSame('1000000.00', $this->budget->fresh()->available_amount);
         $this->assertDatabaseCount('budget_movements', 0);
 
-        $this->postJson('/api/purchases', $this->payload(['items' => [['name' => 'Sin precio', 'quantity' => 1]]]))
-            ->assertStatus(422)->assertJsonValidationErrors('items.0.unit_price');
-
-        $this->postJson('/api/purchases', $this->payload(['annual_budget_id' => null]))
-            ->assertStatus(422)->assertJsonValidationErrors('annual_budget_id');
-
-        // DIR-01 es director de área: puede usar el presupuesto de cualquier carrera.
-        $other = AnnualBudget::factory()->create();
-        $this->postJson('/api/purchases', $this->payload(['annual_budget_id' => $other->id]))->assertCreated();
+        $this->assertThrows(
+            fn () => $this->reservedPurchase($this->budget, [['name' => 'Sin precio', 'quantity' => 1]]),
+            ValidationException::class,
+        );
     }
 
-    public function test_roles_cannot_create_or_cancel(): void
+    public function test_purchases_are_no_longer_created_by_api_and_roles_cannot_cancel(): void
     {
         $purchase = $this->purchase();
 
+        // Las OC se crean solo desde la solicitud de compra.
+        Sanctum::actingAs($this->director);
+        $this->postJson('/api/purchases', ['annual_budget_id' => $this->budget->id])->assertStatus(405);
+
         foreach ([User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
             Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
-            $this->postJson('/api/purchases', $this->payload())->assertForbidden();
             $this->postJson("/api/purchases/{$purchase->id}/cancel")->assertForbidden();
         }
 

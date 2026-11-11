@@ -5,13 +5,12 @@ namespace App\Http\Controllers\Api;
 use App\Exceptions\InvalidPurchaseStatusTransition;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ScanArrivalRequest;
-use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Requests\UpdatePurchaseStatusRequest;
 use App\Http\Resources\BudgetMovementResource;
 use App\Http\Resources\InvoiceIntakeResource;
+use App\Http\Resources\PurchaseRequestResource;
 use App\Http\Resources\PurchaseResource;
 use App\Http\Resources\QuotationResource;
-use App\Models\AnnualBudget;
 use App\Models\BudgetMovement;
 use App\Models\InvoiceIntake;
 use App\Models\Purchase;
@@ -19,7 +18,6 @@ use App\Models\Quotation;
 use App\Services\InvoiceOcrService;
 use App\Services\PurchaseService;
 use App\Services\PurchaseStateMachine;
-use App\Services\QuotationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -53,24 +51,6 @@ class PurchaseController extends Controller
     }
 
     /**
-     * Register a new purchase order in `pendiente` status (REQ-08).
-     *
-     * Puede crearse desde cero (proveedor + ítems) o a partir de una cotización
-     * aceptada (REQ-07 -> REQ-08), en cuyo caso se copian proveedor e ítems y la
-     * cotización queda marcada como `convertida`.
-     */
-    public function store(StorePurchaseRequest $request, QuotationService $quotationService, PurchaseService $purchaseService): JsonResponse
-    {
-        Gate::authorize('useBudget', [Purchase::class, AnnualBudget::findOrFail($request->integer('annual_budget_id'))]);
-
-        $purchase = $purchaseService->create($request->validated(), $request->user(), $quotationService);
-
-        return (new PurchaseResource($purchase->load(['supplier', 'items', 'quotation.suppliers'])))
-            ->response()
-            ->setStatusCode(201);
-    }
-
-    /**
      * Display the specified purchase order with its items.
      */
     public function show(Purchase $purchase): PurchaseResource
@@ -81,7 +61,7 @@ class PurchaseController extends Controller
     }
 
     /**
-     * Cadena OC → cotizaciones → facturas → ingreso de stock → movimientos de presupuesto (REQ-08).
+     * Cadena (solicitud de compra →) OC → cotizaciones → facturas → ingreso de stock → movimientos de presupuesto (REQ-08).
      */
     public function trace(Purchase $purchase): JsonResponse
     {
@@ -96,8 +76,12 @@ class PurchaseController extends Controller
             ->map(fn ($rows) => ['product_id' => $rows->first()->product_id, 'name' => $rows->first()->product->name, 'quantity' => (int) $rows->sum('quantity')])
             ->values();
 
+        $purchaseRequest = $purchase->purchaseRequest()->with(['items.product', 'areas', 'quotations.supplier', 'quotations.items'])->first();
+
         return response()->json([
             'purchase' => new PurchaseResource($purchase->load(['supplier', 'items'])),
+            // Flujo nuevo: solicitud de compra con sus cotizaciones (null en compras históricas).
+            'purchase_request' => $purchaseRequest ? new PurchaseRequestResource($purchaseRequest) : null,
             'quotations' => QuotationResource::collection($quotations),
             'invoices' => InvoiceIntakeResource::collection($invoices),
             'budget_movements' => BudgetMovementResource::collection(BudgetMovement::with('user')->where(fn ($q) => $q->where('purchase_id', $purchase->id)->orWhereIn('invoice_intake_id', $invoices->modelKeys()))->orderBy('id')->get()),

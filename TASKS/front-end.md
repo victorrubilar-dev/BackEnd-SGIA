@@ -385,3 +385,61 @@ El panel muestra `quantity`, que es el total de todos los pañoles, pero `POST /
 - Al elegir el pañol, volver a pedir los productos con `storeroom_id`, mostrar `available_in_storeroom` como existencias y usarlo como máximo de la cantidad.
 - Deshabilitar el producto si es `0`; si cambia el pañol, revalidar las cantidades ya agregadas.
 - Mantener el manejo del `422` de la solicitud: el dato no reserva unidades.
+
+## Nuevo flujo de compras (solicitud de compra) — rompe contrato
+Contrato completo y fases en `NUEVO-FLUJO-COMPRAS.md` §5. Esta sección fija las **claves JSON reales** a medida que se implementan (el backend manda).
+
+### Fase 7 — Flujo antiguo de cotizaciones en solo lectura ✅ (rompe contrato)
+Rutas **retiradas** (el frontend debe quitar sus pantallas/llamadas):
+- `POST /api/quotations` → `405`.
+- `POST /api/quotations/{id}/resend` → `404`.
+- `PATCH /api/quotations/{id}/status` → `404`.
+- `PATCH /api/quotations/{id}/responses` → `404`.
+- `POST /api/purchases` (con o sin `quotation_id`/`quotation_ids`) → `405`. Las OC se crean solo con `POST /api/purchase-requests/{id}/order`.
+
+Se mantienen (historial): `GET /api/quotations`, `GET /api/quotations/{id}`; `QuotationResource` conserva sus claves pero `allowed_transitions` viene siempre `[]`. `GET /api/purchases*` y las acciones sobre OC existentes (`status`, `cancel`, `arrival-scan`, `trace`) no cambian. Las cabeceras `Deprecation` ya no aplican (las rutas no existen).
+
+### Fase 1 — Áreas de proveedor ✅ implementado
+- Enum (valor → etiqueta): `informatica` → Informática, `diseno` → Diseño, `telecomunicaciones` → Telecomunicaciones, `ciberseguridad` → Ciberseguridad.
+- `SupplierResource` suma `areas: string[]` (siempre presente, ordenado alfabéticamente; `[]` en proveedores anteriores al flujo). Claves: `id, name, contact_name, email, phone, rut, address, category, areas, is_active, created_at, updated_at` (+ `products_count` en el listado, `products` en el detalle).
+- `POST /api/suppliers`: `areas[]` **obligatorio** (≥1, sin tope, sin repetir) → `422` en `areas` / `areas.N`.
+- `PUT|PATCH /api/suppliers/{id}`: `areas[]` reemplaza; si se omite se conservan. Si el proveedor no tiene áreas (datos viejos), cualquier edición exige `areas` (`422` en `areas`): el formulario debe pedirla.
+- `GET /api/suppliers?area=diseno` filtra (proveedores con esa área entre las suyas); valor inválido → `422` en `area`.
+- `category` sigue en la respuesta y el body pero queda en retiro: no mostrarlo en formularios nuevos.
+
+### Fases 2–6 — Solicitud de compra ✅ implementado
+Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **toda escritura solo `DIR-01`** (a `AD-01` ocultarle los botones: recibe `403`).
+
+**Estados** (`status` → `status_label`): `borrador` Borrador, `aprobada` Aprobada, `enviada` Enviada, `cotizada` Cotizada, `con_oc` Con OC, `facturada` Facturada, `cancelada` Cancelada. Vueltas automáticas: `cotizada → enviada` (se quitó una cotización y quedan < 3) y `facturada → con_oc` (se anuló la factura).
+
+**`PurchaseRequestResource`** (`data` en detalle/listado; `purchase_request` en `send`/`resend`/subida de cotización):
+- Siempre: `id, code, status, status_label, annual_budget_id, created_by, approved_by, approved_at, sent_at, selected_quotation_id, notes, min_quotations (3), created_at, updated_at`.
+- Banderas por estado (usar para habilitar botones): `can_edit, can_approve, can_send, can_resend, can_upload_quotation, can_remove_quotation, can_select_quotation, can_issue_order, can_cancel`.
+- Según carga: `quotations_count` (listado y detalle), `annual_budget` (`AnnualBudgetResource`), `creator`, `approver` (`UserResource`), `items[]`, `areas: string[]` (detalle), `suppliers[]` (detalle), `quotations[]` (detalle), `order` (`PurchaseResource` o `null`).
+- Listado: carga `items.product`, `annual_budget`, `creator`, `order`, `quotations_count`. Detalle: además `areas`, `suppliers.supplier`, `quotations.supplier`, `quotations.items`, `order.supplier`, `order.items`, `order.invoices`, `approver`.
+
+**`PurchaseRequestItemResource`**: `id, purchase_request_id, product_id, quantity, product{id, name, type, barcode}`.
+
+**`PurchaseRequestSupplierResource`** (contactado): `id, purchase_request_id, supplier_id, supplier (SupplierResource), email_status ('enviado'|'fallido'|'pendiente'), email_sent_at, email_error`.
+
+**`PurchaseRequestQuotationResource`**: `id, purchase_request_id, supplier_id, supplier, total (number), received_at, uploaded_by, original_name, file_url, created_at, items[{purchase_request_item_id, unit_price (number)}]`. `file_url` es una ruta autenticada: pedirla con `getBlob()` (Bearer), no abrirla directo. "Elegida" = `id === selected_quotation_id`.
+
+**`PurchaseResource`** suma: `purchase_request_id, purchase_request ({id, code, status} si se carga), order_number, has_order_file, order_file_url` (blob, solo OC de solicitud) e `invoices[]` (`InvoiceIntakeResource`, cuando se carga: en `order` del detalle).
+
+**Respuestas especiales**
+- `POST …/send` y `…/resend` → `{message, emails_sent, emails_failed, purchase_request}`.
+- `POST …/quotations` (`multipart`: `supplier_id`, `file`, `total`, `received_at?`, `items[N][purchase_request_item_id]`, `items[N][unit_price]`, uno por ítem de la solicitud) → `201 {quotation, purchase_request}`.
+- `DELETE …/quotations/{q}` → `204`.
+- `POST …/order` (`multipart`: `order_number`, `file`) → `201 {data: PurchaseRequestResource}`; `422` en `total` si el presupuesto libre no alcanza.
+- `GET /api/purchase-requests/areas` → `{data: [{value, label}]}` (sirve también para el formulario de proveedores).
+- Errores de estado: `422` con `errors.status`.
+
+**Facturas (Fase 6)**
+- `POST /api/invoice-intakes` y `POST /api/invoice-intakes/{id}/confirm` aceptan `purchase_request_code` (`SC-AAAA-NNNN`): liga la factura a la OC de esa solicitud (debe estar `con_oc`; si no, `422` en `purchase_request_code`). Funciona aunque la reserva de la OC ya se haya liberado (re-facturar tras anular una factura). Para el buscador: `GET /api/purchase-requests?status=con_oc&code=…`.
+- Al confirmar, la solicitud pasa a `facturada`; al anular la factura, vuelve a `con_oc`.
+- **Corrección a la nota "Facturas sin presupuesto ni compra (nov 2026)" del `front-end.md` del frontend:** el backend **sí** acepta `annual_budget_id` y `purchase_id` en `POST /api/invoice-intakes` (y `InvoiceIntakeResource` mantiene `annual_budget_id`, `purchase_id`, `purchase`, `linked`, `needs_budget`), y confirmar **sí** mueve presupuesto (libera la reserva de la OC y consume lo facturado). Desde el commit `0fe96ff`, confirmar una factura sin OC con un presupuesto que tiene OC con reserva pendiente responde `422` en `purchase_id` pidiendo elegir una de esas OC. Esa nota del frontend está desactualizada: el contrato vigente es el de `ENDPOINTS.md` §4.2.
+
+**Compras**
+- `POST /api/purchases/{id}/cancel` sobre una OC de solicitud → `422` en `status`: cancelar desde la solicitud.
+- `GET /api/purchases/{id}/trace` suma `purchase_request` (o `null`) con `items`, `areas` y `quotations`.
+- `POST /api/quotations` y `POST /api/purchases` se retiraron (ver Fase 7 arriba).
