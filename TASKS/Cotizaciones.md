@@ -8,3 +8,12 @@
 ### Reglas de noviembre 2026
 - [x] Solo `DIR-01` cambia el estado de una cotización (`AD-01` → `403`); cada cambio de estado notifica a `AD-01` y `DIR-01` (`QuotationPurchaseFlowTest`).
 - [x] Mínimo recomendado de 3 proveedores que **responden** (`config('sgia.min_quotations')`, `MIN_QUOTATIONS`): no bloquea, la compra exige `quotation_justification` si hay menos (`QuotationPurchaseFlowTest`).
+
+---
+
+### Refactor nov 2026 — solicitud de compra (reemplaza REQ-07)
+`POST /api/quotations` y el envío por proveedor elegido a mano quedan **deprecados**. El envío pasa a la solicitud de compra, por áreas de proveedor, y las cotizaciones son archivos que sube `DIR-01` (mínimo 3). Plan por fases, modelo y contrato en `NUEVO-FLUJO-COMPRAS.md`.
+- [ ] Fase 1: `supplier_areas` (informatica, diseno, telecomunicaciones, ciberseguridad), ≥1 obligatoria por proveedor, sin tope; los proveedores de prueba actuales se actualizan a mano.
+- [ ] Fase 2: `purchase_requests` con código `SC-AAAA-NNNN`, `POST …/approve` solo `DIR-01`.
+- [ ] Fase 3: `POST …/send` con `areas[]`; reutiliza `QuotationEmailService`.
+- [ ] Fase 4: `POST …/quotations` (archivo + total + precios), `POST …/select-quotation` (≥3).
