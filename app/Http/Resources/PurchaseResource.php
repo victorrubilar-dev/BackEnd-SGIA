@@ -28,6 +28,14 @@ class PurchaseResource extends JsonResource
             'reserved_amount' => $this->reserved_amount ?? '0.00',
             'quotation_reference' => $this->quotation_reference,
             'quotation_id' => $this->quotation_id,
+            'purchase_request_id' => $this->resource->purchase_request_id,
+            'purchase_request' => $this->whenLoaded('purchaseRequest', fn () => $this->resource->purchaseRequest?->only(['id', 'code', 'status'])),
+            'order_number' => $this->resource->order_number,
+            'has_order_file' => $this->resource->order_file_path !== null,
+            'order_file_url' => $this->resource->order_file_path && $this->resource->purchase_request_id
+                ? url("/api/purchase-requests/{$this->resource->purchase_request_id}/order/file")
+                : null,
+            'invoices' => InvoiceIntakeResource::collection($this->whenLoaded('invoiceIntakes')),
             'quotation_justification' => $this->resource->quotation_justification,
             'min_quotations' => $minQuotations = (int) config('sgia.min_quotations', 3),
             'responded_suppliers' => $this->when($this->resource->relationLoaded('quotation') && $this->resource->quotation !== null, fn () => $this->resource->quotation->respondedSuppliersCount()),

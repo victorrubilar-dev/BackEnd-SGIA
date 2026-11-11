@@ -12,7 +12,6 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Services\CodeSequenceService;
 use App\Services\PurchaseService;
-use App\Services\QuotationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 
@@ -33,16 +32,8 @@ class InvoiceDemoSeeder extends Seeder
         $codes = app(CodeSequenceService::class);
         $careers = Career::pluck('id', 'code');
 
-        $sup = collect([
-            'electroplus' => ['Soc. Electroplus Ltda.', '77.929.326-2', 'General Mackenna #494, Temuco', 'electro2024temuco@gmail.com', '+56 9 6109 6655', 'Artículos eléctricos', 'Electroplus'],
-            'arbol' => ['Árbolvisual SpA', '77.883.292-5', 'Nueva York 53 of 61, Santiago', 'mgonzalez@arbolvisual.cl', null, 'Material publicitario y arte oficina', 'M. González'],
-            'systelec' => ['Systelec Electrónica Limitada', '78.481.580-3', 'Conchalí, Santiago', 'systelec@systelec.cl', null, 'Equipamiento e insumos electrónicos', 'Ventas Systelec'],
-            'zenner' => ['Sociedad de Inversiones en Tecnología ZE', '76.088.347-6', 'Porvenir 474, Santiago', 'carlos.iglesias@zenner.cl', null, 'Automatización', 'Carlos Iglesias'],
-            'microtec' => ['Microtec SpA', '96.532.730-4', 'Salar Ascotán, Parque Enea 1281, Santiago', 'eduardopalma@micro.cl', '+56 2 2595 4600', 'Instrumentación industrial', 'Cristián Flores'],
-        ])->map(fn ($d) => Supplier::updateOrCreate(['rut' => $d[1]], [
-            'name' => $d[0], 'address' => $d[2], 'email' => $d[3], 'phone' => $d[4] ?? '+56 2 2000 0000',
-            'category' => $d[5], 'contact_name' => $d[6], 'is_active' => true,
-        ]));
+        // Proveedores con área (≥3 activos por área) para probar también el flujo de solicitud de compra.
+        $sup = DemoSupplierSeeder::suppliers();
 
         $cat = fn (string $n) => Category::firstOrCreate(['name' => $n])->id;
 
@@ -86,7 +77,6 @@ class InvoiceDemoSeeder extends Seeder
             ));
 
         $purchases = app(PurchaseService::class);
-        $quotations = app(QuotationService::class);
 
         // [proveedor, presupuesto, referencia, esperada, notas, [[producto, cantidad], ...]]
         $orders = [
@@ -98,7 +88,7 @@ class InvoiceDemoSeeder extends Seeder
         ];
 
         foreach ($orders as [$supplier, $budget, $ref, $expected, $notes, $lines]) {
-            $purchases->create([
+            $purchases->createReserved([
                 'supplier_id' => $sup[$supplier]->id,
                 'annual_budget_id' => $budgets[$budget]->id,
                 'quotation_reference' => $ref,
@@ -110,7 +100,7 @@ class InvoiceDemoSeeder extends Seeder
                     'quantity' => $l[1],
                     'unit_price' => $catalog[$l[0]][6],
                 ])->all(),
-            ], $admin, $quotations);
+            ], $admin);
         }
 
         // Cotizaciones para probar la OC desde >=3 aceptadas: 3 aceptadas (3 proveedores con oferta),

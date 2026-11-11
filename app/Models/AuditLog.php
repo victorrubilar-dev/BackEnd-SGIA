@@ -19,6 +19,7 @@ class AuditLog extends Model
         'product' => Product::class,
         'purchase' => Purchase::class,
         'invoice_intake' => InvoiceIntake::class,
+        'purchase_request' => PurchaseRequest::class,
     ];
 
     protected $fillable = [

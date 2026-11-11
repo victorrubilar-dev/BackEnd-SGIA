@@ -23,7 +23,7 @@ Antes de dar una tarea por terminada: `php artisan test` en verde, `pint --dirty
 | Código | Rol | Puede |
 |---|---|---|
 | `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
-| `DIR-01` | Director de Carrera (de área) | Facturas, cotizaciones, compras, dashboards; presupuestos de todas las carreras del Área de Informática |
+| `DIR-01` | Director de Carrera (de área) | Facturas, solicitudes de compra (única escritura del flujo de compras), dashboards; presupuestos de todas las carreras del Área de Informática |
 | `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), crear y atender informes de novedades |
 | `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 
@@ -33,12 +33,13 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 
 - `routes/api.php`: todas las rutas bajo `auth:sanctum` + `active`; cada grupo comentado con su REQ. Las rutas estáticas (`/loans/pending`) van antes de las `{loan}`.
 - `app/Http/Controllers/Api`: delgados; validan con un FormRequest (`app/Http/Requests`), delegan en un Service y responden con un Resource (`app/Http/Resources`).
-- `app/Services`: lógica de negocio. Los flujos con estado usan una máquina de estados (`LoanStateMachine`, `PurchaseStateMachine`, `QuotationStateMachine`) que lanza `app/Exceptions/Invalid*StatusTransition`.
+- `app/Services`: lógica de negocio. Los flujos con estado usan una máquina de estados (`LoanStateMachine`, `PurchaseStateMachine`, `QuotationStateMachine`, `PurchaseRequestStateMachine`) que lanza `app/Exceptions/Invalid*StatusTransition`.
+- Flujo de compras (nov 2026, `NUEVO-FLUJO-COMPRAS.md`): `PurchaseRequest` `SC-AAAA-NNNN` (`PurchaseRequestService`): DIR-01 crea y aprueba → envía por áreas de proveedor (`SupplierArea`: `informatica`, `diseno`, `telecomunicaciones`, `ciberseguridad`; correo a todos los activos de esas áreas) → sube ≥3 cotizaciones (archivos) y elige una → sube la OC emitida fuera del sistema (crea la `Purchase` y reserva el total) → la factura (`invoice-intakes`, `purchase_request_code`) la deja `facturada`. El flujo antiguo de cotizaciones quedó en **solo lectura** (`GET /api/quotations*`, tablas `quotation*` conservadas) y `POST /api/purchases` se retiró: las OC se crean solo con `POST /api/purchase-requests/{id}/order` (OC históricas de seeders/tests: `PurchaseService::createReserved`, sin ruta). Proveedores de demo: `DemoSupplierSeeder` (≥3 activos por área).
 - Stock: `StockAlertService` / `CheckStockAlertJob` generan alertas al llegar a `stock_minimo + 5` y a `stock_minimo`.
 - Unidades: `equipo` y `maqueta` (`Product::hasUnits()`) se gestionan por `equipment_units`; sus contadores (`quantity`, `quantity_in_repair`, `quantity_written_off`) se derivan de las unidades y **solo** los escribe `EquipmentUnitService::syncProductCounters()`. Los insumos siguen por cantidad. Estados de unidad en `EquipmentUnitStateMachine`; `prestado` solo cambia por préstamos (`LoanService`).
 - Códigos de barra: `CodeSequenceService` llama a `fn_generar_codigo_sgia` (tabla `code_sequences`); el código va en el producto (insumos) o en cada unidad (equipos/maquetas).
 - Correspondencia con `MODELS.MD` (nombres en inglés): `panoles`→`storerooms`, `salas`→`locations`, `estantes`→`cajones`, `productos`→`products`, `equipos`→`equipment_units`, `codigos`→`code_sequences`, `presupuestos_anuales`→`annual_budgets`, `ingresos_ocr`→`invoice_intakes`, `proveedores`→`suppliers`, `procesos_cotizacion`→`quotations`, `cotizaciones`→`quotation_suppliers`, `cotizacion_items`→`quotation_offer_items`, `informes_novedades`→`incident_reports`, `registros_mantencion`→`maintenance_records`, `documentos_mantenimiento`→`maintenance_documents`, `estudiantes`→`students`, `prestamos`→`loans`, `prestamo_detalles`→`loan_items` + `loan_item_units`. Detalle en `TASKS/Equipos.md`.
-- Vistas Blade solo para PDFs (`resources/views/equipment`) y el correo de cotización.
+- Vistas Blade solo para PDFs (`resources/views/equipment`) y el correo de solicitud de cotización (`mail/purchase-request-quotation`).
 - Tests unitarios en `tests/Unit` (máquinas de estado, `StockAlertService`). `ResourceContractTest` fija las claves de cada Resource: si lo tocas, actualiza `TASKS/front-end.md`.
 - Tests de integración en `tests/Feature` (uno por módulo, contra PostgreSQL real; casi todos con `DatabaseTransactions`).
 
@@ -60,6 +61,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `docs/solicitud-prestamo-profesor.md`: especificación de la solicitud remota de préstamo del profesor (horario, laboratorio, pañol, cola por pañol).
 - `docs/revision-solicitud-prestamo.md`: contrato de la revisión de solicitudes remotas por el pañol y de la elección de unidades al aprobar.
 - `docs/disponibilidad-por-panol.md`: plan y contrato (sin implementar) de la disponibilidad por pañol en `GET /api/products`.
+- `NUEVO-FLUJO-COMPRAS.md`: plan, decisiones (§3) y fases del flujo de compras por solicitud.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
 - `TASKS/front-end.md`: cambios del backend que afectan al frontend. Actualizarlo cuando un cambio rompa o modifique el contrato de la API.
 - `README.md`: puesta en marcha para humanos.

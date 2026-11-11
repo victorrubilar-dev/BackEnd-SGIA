@@ -17,13 +17,13 @@ use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\BuildsProductPayload;
-use Tests\Concerns\CreatesQuotations;
+use Tests\Concerns\CreatesPurchases;
 use Tests\TestCase;
 
 class InvoiceIntakeTest extends TestCase
 {
     use BuildsProductPayload;
-    use CreatesQuotations;
+    use CreatesPurchases;
     use DatabaseTransactions;
 
     private const INVOICE_TEXT = <<<'TXT'
@@ -390,11 +390,7 @@ TXT;
         $budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 1000000]);
         $product = Product::factory()->supply()->create();
         Sanctum::actingAs($this->admin);
-        $purchaseId = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 5, 'unit_price' => 1000]],
-        ])->assertCreated()->json('data.id');
+        $purchaseId = $this->reservedPurchase($budget, [['product_id' => $product->id, 'name' => 'x', 'quantity' => 5, 'unit_price' => 1000]])->id;
         $this->assertSame('1000000.00', $budget->fresh()->available_amount);
 
         $intake = $this->draft($budget);
@@ -424,11 +420,7 @@ TXT;
         $budget = AnnualBudget::factory()->create(['initial_amount' => 10000, 'available_amount' => 10000]);
         $product = Product::factory()->supply()->create(['quantity' => 0]);
         Sanctum::actingAs($this->admin);
-        $purchaseId = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['product_id' => $product->id, 'name' => 'x', 'quantity' => 1, 'unit_price' => 5000]],
-        ])->assertCreated()->json('data.id');
+        $purchaseId = $this->reservedPurchase($budget, [['product_id' => $product->id, 'name' => 'x', 'quantity' => 1, 'unit_price' => 5000]])->id;
 
         $intake = $this->draft();
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [

@@ -34,6 +34,32 @@ class CodeSequenceService
         }
     }
 
+    /**
+     * Siguiente código anual `PREFIJO-AAAA-NNNN` (p. ej. `SC-2026-0001`). El upsert bloquea la fila
+     * de `yearly_code_sequences`, por lo que es atómico con llamadas concurrentes.
+     */
+    public function nextYearly(string $prefix, ?int $year = null): string
+    {
+        $year ??= (int) now()->year;
+
+        $index = DB::selectOne(
+            'insert into yearly_code_sequences (prefix, year, current_index, created_at, updated_at)
+             values (?, ?, 1, now(), now())
+             on conflict (prefix, year) do update
+                set current_index = yearly_code_sequences.current_index + 1, updated_at = now()
+             returning current_index',
+            [$prefix, $year]
+        )->current_index;
+
+        return sprintf('%s-%d-%04d', $prefix, $year, $index);
+    }
+
+    /** Código de la solicitud de compra: `SC-AAAA-NNNN`. */
+    public function forPurchaseRequest(?int $year = null): string
+    {
+        return $this->nextYearly('SC', $year);
+    }
+
     public function forProduct(Product $product): string
     {
         return $this->forType($product->type, $product->career_id);

@@ -11,6 +11,7 @@ use App\Models\InvoiceIntake;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Services\InvoiceIntakeService;
+use App\Services\PurchaseRequestService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -55,14 +56,18 @@ class InvoiceIntakeController extends Controller
         return InvoiceIntakeResource::collection($query->with(['purchase:id,code,status', 'annualBudget'])->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
     }
 
-    public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service): JsonResponse
+    public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service, PurchaseRequestService $purchaseRequests): JsonResponse
     {
         $budget = $request->filled('annual_budget_id') ? AnnualBudget::findOrFail($request->integer('annual_budget_id')) : null;
         Gate::authorize('create', [InvoiceIntake::class, $budget]);
 
-        $purchase = $request->filled('purchase_id') ? Purchase::findOrFail($request->integer('purchase_id')) : null;
+        $purchaseId = $request->filled('purchase_id') ? $request->integer('purchase_id') : null;
+        $purchase = $request->filled('purchase_request_code')
+            ? $purchaseRequests->orderForInvoice($request->string('purchase_request_code')->toString(), $purchaseId)
+            : ($purchaseId !== null ? Purchase::findOrFail($purchaseId) : null);
 
-        $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id, $purchase);
+        // Por código de solicitud la OC ya se validó (`con_oc`); su reserva puede estar liberada por una factura anulada.
+        $intake = $service->createDraft($request->file('file'), $budget, $request->user()->id, $purchase, requireReservation: ! $request->filled('purchase_request_code'));
 
         return (new InvoiceIntakeResource($intake->load(['items', 'purchase', 'annualBudget'])))->response()->setStatusCode(201);
     }
@@ -88,14 +93,20 @@ class InvoiceIntakeController extends Controller
         return Storage::disk('local')->download($invoiceIntake->pdf_path);
     }
 
-    public function confirm(ConfirmInvoiceIntakeRequest $request, InvoiceIntake $invoiceIntake, InvoiceIntakeService $service): InvoiceIntakeResource
+    public function confirm(ConfirmInvoiceIntakeRequest $request, InvoiceIntake $invoiceIntake, InvoiceIntakeService $service, PurchaseRequestService $purchaseRequests): InvoiceIntakeResource
     {
+        $purchaseId = $request->validated('purchase_id');
+
+        if ($request->filled('purchase_request_code')) {
+            $purchaseId = $purchaseRequests->orderForInvoice($request->string('purchase_request_code')->toString(), $purchaseId)->id;
+        }
+
         $intake = $service->confirm(
             $invoiceIntake,
             $request->validated('document_number'),
             $request->validated('items'),
             $request->user()->id,
-            $request->validated('purchase_id'),
+            $purchaseId,
             $request->validated('annual_budget_id'),
             $request->boolean('allow_over_budget'),
             $request->user()->role === User::ROLE_DIRECTOR,
