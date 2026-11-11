@@ -82,14 +82,14 @@ class FinanceModelsSchemaTest extends TestCase
     {
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
 
-        $this->postJson('/api/suppliers', ['name' => 'Proveedor RUT', 'rut' => '12.345.678-5', 'address' => 'Av. Alemania 100'])
+        $this->postJson('/api/suppliers', ['name' => 'Proveedor RUT', 'rut' => '12.345.678-5', 'address' => 'Av. Alemania 100', 'areas' => ['informatica']])
             ->assertCreated()->assertJsonPath('data.rut', '12345678-5')->assertJsonPath('data.address', 'Av. Alemania 100');
 
         $this->postJson('/api/suppliers', ['name' => 'Otro', 'rut' => '12345678-5'])
             ->assertStatus(422)->assertJsonValidationErrors('rut');
         $this->postJson('/api/suppliers', ['name' => 'Malo', 'rut' => '12.345.678-9'])
             ->assertStatus(422)->assertJsonValidationErrors('rut');
-        $this->postJson('/api/suppliers', ['name' => 'Sin RUT'])->assertCreated()->assertJsonPath('data.rut', null);
+        $this->postJson('/api/suppliers', ['name' => 'Sin RUT', 'areas' => ['diseno']])->assertCreated()->assertJsonPath('data.rut', null);
     }
 
     public function test_quotation_career_title_and_offer_items(): void
@@ -134,18 +134,5 @@ class FinanceModelsSchemaTest extends TestCase
         QuotationOfferItem::create(['quotation_supplier_id' => $contact->id, 'product_id' => $product->id, 'requested_quantity' => 1]);
 
         $this->deleteJson('/api/products/'.$product->id)->assertStatus(422);
-    }
-
-    public function test_quotation_accepts_career_and_title_via_api(): void
-    {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
-        $career = Career::factory()->create();
-
-        $this->postJson('/api/quotations', [
-            'products' => [['id' => Product::factory()->create()->id, 'quantity' => 2]],
-            'supplier_ids' => Supplier::factory()->count(3)->create()->pluck('id')->all(),
-            'career_id' => $career->id,
-            'title' => 'Compra Q1',
-        ])->assertCreated()->assertJsonPath('quotation.career_id', $career->id)->assertJsonPath('quotation.title', 'Compra Q1');
     }
 }

@@ -1,7 +1,7 @@
 # Nuevo flujo de compras — plan de desarrollo
 
 Origen: reunión de noviembre 2026. Reemplaza el flujo "Cotización → OC → Factura" descrito en `CLAUDE.md` y `TASK.md`.
-Estado: **plan, sin código todavía**. Al cerrar cada fase, marcar aquí y en `TASK.md` §10.
+Estado: **Fases 1–7 implementadas en backend y frontend** (el flujo antiguo de cotizaciones quedó en solo lectura). Pendiente: prueba en navegador. Al cerrar cada fase, marcar aquí y en `TASK.md` §10.
 
 ## 1. Flujo acordado
 
@@ -46,9 +46,23 @@ equivale a la recepción                                              [facturada
 
 1. **Monto de la cotización**: el director lo digita al subir cada archivo (`total`), más `unit_price` por ítem de la solicitud. No hay OCR de cotizaciones. El `total` de la cotización elegida es lo que se **reserva** al subir la OC; la OC usa esos `unit_price` para los `purchase_items`.
 2. **Presupuesto**: la solicitud lleva `annual_budget_id` (carrera + año) desde la creación; se valida disponibilidad **al subir la OC**, no antes.
-3. **Qué pasa con `Quotation` actual**: se deja de crear (`POST /api/quotations` → deprecado y luego eliminado). Las tablas e historial existentes se conservan solo lectura hasta que se confirme su eliminación. `POST /api/purchases` desde cotizaciones deja de usarse.
+3. **Qué pasa con `Quotation` actual**: queda en **solo lectura** (Fase 7, confirmado por el usuario el 2026-11-10): se retiraron todas sus escrituras y `POST /api/purchases`; se conservan `GET /api/quotations` y `GET /api/quotations/{id}`, y las tablas `quotation*` con sus datos.
 4. **Recepción**: **sin estado propio** (decidido). La factura confirmada implica que llegaron los productos, como hoy: ingresa stock y deja la OC `completa`. `arrival-scan` no cambia el estado de la solicitud.
 5. **Correos**: se reutiliza `QuotationEmailService` (con `email_sent_at`/`email_error` y reintento) pasando a operar por `purchase_request_suppliers`.
+
+Decisiones confirmadas por el usuario el 2026-11-10:
+
+6. **Código `SC-AAAA-NNNN`**: `code_sequences` es por carrera (`career` de 3 letras con `CHECK`), así que se agregó `yearly_code_sequences (prefix, year)` y `CodeSequenceService::nextYearly()` / `forPurchaseRequest()` (upsert atómico). El correlativo reinicia cada año.
+7. **Ítems de la solicitud**: un producto no se repite (`unique(purchase_request_id, product_id)`); `PATCH` reemplaza todos los ítems y también acepta `annual_budget_id` (solo en `borrador`).
+8. **Precios al subir una cotización**: `items` debe traer **un precio por cada ítem** de la solicitud (la OC los necesita). El `total` es libre (puede incluir flete/IVA) y no se valida contra la suma.
+9. **Archivos de cotización**: PDF, imagen (PNG/JPG/WEBP), Word o Excel, 10 MB; el de la OC, PDF o imagen. Disco privado; se borran del disco si la operación falla o se quita la cotización.
+10. **Subir cotizaciones**: permitido en `enviada` y `cotizada` (puede haber más de 3). **Quitar**: solo si no hay cotización elegida; si quedan < 3, `cotizada → enviada`. **Elegir**: en `cotizada`, se puede cambiar la elección hasta subir la OC.
+11. **OC**: se guarda el número externo en `purchases.order_number` (columna extra) además del archivo; `purchases.code` sigue siendo el interno `OC-AAAA-XXXXXX`. `total` y reserva = `total` de la cotización elegida; ítems con los `unit_price` de esa cotización; `quotation_reference` = código de la solicitud.
+12. **Cancelar la OC de una solicitud** por `POST /api/purchases/{id}/cancel` responde `422`: se cancela desde la solicitud (para que no quede `con_oc` con la OC cancelada). Cancelar la solicitud con la OC ya `completa` (llegó por guía) responde `422`.
+13. **Factura**: `purchase_request_code` se acepta en la subida **y** en `confirm`. Cualquier factura confirmada ligada a una OC de solicitud (por código, `purchase_id` o coincidencia automática) la deja `facturada`; anularla la devuelve a `con_oc`. Por eso `facturada` no es final en la máquina (solo vuelve a `con_oc`).
+14. **Permisos**: toda escritura (incluida la creación) solo `DIR-01`; `AD-01` → `403`. Cada cambio de estado y la elección de cotización quedan en `audit_logs` (`auditable_type = purchase_request`).
+15. **Áreas en proveedores viejos**: la migración mapea `suppliers.category` por palabra clave (informát/computa/tecnolog, diseñ/gráfic, telecom/redes, ciber/seguridad); lo que no calza queda sin área. Editar un proveedor sin áreas exige `areas`.
+16. **Re-facturar por código**: subir una factura con `purchase_request_code` funciona aunque la reserva de la OC ya se haya liberado (p. ej. tras anular una factura anterior), igual que al ligarla en `confirm`. Por `purchase_id` se mantiene la exigencia de reserva vigente al subir (`PurchaseRequestInvoiceTest`).
 
 ## 4. Modelo de datos
 
@@ -68,7 +82,7 @@ Cambios a tablas existentes:
 - `purchases`: `purchase_request_id` FK nullable (históricas), `order_file_path` (archivo de la OC), `quotation_id` actual queda para histórico.
 - `invoice_intakes`: ya tiene `purchase_id`; la solicitud se obtiene por la OC. Sin columna nueva.
 
-Máquina de estados nueva `PurchaseRequestStateMachine` (como `QuotationStateMachine`): `borrador → aprobada → enviada → cotizada → con_oc → facturada`, más `cancelada`. Estados finales: `facturada`, `cancelada`.
+Máquina de estados nueva `PurchaseRequestStateMachine` (como `QuotationStateMachine`): `borrador → aprobada → enviada → cotizada → con_oc → facturada`, más `cancelada`. Único estado final: `cancelada`. `facturada` vuelve a `con_oc` si se anula la factura (también `cotizada → enviada` si al quitar una cotización quedan menos de 3).
 
 ## 5. API (contrato; el backend manda)
 
@@ -95,7 +109,7 @@ Todas bajo `auth:sanctum`. Lectura: `AD-01`, `DIR-01`, `PAN-01`. Escritura: `DIR
 
 Factura: se mantiene `invoice-intakes` (`purchase_id`) y `POST /api/purchases/{id}/arrival-scan` sin tocar; además `POST /api/invoice-intakes` acepta `purchase_request_code` como atajo para ligar a la OC de esa solicitud. Al confirmar la factura la solicitud pasa a `facturada`.
 
-Rompe contrato: `POST /api/quotations` y `POST /api/purchases` con `quotation_id`/`quotation_ids`. Se mantienen **deprecados** una versión (responden con cabecera `Deprecation`) y se retiran cuando el frontend migre.
+Rompe contrato (Fase 7, hecho): se **retiraron** `POST /api/quotations` (`405`), `POST /api/quotations/{id}/resend`, `PATCH /api/quotations/{id}/status`, `PATCH /api/quotations/{id}/responses` (`404`) y `POST /api/purchases` (`405`; las OC se crean solo desde la solicitud). Se mantienen los `GET` del historial de cotizaciones.
 
 ## 6. Preguntas abiertas (responder antes de la fase indicada)
 
@@ -108,51 +122,56 @@ Rompe contrato: `POST /api/quotations` y `POST /api/purchases` con `quotation_id
 Cada fase deja `php artisan test` en verde y `pint --dirty` limpio (backend) y typecheck/lint/vitest (frontend). Backend y frontend en paralelo con este contrato.
 
 ### Fase 1 — Áreas de proveedor (backend → frontend)
-- [ ] Migración `supplier_areas`, enum `SupplierArea`, `Supplier::areas()`.
-- [ ] `StoreSupplierRequest`/`UpdateSupplierRequest`/`SupplierResource`: `areas[]`; filtro `area` en el index.
-- [ ] Seeders (`RealisticDemoSeeder`, `InvoiceDemoSeeder`): proveedores con áreas.
-- [ ] **Pendiente de datos (anotado, no se automatiza):** los proveedores actuales son solo de prueba y no tienen área; hay que actualizarlos a mano o reemplazarlos. La migración no los borra ni inventa áreas; como `areas` pasa a ser obligatoria, editar un proveedor viejo exigirá asignarle al menos 1.
-- [ ] Test `SupplierAreaTest`. Docs: `ENDPOINTS.md`, `TASKS/front-end.md`.
-- [ ] Front: `packages/types` + `api-client`; multiselect de áreas en el formulario de proveedores y columna/filtro en el listado.
+- [x] Migración `supplier_areas`, enum `SupplierArea`, `Supplier::areas()`.
+- [x] `StoreSupplierRequest`/`UpdateSupplierRequest`/`SupplierResource`: `areas[]`; filtro `area` en el index.
+- [x] Seeders (`RealisticDemoSeeder`, `InvoiceDemoSeeder`): proveedores con áreas.
+- [ ] **Pendiente de datos (anotado, no se automatiza):** los proveedores actuales son solo de prueba y no tienen área; hay que actualizarlos a mano o reemplazarlos. La migración no los borra; solo les asigna área si su `category` calza por palabra clave (§3, punto 15); como `areas` pasa a ser obligatoria, editar un proveedor viejo exigirá asignarle al menos 1.
+- [x] Test `SupplierAreaTest`. Docs: `ENDPOINTS.md`, `TASKS/front-end.md`.
+- [x] Front: `packages/types` + `api-client`; multiselect de áreas en el formulario de proveedores y columna/filtro en el listado (`supplier-areas-field`, `SupplierAreaBadges`; `category` ya no se edita).
 
 ### Fase 2 — Solicitud de compra: crear y aprobar
-- [ ] Migraciones `purchase_requests`, `_items`; modelos, `PurchaseRequestStateMachine`, `PurchaseRequestService`, Policy, Resource, `StorePurchaseRequestRequest`.
-- [ ] Código `SC-AAAA-NNNN` con `CodeSequenceService`.
-- [ ] `GET/POST/PATCH /purchase-requests`, `POST …/approve` (solo `DIR-01`, notifica `AD-01`), `POST …/cancel`.
-- [ ] Tests `PurchaseRequestTest`: crea con código, `403` por rol, edita solo en borrador, aprobar, `AD-01` → 403.
-- [ ] Front: lista, formulario (productos + cantidades + presupuesto), detalle con botón **Aprobar**.
+- [x] Migraciones `purchase_requests`, `_items`; modelos, `PurchaseRequestStateMachine`, `PurchaseRequestService`, Policy, Resource, `StorePurchaseRequestRequest`.
+- [x] Código `SC-AAAA-NNNN` con `CodeSequenceService`.
+- [x] `GET/POST/PATCH /purchase-requests`, `POST …/approve` (solo `DIR-01`, notifica `AD-01`), `POST …/cancel`.
+- [x] Tests `PurchaseRequestTest`: crea con código, `403` por rol, edita solo en borrador, aprobar, `AD-01` → 403.
+- [x] Front: lista, formulario (productos + cantidades + presupuesto), detalle con botón **Aprobar** (`/solicitudes-compra`, `/solicitudes-compra/:id`).
 
 ### Fase 3 — Envío por áreas
-- [ ] Migraciones `purchase_request_areas`, `purchase_request_suppliers`; adaptar `QuotationEmailService`.
-- [ ] `POST …/send` (`areas[]`), `POST …/resend`; dedupe de proveedores en varias áreas; `422` sin proveedores o sin aprobar.
-- [ ] Tests con `Mail::fake`: una y varias áreas, proveedor duplicado recibe 1 correo, inactivos excluidos, reintento.
-- [ ] Front: selector de áreas al enviar y vista de proveedores contactados con estado del correo.
+- [x] Migraciones `purchase_request_areas`, `purchase_request_suppliers`; adaptar `QuotationEmailService`.
+- [x] `POST …/send` (`areas[]`), `POST …/resend`; dedupe de proveedores en varias áreas; `422` sin proveedores o sin aprobar.
+- [x] Tests con `Mail::fake`: una y varias áreas, proveedor duplicado recibe 1 correo, inactivos excluidos, reintento.
+- [x] Front: selector de áreas al enviar y vista de proveedores contactados con estado del correo y reintento de fallidos.
 
 ### Fase 4 — Cotizaciones recibidas y elección
-- [ ] Migraciones `purchase_request_quotations` + `_items`; subida a disco privado; descarga autenticada.
-- [ ] `POST/DELETE …/quotations`, `POST …/select-quotation` (mínimo 3 subidas; elección libre, sin motivo).
-- [ ] Tests: subir 1 y 2 → no se puede elegir; con 3 → elige cualquiera (no solo la más barata); proveedor no contactado → `422`; duplicado por proveedor → `422`; archivo inválido.
-- [ ] Front: panel de cotizaciones (subir, ver archivo, comparador de totales, botón "Elegir").
+- [x] Migraciones `purchase_request_quotations` + `_items`; subida a disco privado; descarga autenticada.
+- [x] `POST/DELETE …/quotations`, `POST …/select-quotation` (mínimo 3 subidas; elección libre, sin motivo).
+- [x] Tests: subir 1 y 2 → no se puede elegir; con 3 → elige cualquiera (no solo la más barata); proveedor no contactado → `422`; duplicado por proveedor → `422`; archivo inválido.
+- [x] Front: panel de cotizaciones (subir, ver archivo, comparador de totales, botón "Elegir").
 
 ### Fase 5 — Orden de compra
-- [ ] Migración `purchases.purchase_request_id`, `order_file_path`.
-- [ ] `POST …/order`: crea `Purchase` (ítems con `unit_price` de la cotización elegida), reserva presupuesto vía `AnnualBudgetService::reserve`, guarda el archivo de la OC. `GET …/order/file`.
-- [ ] Cancelar con OC libera la reserva (reusar `PurchaseService::cancel`).
-- [ ] Tests `PurchaseRequestOrderTest`: reserva el `total`, `422` por fondos, requiere cotización elegida.
-- [ ] Front: subir OC y ver su archivo.
+- [x] Migración `purchases.purchase_request_id`, `order_file_path`.
+- [x] `POST …/order`: crea `Purchase` (ítems con `unit_price` de la cotización elegida), reserva presupuesto vía `AnnualBudgetService::reserve`, guarda el archivo de la OC. `GET …/order/file`.
+- [x] Cancelar con OC libera la reserva (reusar `PurchaseService::cancel`).
+- [x] Tests `PurchaseRequestOrderTest`: reserva el `total`, `422` por fondos, requiere cotización elegida.
+- [x] Front: subir OC y ver su archivo.
 
 ### Fase 6 — Factura ligada a la solicitud
-- [ ] `invoice-intakes` acepta `purchase_request_code`; al confirmar: libera reserva, consume, solicitud `facturada` (lógica actual de REQ-22 sin cambios).
-- [ ] Anular factura confirmada: solicitud vuelve a `con_oc`.
-- [ ] Auditoría (`/purchases/{id}/trace`) incluye el código y las cotizaciones.
-- [ ] Tests: ampliar `InvoiceIntakeTest` y `InvoiceIntakeCancellationTest`.
-- [ ] Front: en el formulario de factura, buscar por código de solicitud.
+- [x] `invoice-intakes` acepta `purchase_request_code`; al confirmar: libera reserva, consume, solicitud `facturada` (lógica actual de REQ-22 sin cambios).
+- [x] Anular factura confirmada: solicitud vuelve a `con_oc`.
+- [x] Auditoría (`/purchases/{id}/trace`) incluye el código y las cotizaciones.
+- [x] Tests: `PurchaseRequestInvoiceTest` (subida y confirmación por código, anulación → `con_oc`, código inválido, trace). No se tocaron `InvoiceIntakeTest`/`InvoiceIntakeCancellationTest`: siguen en verde sin cambios.
+- [x] Front: en el formulario de factura, buscar por código de solicitud (al subir, `purchase_request_code`; atajo `/ingresos-factura?solicitud=SC-…`).
 
 ### Fase 7 — Retiro del flujo antiguo y cierre
-- [ ] Deprecar `POST /api/quotations` y `POST /api/purchases` desde cotizaciones; quitar las pantallas de cotizaciones del frontend; decidir si se borran las tablas `quotation*`.
-- [ ] Actualizar `RealisticDemoSeeder`/`InvoiceDemoSeeder` al flujo nuevo (solicitudes en distintos estados; la factura 1 sigue sin procesar).
-- [ ] Actualizar `ENDPOINTS.md` (ambos repos), `CONTRATO.md`, `CLAUDE.md` (sección "Flujo de negocio") y `TASKS/Compra.md`.
-- [ ] Prueba de punta a punta por API y en el navegador (solicitud → aprobar → enviar → 3 cotizaciones → OC → factura).
+- [x] Retirar las escrituras del flujo antiguo: `POST /api/quotations`, `POST /api/quotations/{id}/resend`, `PATCH /api/quotations/{id}/status`, `PATCH /api/quotations/{id}/responses` y `POST /api/purchases`; se borraron `QuotationService`, `QuotationStatusNotification`, `QuotationRequestMail` (+ vista), sus FormRequests y `InvalidQuotationStatusTransition`. Quedan los `GET` del historial (`QuotationTest`: lectura y rutas retiradas). Las OC históricas de seeders y tests se crean con `PurchaseService::createReserved` (sin ruta). Se eliminó `QuotationPurchaseFlowTest`.
+- [x] Conservar las tablas `quotation*` y sus datos (decisión del usuario: no se borran).
+- [x] Front: quitar las pantallas de cotizaciones del frontend. `/cotizaciones` queda como **historial en solo lectura** (lista y detalle, aviso a Solicitudes de compra; menú "Historial cotizaciones"); se quitaron crear, aceptar/rechazar, registrar respuesta y "crear compra desde cotización", y del api-client `createCotizacion`, `updateQuotationStatus`, `updateQuotationResponse` y `createPurchase` con sus hooks. Solo quedan `GET /api/quotations` y `GET /api/quotations/{id}`.
+- [x] `RealisticDemoSeeder`: una solicitud por estado (`borrador` … `con_oc` con reserva, `cancelada`); la factura 1 sigue sin procesar. `InvoiceDemoSeeder` mantiene sus 5 OC como compras históricas (sin solicitud).
+- [x] Proveedores de demo (`DemoSupplierSeeder`, usado por `RealisticDemoSeeder`, `InvoiceDemoSeeder` y `DemoMetricsSeeder`): 10 proveedores, todos con área y **≥3 activos por área** (`DemoSupplierSeederTest`). Ahora es idempotente (busca por RUT normalizado). Los seeders completos no tienen test automático (requieren `pruebas-facturas/`): se verificaron con archivos de muestra en la BD de pruebas; la BD de desarrollo no se tocó.
+- [x] Backend: `ENDPOINTS.md` (§6.1 y §8 en solo lectura), `CLAUDE.md`, `TASKS/Compra.md`, `TASKS/Cotizaciones.md`, `TASKS/front-end.md` (rutas retiradas).
+- [x] Frontend: `ENDPOINTS.md` (§8.0 y §8 en solo lectura) y `RUTAS.md`. El repo del frontend no tiene `CONTRATO.md`.
+- [x] Prueba de punta a punta por API (tests `PurchaseRequest*Test`: solicitud → aprobar → enviar → 3 cotizaciones → OC → factura → anular → re-facturar).
+- [ ] Prueba en el navegador (pendiente).
 
 ## 8. Riesgos
 

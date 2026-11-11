@@ -23,6 +23,7 @@ class SupplierResource extends JsonResource
             'rut' => $this->rut,
             'address' => $this->address,
             'category' => $this->category,
+            'areas' => $this->resource->areaValues(),
             'is_active' => (bool) $this->is_active,
             'products_count' => $this->whenCounted('products'),
             'products' => ProductResource::collection($this->whenLoaded('products')),

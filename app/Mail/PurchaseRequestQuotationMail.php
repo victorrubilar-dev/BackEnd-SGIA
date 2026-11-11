@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Models\Quotation;
+use App\Models\PurchaseRequest;
 use App\Models\Supplier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -11,35 +11,35 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Solicitud formal de cotización enviada a un proveedor contactado.
+ * Solicitud de cotización de una solicitud de compra, enviada a cada proveedor de las áreas elegidas.
  */
-class QuotationRequestMail extends Mailable
+class PurchaseRequestQuotationMail extends Mailable
 {
     use Queueable, SerializesModels;
 
     public function __construct(
-        public Quotation $quotation,
+        public PurchaseRequest $purchaseRequest,
         public Supplier $supplier
     ) {}
 
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: "Solicitud de cotización {$this->quotation->code} — SGIA INACAP",
+            subject: "Solicitud de cotización {$this->purchaseRequest->code} — SGIA INACAP",
             to: [$this->supplier->email],
         );
     }
 
     public function content(): Content
     {
-        $this->quotation->loadMissing('items');
+        $this->purchaseRequest->loadMissing(['items.product', 'creator']);
 
         return new Content(
-            view: 'mail.quotation-request',
+            view: 'mail.purchase-request-quotation',
             with: [
-                'quotation' => $this->quotation,
+                'purchaseRequest' => $this->purchaseRequest,
                 'supplier' => $this->supplier,
-                'items' => $this->quotation->items,
+                'items' => $this->purchaseRequest->items,
             ],
         );
     }

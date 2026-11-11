@@ -109,12 +109,6 @@ parameters:
 			path: app/Http/Controllers/Api/PurchaseController.php
 
 		-
-			message: '#^PHPDoc tag @return contains generic type Illuminate\\Http\\JsonResponse\<int, array\<string, mixed\>\> but class Illuminate\\Http\\JsonResponse is not generic\.$#'
-			identifier: generics.notGeneric
-			count: 1
-			path: app/Http/Controllers/Api/QuotationController.php
-
-		-
 			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
 			identifier: nullsafe.neverNull
 			count: 1
@@ -1395,7 +1389,7 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\QuotationResource\:\:\$status\.$#'
 			identifier: property.notFound
-			count: 2
+			count: 1
 			path: app/Http/Resources/QuotationResource.php
 
 		-
@@ -2029,70 +2023,10 @@ parameters:
 			path: app/Services/MetricsService.php
 
 		-
-			message: '#^Access to protected property App\\Models\\Quotation\|Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Quotation\>\:\:\$items\.$#'
-			identifier: property.protected
-			count: 2
-			path: app/Services/PurchaseService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:offerItems\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/PurchaseService.php
-
-		-
 			message: '#^Parameter \#1 \$budget of method App\\Services\\AnnualBudgetService\:\:releaseReservation\(\) expects App\\Models\\AnnualBudget, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
 			identifier: argument.type
 			count: 1
 			path: app/Services/PurchaseService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) expects callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: array\{product_id\: int\<0, max\>\|null, name\: string, quantity\: int\<0, max\>, unit_price\: string\|null\}, Closure\(App\\Models\\QuotationItem\)\: array\{product_id\: int\<0, max\>\|null, name\: string, quantity\: int\<0, max\>, unit_price\: string\|null\} given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/PurchaseService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/QuotationEmailService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$notes\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/QuotationService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$offer_total\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/QuotationService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quotation_number\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/QuotationService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$supplier_id\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/QuotationService.php
-
-		-
-			message: '#^Method App\\Services\\QuotationService\:\:recordResponse\(\) should return App\\Models\\QuotationSupplier but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
-			identifier: return.type
-			count: 1
-			path: app/Services/QuotationService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:first\(\) expects \(callable\(Illuminate\\Database\\Eloquent\\Model, int\)\: bool\)\|null, Closure\(App\\Models\\QuotationSupplier\)\: bool given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/QuotationService.php
 
 		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'

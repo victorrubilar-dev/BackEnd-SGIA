@@ -22,6 +22,7 @@ use App\Http\Controllers\Api\MaintenanceRecordController;
 use App\Http\Controllers\Api\MetricsController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
+use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StockAlertController;
@@ -123,8 +124,28 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/purchases/{purchase}/cancel', [PurchaseController::class, 'cancel']);
         Route::get('/purchases/{purchase}/arrival-document', [PurchaseController::class, 'arrivalDocument']);
     });
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
-        Route::post('/purchases', [PurchaseController::class, 'store']);
+    // Las OC se crean solo desde la solicitud de compra (`POST /purchase-requests/{id}/order`); `POST /purchases` se retiró.
+
+    // Nuevo flujo de compras: solicitud de compra (NUEVO-FLUJO-COMPRAS.md). Lectura AD-01, DIR-01, PAN-01; escritura solo DIR-01.
+    // `/purchase-requests/areas` va antes de `{purchaseRequest}`.
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
+        Route::get('/purchase-requests/areas', [PurchaseRequestController::class, 'areas']);
+        Route::get('/purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
+        Route::get('/purchase-requests/{purchaseRequest}/quotations/{quotation}/file', [PurchaseRequestController::class, 'quotationFile'])->scopeBindings();
+        Route::get('/purchase-requests/{purchaseRequest}/order/file', [PurchaseRequestController::class, 'orderFile']);
+    });
+    Route::middleware('role:DIR-01')->group(function () {
+        Route::post('/purchase-requests', [PurchaseRequestController::class, 'store']);
+        Route::patch('/purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'update']);
+        Route::post('/purchase-requests/{purchaseRequest}/approve', [PurchaseRequestController::class, 'approve']);
+        Route::post('/purchase-requests/{purchaseRequest}/send', [PurchaseRequestController::class, 'send'])->middleware('throttle:sensitive');
+        Route::post('/purchase-requests/{purchaseRequest}/resend', [PurchaseRequestController::class, 'resend'])->middleware('throttle:sensitive');
+        Route::post('/purchase-requests/{purchaseRequest}/quotations', [PurchaseRequestController::class, 'storeQuotation']);
+        Route::delete('/purchase-requests/{purchaseRequest}/quotations/{quotation}', [PurchaseRequestController::class, 'destroyQuotation'])->scopeBindings();
+        Route::post('/purchase-requests/{purchaseRequest}/select-quotation', [PurchaseRequestController::class, 'selectQuotation']);
+        Route::post('/purchase-requests/{purchaseRequest}/order', [PurchaseRequestController::class, 'storeOrder']);
+        Route::post('/purchase-requests/{purchaseRequest}/cancel', [PurchaseRequestController::class, 'cancel']);
     });
 
     // REQ-07: Proveedores (FU-03)
@@ -142,16 +163,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy']);
     });
 
-    // REQ-07: Cotizaciones automáticas (FU-03)
+    // REQ-07: Cotizaciones del flujo antiguo (FU-03), solo lectura del historial. Las escrituras se retiraron
+    // (Fase 7 del nuevo flujo de compras): las cotizaciones nuevas se suben en la solicitud de compra.
     Route::middleware('role:AD-01,DIR-01')->group(function () {
         Route::get('/quotations', [QuotationController::class, 'index']);
-        Route::post('/quotations', [QuotationController::class, 'store']);
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
-        Route::post('/quotations/{quotation}/resend', [QuotationController::class, 'resend']);
-        Route::patch('/quotations/{quotation}/responses', [QuotationController::class, 'storeResponse']);
     });
-    // Solo el director decide (acepta, rechaza o convierte) una cotización.
-    Route::middleware('role:DIR-01')->patch('/quotations/{quotation}/status', [QuotationController::class, 'updateStatus']);
 
     // REQ-09: Solicitud de préstamo remoto (FU-04, docente)
     // Las rutas estáticas van antes de cualquier GET /loans/{loan} (REQ-11).

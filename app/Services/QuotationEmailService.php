@@ -2,62 +2,50 @@
 
 namespace App\Services;
 
-use App\Mail\QuotationRequestMail;
-use App\Models\Quotation;
-use App\Models\Supplier;
+use App\Mail\PurchaseRequestQuotationMail;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestSupplier;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
 /**
- * Servicio de envío de correo automático de cotizaciones a los proveedores
- * contactados (REQ-07).
+ * Envío del correo de solicitud de cotización a los proveedores contactados por una
+ * solicitud de compra (`purchase_request_suppliers`), con registro de envío/error y reintento.
  */
 class QuotationEmailService
 {
     /**
-     * Envía la solicitud de cotización a un proveedor. Devuelve false si el
-     * proveedor no tiene correo registrado.
-     */
-    public function sendRequest(Quotation $quotation, Supplier $supplier): bool
-    {
-        if (empty($supplier->email)) {
-            return false;
-        }
-
-        Mail::to($supplier->email)->send(
-            new QuotationRequestMail($quotation->loadMissing('items', 'creator'), $supplier)
-        );
-
-        return true;
-    }
-
-    /**
-     * Envía la solicitud a los proveedores contactados que aún no la reciben
-     * y deja registrado en cada uno si salió o por qué falló, de modo que se
-     * pueda reintentar solo con los pendientes.
+     * Envía la solicitud de compra a los proveedores contactados que aún no la reciben y deja
+     * registrado en cada uno si salió o por qué falló (reintento solo de los pendientes).
      *
      * @return int cantidad de correos efectivamente enviados en esta llamada
      */
-    public function sendToContactedSuppliers(Quotation $quotation): int
+    public function sendToPurchaseRequestSuppliers(PurchaseRequest $purchaseRequest): int
     {
         $sent = 0;
+        $purchaseRequest->loadMissing(['items.product', 'creator']);
 
-        $contacts = $quotation->suppliers()->whereNull('email_sent_at')->with('supplier')->get();
+        $contacts = $purchaseRequest->suppliers()->whereNull('email_sent_at')->with('supplier')->get();
 
         foreach ($contacts as $contact) {
-            if (! $contact->supplier) {
+            /** @var PurchaseRequestSupplier $contact */
+            $supplier = $contact->supplier;
+
+            if (! $supplier) {
                 continue;
             }
 
             try {
-                if ($this->sendRequest($quotation, $contact->supplier)) {
-                    $contact->forceFill(['email_sent_at' => now(), 'email_error' => null])->save();
-                    $sent++;
-                } else {
+                if (empty($supplier->email)) {
                     $contact->forceFill(['email_error' => 'El proveedor no tiene correo registrado.'])->save();
+
+                    continue;
                 }
+
+                Mail::to($supplier->email)->send(new PurchaseRequestQuotationMail($purchaseRequest, $supplier));
+                $contact->forceFill(['email_sent_at' => now(), 'email_error' => null])->save();
+                $sent++;
             } catch (Throwable $e) {
-                // Un proveedor con correo inválido no debe impedir el resto del envío.
                 report($e);
                 $contact->forceFill(['email_error' => mb_substr($e->getMessage(), 0, 250)])->save();
             }
