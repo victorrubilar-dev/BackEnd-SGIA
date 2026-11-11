@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Datos de demostración para probar los gráficos (/api/metrics y /api/dashboard/*).
+ * Datos de demostración para probar los gráficos (/api/metrics).
  * Idempotente: si ya hay préstamos DEMO-*, no vuelve a generarlos.
  * Uso: php artisan db:seed --class=DemoMetricsSeeder
  */

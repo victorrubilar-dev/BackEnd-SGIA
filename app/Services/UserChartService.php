@@ -9,14 +9,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Dashboard personalizado (REQ-15): hasta 5 gráficos por usuario, uno por posición. Lo que el
- * gráfico no envía lo hereda de su plantilla; la combinación final se valida contra los mismos
+ * Dashboard personalizado (REQ-15): hasta 5 gráficos por usuario, uno por posición y sin
+ * repetidos. Cada gráfico pertenece a un usuario y a una plantilla; lo que no envía lo hereda de ella; la combinación final se valida contra los mismos
  * valores que acepta `customMetric` (MetricsService).
  */
 class UserChartService
 {
     /** Campos de la consulta que se heredan de la plantilla. */
     private const CONFIG_FIELDS = ['type', 'entity', 'metric', 'group_by', 'period'];
+
+    /** Campos que identifican un gráfico: dos con los mismos valores son el mismo gráfico. */
+    private const QUERY_FIELDS = [...self::CONFIG_FIELDS, 'date_from', 'date_to'];
 
     /**
      * @param  array<string, mixed>  $data
@@ -26,6 +29,7 @@ class UserChartService
     public function create(User $user, array $data): UserChart
     {
         return DB::transaction(function () use ($user, $data) {
+            $this->lockPanel($user->id);
             $taken = UserChart::where('user_id', $user->id)->lockForUpdate()->pluck('position')->map(fn ($p) => (int) $p)->all();
 
             if (count($taken) >= UserChart::MAX_POSITION) {
@@ -42,13 +46,15 @@ class UserChartService
             }
 
             $template = ChartTemplate::findOrFail($data['chart_template_id']);
+            $config = $this->resolveConfig($template, $data);
+            $this->ensureNotDuplicate($user->id, $config);
 
             return UserChart::create([
                 'user_id' => $user->id,
                 'chart_template_id' => $template->id,
                 'position' => $position,
                 'is_active' => $data['is_active'] ?? true,
-                ...$this->resolveConfig($template, $data),
+                ...$config,
             ]);
         });
     }
@@ -61,6 +67,8 @@ class UserChartService
     public function update(UserChart $chart, array $data): UserChart
     {
         return DB::transaction(function () use ($chart, $data) {
+            $this->lockPanel($chart->user_id);
+
             if (isset($data['position'])) {
                 $data['position'] = (int) $data['position'];
             }
@@ -86,6 +94,10 @@ class UserChartService
                 'is_active' => $data['is_active'] ?? null,
             ], fn ($value) => $value !== null));
             $chart->fill($this->resolveConfig($template, $data, $chart));
+            // Solo si cambió la consulta: renombrar, ocultar o mover no se bloquea.
+            if ($chart->isDirty(self::QUERY_FIELDS)) {
+                $this->ensureNotDuplicate($chart->user_id, $chart->only(self::QUERY_FIELDS), $chart->id);
+            }
             $chart->save();
 
             return $chart;
@@ -127,6 +139,50 @@ class UserChartService
             DB::statement('SET CONSTRAINTS user_charts_user_position_unique IMMEDIATE');
             DB::statement('SET CONSTRAINTS user_charts_user_position_unique DEFERRED');
         });
+    }
+
+    /**
+     * Serializa las escrituras del panel de un usuario: dos peticiones simultáneas (doble clic)
+     * no pueden pasar a la vez la comprobación de duplicados, ni siquiera con el panel vacío.
+     */
+    private function lockPanel(int $userId): void
+    {
+        User::whereKey($userId)->lockForUpdate()->first();
+    }
+
+    /**
+     * Un usuario no puede tener dos gráficos iguales: misma consulta (`entity`, `metric`,
+     * `group_by`, `period` y fechas) con el mismo tipo de gráfico. El título no cuenta y los
+     * ocultos también ocupan su consulta.
+     *
+     * @param  array<string, mixed>  $config
+     *
+     * @throws ValidationException
+     */
+    private function ensureNotDuplicate(int $userId, array $config, ?int $exceptId = null): void
+    {
+        $nullable = fn ($query, string $column, mixed $value) => $value === null
+            ? $query->whereNull($column)
+            : $query->where($column, $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value);
+
+        $twin = UserChart::where('user_id', $userId)
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+            ->where('type', $config['type'])
+            ->where('entity', $config['entity'])
+            ->where('metric', $config['metric'])
+            ->where('period', $config['period'])
+            ->tap(fn ($query) => $nullable($query, 'group_by', $config['group_by'] ?? null))
+            ->tap(fn ($query) => $nullable($query, 'date_from', $config['date_from'] ?? null))
+            ->tap(fn ($query) => $nullable($query, 'date_to', $config['date_to'] ?? null))
+            ->first();
+
+        if ($twin !== null) {
+            throw ValidationException::withMessages([
+                'chart' => $twin->is_active
+                    ? "Ya tienes este gráfico en tu panel (\"{$twin->custom_title}\")."
+                    : "Ya tienes este gráfico en tu panel, pero está oculto (\"{$twin->custom_title}\"): vuelve a mostrarlo.",
+            ]);
+        }
     }
 
     /**

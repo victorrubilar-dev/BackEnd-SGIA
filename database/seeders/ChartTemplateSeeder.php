@@ -29,6 +29,12 @@ class ChartTemplateSeeder extends Seeder
         'top_teachers' => ['Ranking de docentes', 'bar', 'BAR', 'TEACHERS', 'COUNT', null, 'SEMESTER_CURRENT', 'Docentes con más préstamos.'],
         'alerts_by_criticality' => ['Alertas por criticidad', 'bar', 'BAR', 'ALERTS', 'COUNT', 'criticality', 'LAST_30_DAYS', 'Alertas de stock críticas y de advertencia.'],
         'maintenance_by_type' => ['Mantenciones por tipo', 'bar', 'BAR', 'MAINTENANCE', 'COUNT', 'maintenance_type', 'YEAR_TO_DATE', 'Preventivas, correctivas y calibraciones.'],
+        'equipment_by_category' => ['Equipos por categoría', 'bar', 'BAR', 'EQUIPMENT', 'COUNT', 'hardware_category', 'LAST_30_DAYS', 'Unidades por categoría de hardware.'],
+        'alerts_trend' => ['Alertas de stock en el tiempo', 'line', 'LINE', 'ALERTS', 'COUNT', null, 'SEMESTER_CURRENT', 'Evolución de las alertas de stock en el semestre.'],
+        'maintenance_trend' => ['Incidencias en taller en el tiempo', 'line', 'LINE', 'MAINTENANCE', 'COUNT', null, 'YEAR_TO_DATE', 'Informes de falla y mantenciones durante el año.'],
+        'supplies_by_career' => ['Demanda de insumos por carrera', 'pie', 'POLAR_AREA', 'SUPPLIES', 'TOTAL', 'career', 'SEMESTER_CURRENT', 'Unidades de insumos entregadas a cada carrera.'],
+        'loans_by_subject' => ['Préstamos por asignatura', 'pie', 'POLAR_AREA', 'TEACHERS', 'COUNT', 'subject', 'SEMESTER_CURRENT', 'Préstamos de docentes agrupados por asignatura.'],
+        'equipment_by_location' => ['Equipos por sala', 'pie', 'POLAR_AREA', 'EQUIPMENT', 'COUNT', 'location', 'SEMESTER_CURRENT', 'Unidades por sala o ubicación.'],
     ];
 
     public function run(): void
