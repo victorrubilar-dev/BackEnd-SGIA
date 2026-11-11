@@ -385,3 +385,10 @@ El panel muestra `quantity`, que es el total de todos los pañoles, pero `POST /
 - Al elegir el pañol, volver a pedir los productos con `storeroom_id`, mostrar `available_in_storeroom` como existencias y usarlo como máximo de la cantidad.
 - Deshabilitar el producto si es `0`; si cambia el pañol, revalidar las cantidades ya agregadas.
 - Mantener el manejo del `422` de la solicitud: el dato no reserva unidades.
+
+## Nuevo flujo de compras (solicitud de compra) — Pronto, rompe contrato
+Contrato completo y fases en `NUEVO-FLUJO-COMPRAS.md` §5. Resumen para el frontend:
+- Proveedores: nuevo campo `areas[]` (`informatica`, `diseno`, `telecomunicaciones`, `ciberseguridad`) y filtro `area`.
+- Nuevas pantallas bajo `/api/purchase-requests`: crear, **aprobar** (solo `DIR-01`), enviar por áreas, subir cotizaciones (`multipart`, descarga con `getBlob()`), elegir (mínimo 3), subir OC.
+- Deprecado: `POST /api/quotations` y `POST /api/purchases` con `quotation_id`/`quotation_ids`. Se retiran en la Fase 7; migrar antes.
+- Factura: `POST /api/invoice-intakes` acepta `purchase_request_code`.

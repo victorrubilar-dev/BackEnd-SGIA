@@ -81,3 +81,11 @@ Reemplaza la regla actual de REQ-17 "un ingreso confirmado no se anula".
 ### Reglas de noviembre 2026
 - [x] Toda compra parte de una cotización aceptada (`quotation_id` obligatorio); con menos de 3 proveedores que respondieron se exige `quotation_justification` (`QuotationPurchaseFlowTest`).
 - [x] Facturas: el OCR detecta la carrera (nombre o sigla) y asigna el presupuesto del año; si no la detecta, `confirm` exige `annual_budget_id` (`InvoiceIntakeTest`).
+
+---
+
+### Refactor nov 2026 — OC desde la solicitud de compra (reemplaza las reglas de "Reglas de noviembre 2026")
+La OC se emite **fuera del sistema** y se sube ligada al código de la solicitud (`POST /api/purchase-requests/{id}/order`); ahí se reserva el presupuesto con el `total` de la cotización elegida. `quotation_id`/`quotation_ids` en `POST /api/purchases` quedan deprecados. Recepción (`arrival-scan`) y factura (`invoice-intakes`) se mantienen; la factura acepta `purchase_request_code`. Plan en `NUEVO-FLUJO-COMPRAS.md`.
+- [ ] Fase 5: subir OC y reservar presupuesto (sin estado de recepción: la factura la implica).
+- [ ] Fase 6: factura ligada a la solicitud; anular repone y devuelve la solicitud a `con_oc`.
+- [ ] Fase 7: retirar flujo antiguo y actualizar `ENDPOINTS.md`.
