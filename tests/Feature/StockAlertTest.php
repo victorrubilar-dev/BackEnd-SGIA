@@ -168,7 +168,7 @@ class StockAlertTest extends TestCase
     {
         Sanctum::actingAs($this->warehouse);
 
-        $product = Product::factory()->supply()->create(['name' => 'Tester Multimetro']);
+        $product = Product::factory()->supply()->create(['name' => 'Tester Multimetro', 'quantity' => 2, 'stock_minimo' => 5]);
 
         StockAlert::create([
             'product_id' => $product->id,
@@ -188,6 +188,73 @@ class StockAlertTest extends TestCase
             ],
         ]);
         $response->assertJsonFragment(['product_name' => 'Tester Multimetro']);
+    }
+
+    public function test_listing_matches_the_real_inventory_stock(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        $supply = fn (string $name, int $quantity, array $extra = []) => Product::factory()->supply()
+            ->create(['name' => $name, 'quantity' => $quantity, 'stock_minimo' => 5] + $extra);
+        $alert = fn (Product $product, string $type, int $stock) => StockAlert::create([
+            'product_id' => $product->id, 'alert_type' => $type, 'current_stock' => $stock,
+            'stock_minimo' => 5, 'message' => 'x', 'is_resolved' => false,
+        ]);
+
+        // Crítico real sin alerta guardada: debe aparecer.
+        $missing = $supply('Sin alerta', 1);
+        // Alerta crítica con cifras viejas y una advertencia duplicada: queda una sola, al día.
+        $stale = $supply('Cifras viejas', 4);
+        $alert($stale, StockAlert::TYPE_CRITICAL, 0);
+        $alert($stale, StockAlert::TYPE_WARNING, 9);
+        // Era crítico y hoy solo es advertencia: cambia de tipo.
+        $improved = $supply('Mejoró', 8);
+        $alert($improved, StockAlert::TYPE_CRITICAL, 2);
+        // Stock repuesto y producto inactivo: sus alertas se cierran.
+        $restocked = $supply('Repuesto', 40);
+        $alert($restocked, StockAlert::TYPE_CRITICAL, 1);
+        $inactive = $supply('Inactivo', 0, ['is_active' => false]);
+        $alert($inactive, StockAlert::TYPE_CRITICAL, 0);
+
+        $response = $this->getJson('/api/alerts/critical-stock?per_page=100')->assertOk();
+        $rows = collect($response->json('data'))->keyBy('product_id');
+
+        $this->assertSame(['critical', 1, 5], [$rows[$missing->id]['alert_type'], $rows[$missing->id]['current_stock'], $rows[$missing->id]['stock_minimo']]);
+        $this->assertSame(['critical', 4], [$rows[$stale->id]['alert_type'], $rows[$stale->id]['current_stock']]);
+        $this->assertStringContainsString('(4/5)', $rows[$stale->id]['message']);
+        $this->assertSame(['warning', 8], [$rows[$improved->id]['alert_type'], $rows[$improved->id]['current_stock']]);
+        $this->assertFalse($rows->has($restocked->id));
+        $this->assertFalse($rows->has($inactive->id));
+        $this->assertSame(1, StockAlert::where('product_id', $stale->id)->where('is_resolved', false)->count());
+
+        // Los totales salen del inventario, no de la página pedida.
+        $counts = $this->getJson('/api/alerts/critical-stock?per_page=1')->assertOk()->json('counts');
+        $this->assertSame(Product::where('is_active', true)->whereColumn('quantity', '<=', 'stock_minimo')->count(), $counts['critical']);
+        $this->assertSame(
+            Product::where('is_active', true)->whereColumn('quantity', '>', 'stock_minimo')->whereRaw('quantity <= stock_minimo + 5')->count(),
+            $counts['warning']
+        );
+        $this->assertSame($counts['critical'] + $counts['warning'], $counts['active']);
+    }
+
+    public function test_manually_resolved_alert_stays_closed_until_the_stock_changes(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        $product = Product::factory()->supply()->create(['quantity' => 3, 'stock_minimo' => 5]);
+        $open = fn () => collect($this->getJson('/api/alerts/critical-stock?per_page=100')->json('data'))->firstWhere('product_id', $product->id);
+
+        $alert = $open();
+        $this->assertSame('critical', $alert['alert_type']);
+
+        // Atendida a mano: no reaparece aunque el producto siga en crítico.
+        $this->patchJson("/api/alerts/{$alert['id']}/resolve")->assertOk();
+        $this->assertNull($open());
+
+        // El stock cambia y sigue en crítico: alerta nueva con las cifras actuales.
+        $product->update(['quantity' => 2]);
+        $this->assertSame(2, $open()['current_stock']);
+        $this->assertNotSame($alert['id'], $open()['id']);
     }
 
     public function test_can_resolve_stock_alert_endpoint(): void
