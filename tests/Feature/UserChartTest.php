@@ -114,6 +114,59 @@ class UserChartTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('position');
     }
 
+    public function test_the_same_chart_cannot_be_added_twice(): void
+    {
+        $this->actingAsRole(User::ROLE_DIRECTOR);
+        $template = $this->template('loans_by_status')->id;
+
+        $first = $this->postJson('/api/me/charts', ['chart_template_id' => $template])->assertCreated()->json('data.id');
+
+        // Segundo clic sobre la misma plantilla: mismo gráfico, aunque cambie el título.
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template])
+            ->assertStatus(422)->assertJsonValidationErrors('chart');
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template, 'custom_title' => 'Otro nombre'])
+            ->assertStatus(422)->assertJsonValidationErrors('chart');
+        // La misma consulta desde la plantilla genérica también es el mismo gráfico.
+        $this->postJson('/api/me/charts', [
+            'chart_template_id' => $this->template('pie')->id, 'entity' => 'LOANS', 'metric' => 'COUNT',
+            'group_by' => 'status', 'period' => 'LAST_30_DAYS',
+        ])->assertStatus(422)->assertJsonValidationErrors('chart');
+        $this->getJson('/api/me/charts')->assertJsonCount(1, 'data');
+
+        // Oculto sigue contando, y el mensaje lo dice.
+        $this->patchJson("/api/me/charts/{$first}", ['is_active' => false])->assertOk();
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template])
+            ->assertStatus(422)->assertJsonPath('errors.chart.0', fn (string $message) => str_contains($message, 'oculto'));
+
+        // Otro tipo de gráfico, otro período u otro rango CUSTOM son gráficos distintos.
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template, 'type' => 'BAR'])->assertCreated();
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template, 'period' => 'LAST_7_DAYS'])->assertCreated();
+        $custom = ['chart_template_id' => $template, 'period' => 'CUSTOM', 'date_from' => '2026-03-01'];
+        $second = $this->postJson('/api/me/charts', $custom)->assertCreated()->json('data.id');
+        $this->postJson('/api/me/charts', $custom)->assertStatus(422)->assertJsonValidationErrors('chart');
+
+        // Editar uno hasta igualarlo a otro tampoco se permite; renombrarlo sí.
+        $this->patchJson("/api/me/charts/{$second}", ['period' => 'LAST_7_DAYS'])
+            ->assertStatus(422)->assertJsonValidationErrors('chart');
+        $this->patchJson("/api/me/charts/{$second}", ['custom_title' => 'Renombrado'])->assertOk();
+
+        // Otro usuario puede tener el mismo gráfico.
+        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->postJson('/api/me/charts', ['chart_template_id' => $template])->assertCreated();
+    }
+
+    public function test_every_seeded_template_with_a_query_creates_a_valid_chart(): void
+    {
+        foreach (ChartTemplate::whereNotNull('entity')->get() as $template) {
+            $this->actingAsRole(User::ROLE_DIRECTOR);
+            $this->postJson('/api/me/charts', ['chart_template_id' => $template->id])
+                ->assertCreated()
+                ->assertJsonPath('data.chart_template_id', $template->id)
+                ->assertJsonPath('data.template.code', $template->code)
+                ->assertJsonPath('data.type', $template->chart_type);
+        }
+    }
+
     public function test_update_fields_and_hide_without_deleting(): void
     {
         $user = $this->actingAsRole(User::ROLE_DIRECTOR);

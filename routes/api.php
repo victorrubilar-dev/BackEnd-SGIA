@@ -7,7 +7,6 @@ use App\Http\Controllers\Api\BudgetReportController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\CareerController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
@@ -232,15 +231,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
     });
 
-    // REQ-14: Dashboards de demanda (FU-06, DIR-01/AD-01)
+    // REQ-14: Dashboards (FU-06, DIR-01/AD-01): solo GraphQL
     Route::middleware('role:DIR-01,AD-01')->group(function () {
-        Route::get('/dashboard/top-products', [DashboardController::class, 'topProducts']);
-        Route::get('/dashboard/top-supplies', [DashboardController::class, 'topSupplies']);
-        Route::get('/dashboard/careers-distribution', [DashboardController::class, 'careersDistribution']);
-        Route::get('/dashboard/least-demanded', [DashboardController::class, 'leastDemanded']);
-        Route::get('/dashboard/top-teachers', [DashboardController::class, 'topTeachers']);
-        Route::get('/dashboard/loans-by-teacher', [DashboardController::class, 'loansByTeacher']);
-        Route::get('/dashboard/kpis', [DashboardController::class, 'kpis']);
         Route::post('/metrics', MetricsController::class)->middleware('throttle:metrics');
     });
 
