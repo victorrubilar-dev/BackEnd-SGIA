@@ -287,7 +287,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/alerts/critical-stock` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de alertas activas generadas automáticamente cuando un producto llega a `stock_minimo + 5` (warning) o a `<= stock_minimo` (critical).<br>**Query Params:** `alert_type` (`warning` \| `critical`), `is_resolved` (`false` por defecto), `per_page`. | ✅ Implementado |
+| `GET` | `/api/alerts/critical-stock` | `AD-01`, `DIR-01`, `PAN-01` | Listado paginado de alertas activas generadas automáticamente cuando un producto llega a `stock_minimo + 5` (warning) o a `<= stock_minimo` (critical).<br>**Query Params:** `alert_type` (`warning` \ Antes de listar, las alertas abiertas se igualan al stock real del inventario (una por producto activo en umbral, con su tipo y cifras actuales; se cierran las repuestas, duplicadas o de productos inactivos). La respuesta incluye `counts: {active, critical, warning, resolved}` con los totales reales, independientes de filtros y paginación. Una alerta atendida a mano no reaparece hasta que cambie el stock del producto. | `critical`), `is_resolved` (`false` por defecto), `per_page`. | ✅ Implementado |
 | `PATCH` | `/api/alerts/{id}/resolve` | `AD-01`, `DIR-01`, `PAN-01` | Marca manualmente una alerta de stock como resuelta. | ✅ Implementado |
 
 ---
