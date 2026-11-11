@@ -12,7 +12,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\BuildsProductPayload;
-use Tests\Concerns\CreatesQuotations;
+use Tests\Concerns\CreatesPurchases;
 use Tests\TestCase;
 
 /**
@@ -21,7 +21,7 @@ use Tests\TestCase;
 class BudgetReportTest extends TestCase
 {
     use BuildsProductPayload;
-    use CreatesQuotations;
+    use CreatesPurchases;
     use DatabaseTransactions;
 
     private User $admin;
@@ -48,11 +48,7 @@ class BudgetReportTest extends TestCase
     /** Compra de 200.000 reservada y facturada por 150.000 (cable x10 a 5.000 + maqueta x1 a 100.000). */
     private function seedActivity(): InvoiceIntake
     {
-        $purchaseId = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation($this->supplier)->id,
-            'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 200000]],
-        ])->assertCreated()->json('data.id');
+        $purchaseId = $this->reservedPurchase($this->budget, [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 200000]], $this->supplier)->id;
 
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $this->budget->id, 'purchase_id' => $purchaseId]);
         $this->postJson("/api/invoice-intakes/{$intake->id}/confirm", [
@@ -69,11 +65,7 @@ class BudgetReportTest extends TestCase
     public function test_summary_reports_execution_per_career_and_year(): void
     {
         $this->seedActivity();
-        $reserve = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation($this->supplier)->id,
-            'items' => [['name' => 'Otro', 'quantity' => 1, 'unit_price' => 250000]],
-        ])->assertCreated();
+        $reserve = $this->reservedPurchase($this->budget, [['name' => 'Otro', 'quantity' => 1, 'unit_price' => 250000]], $this->supplier);
 
         $row = collect($this->getJson("/api/budgets/summary?year={$this->budget->year}&career_id={$this->budget->career_id}")
             ->assertOk()->json('data'))->firstWhere('id', $this->budget->id);
@@ -84,7 +76,7 @@ class BudgetReportTest extends TestCase
         $this->assertSame('850000.00', $row['available_amount']);
         $this->assertSame('600000.00', $row['free_amount']);
         $this->assertEquals(40.0, $row['execution_percent']);
-        $this->assertNotNull($reserve->json('data.id'));
+        $this->assertNotNull($reserve->id);
     }
 
     public function test_summary_is_zero_percent_without_initial_amount_data_and_empty_year_returns_nothing(): void

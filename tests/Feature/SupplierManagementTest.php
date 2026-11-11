@@ -60,9 +60,11 @@ class SupplierManagementTest extends TestCase
             'email' => 'ventas@electrochile.cl',
             'phone' => '+56912345678',
             'category' => 'Electrónica',
+            'areas' => ['informatica', 'telecomunicaciones'],
         ]);
 
         $response->assertStatus(201);
+        $response->assertJsonPath('data.areas', ['informatica', 'telecomunicaciones']);
         $response->assertJsonPath('data.name', 'ElectroChile S.A.');
         $response->assertJsonPath('data.is_active', true);
 

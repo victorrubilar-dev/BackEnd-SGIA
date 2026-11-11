@@ -55,6 +55,11 @@ class DemoMetricsSeeder extends Seeder
             ['name' => 'Proveedor Demo SpA'],
             ['contact_name' => 'Contacto Demo', 'email' => 'demo@proveedor.cl', 'phone' => '+56 9 1111 1111', 'category' => 'General', 'is_active' => true]
         );
+        // Todo proveedor tiene área; además se cargan los de demostración (≥3 activos por área).
+        if ($supplier->areas->isEmpty()) {
+            $supplier->syncAreas(['informatica']);
+        }
+        DemoSupplierSeeder::suppliers();
 
         $units = app(EquipmentUnitService::class);
         $codes = app(CodeSequenceService::class);

@@ -10,7 +10,9 @@ use App\Models\Product;
 use App\Models\User;
 use App\Services\InvoiceOcrService;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\CreatesPurchases;
 use Tests\Concerns\CreatesQuotations;
 use Tests\TestCase;
 
@@ -19,6 +21,7 @@ use Tests\TestCase;
  */
 class InvoiceOverBudgetTraceTest extends TestCase
 {
+    use CreatesPurchases;
     use CreatesQuotations;
     use DatabaseTransactions;
 
@@ -88,17 +91,12 @@ class InvoiceOverBudgetTraceTest extends TestCase
     public function test_reservation_blocks_other_spending_but_own_reservation_is_released_first(): void
     {
         $this->as(User::ROLE_DIRECTOR);
-        $id = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 800]],
-        ])->assertCreated()->json('data.id');
+        $id = $this->reservedPurchase($this->budget, [['name' => 'Cable', 'quantity' => 1, 'unit_price' => 800]])->id;
 
-        $budget = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $this->acceptedQuotation()->id,
-            'items' => [['name' => 'Otro', 'quantity' => 1, 'unit_price' => 300]],
-        ])->assertStatus(422)->assertJsonValidationErrors('total');
+        $this->assertThrows(
+            fn () => $this->reservedPurchase($this->budget, [['name' => 'Otro', 'quantity' => 1, 'unit_price' => 300]]),
+            ValidationException::class,
+        );
 
         $this->getJson("/api/budgets/{$this->budget->id}")->assertOk()
             ->assertJsonPath('data.available_amount', '1000.00')->assertJsonPath('data.reserved_amount', '800.00')
@@ -132,11 +130,10 @@ class InvoiceOverBudgetTraceTest extends TestCase
     public function test_purchase_trace_chains_quotation_invoice_stock_and_movements(): void
     {
         $this->as(User::ROLE_DIRECTOR);
-        $id = $this->postJson('/api/purchases', [
-            'annual_budget_id' => $this->budget->id,
-            'quotation_id' => $quotationId = $this->acceptedQuotation()->id,
-            'items' => [['name' => 'Cable', 'quantity' => 2, 'unit_price' => 100]],
-        ])->assertCreated()->json('data.id');
+        // OC histórica ligada a una cotización del flujo antiguo (historial de solo lectura).
+        $purchase = $this->reservedPurchase($this->budget, [['name' => 'Cable', 'quantity' => 2, 'unit_price' => 100]]);
+        $purchase->forceFill(['quotation_id' => $quotationId = $this->acceptedQuotation()->id])->save();
+        $id = $purchase->id;
         $intake = InvoiceIntake::factory()->create(['annual_budget_id' => $this->budget->id, 'purchase_id' => $id]);
         $this->confirm($intake, [], 'F-5', 100)->assertOk();
 

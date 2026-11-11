@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources;
 
-use App\Services\QuotationStateMachine;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +20,8 @@ class QuotationResource extends JsonResource
             'career_id' => $this->career_id,
             'title' => $this->title,
             'status' => $this->status,
-            'allowed_transitions' => QuotationStateMachine::allowedFrom($this->status),
+            // Historial de solo lectura: ya no hay transiciones disponibles por la API.
+            'allowed_transitions' => [],
             'created_by' => $this->created_by,
             'creator' => new UserResource($this->whenLoaded('creator')),
             'notes' => $this->notes,

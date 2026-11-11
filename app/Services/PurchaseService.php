@@ -5,13 +5,10 @@ namespace App\Services;
 use App\Exceptions\InvalidPurchaseStatusTransition;
 use App\Models\AnnualBudget;
 use App\Models\Purchase;
-use App\Models\Quotation;
-use App\Models\QuotationItem;
 use App\Models\User;
 use App\Notifications\PurchaseArrivalNotification;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -113,87 +110,38 @@ class PurchaseService
     }
 
     /**
-     * Crea una orden de compra en `pendiente` a partir de una cotización aceptada, que queda como `convertida`.
+     * Crea una orden de compra histórica (sin solicitud) en `pendiente` y reserva su total.
+     * No tiene ruta: la API crea las OC desde la solicitud de compra (`PurchaseRequestService::issueOrder`).
+     * La usan los seeders de demostración y los tests.
      *
-     * @param  array<string, mixed>  $validated
+     * @param  array{supplier_id: int, annual_budget_id: int, items: array<int, array{product_id?: int|null, name: string, quantity: int, unit_price?: string|float|int|null}>, quotation_reference?: string|null, expected_at?: string|null, notes?: string|null}  $data
      *
-     * @throws ValidationException
+     * @throws ValidationException si un ítem no tiene precio o el total supera lo libre
      */
-    public function create(array $validated, User $user, QuotationService $quotationService): Purchase
+    public function createReserved(array $data, User $user): Purchase
     {
-        $quotation = null;
-        $multi = collect();
-
-        if (! empty($validated['quotation_ids'])) {
-            $multi = $this->loadAcceptedQuotations($validated, $quotationService);
-        } elseif (! empty($validated['quotation_id'])) {
-            $quotation = Quotation::with('items')->findOrFail($validated['quotation_id']);
-
-            if ($quotation->status !== Quotation::STATUS_ACCEPTED) {
-                throw ValidationException::withMessages([
-                    'quotation_id' => 'Solo se puede generar una orden de compra desde una cotización aceptada '
-                        ."(estado actual: \"{$quotation->status}\").",
-                ]);
-            }
-
-            if (isset($validated['supplier_id']) && ! $quotationService->wasContacted($quotation, (int) $validated['supplier_id'])) {
-                throw ValidationException::withMessages([
-                    'supplier_id' => 'El proveedor debe estar entre los contactados en la cotización.',
-                ]);
-            }
-        }
-
-        // La justificación es opcional (demo: una cotización con un solo proveedor se compra sin motivo).
-        $justification = trim((string) ($validated['quotation_justification'] ?? ''));
-
-        $supplierId = $validated['supplier_id'] ?? ($quotation ? $quotationService->preferredSupplierId($quotation) : null);
-
-        $items = $validated['items']
-            ?? ($multi->isNotEmpty() ? $this->consolidateItems($multi, (int) $supplierId) : null)
-            ?? $quotation?->items->map(fn (QuotationItem $item) => [
-                'product_id' => $item->product_id,
-                'name' => $item->name,
-                'quantity' => $item->quantity,
-                'unit_price' => $this->offeredPrice($quotation, $supplierId, $item),
-            ])->all();
-
-        if ($quotation && empty($validated['items']) && $quotation->items->isEmpty()) {
-            throw ValidationException::withMessages([
-                'items' => 'La cotización no tiene ítems para copiar en la orden de compra.',
-            ]);
-        }
-
-        if ($supplierId === null) {
-            throw ValidationException::withMessages([
-                'supplier_id' => 'La cotización no tiene proveedores contactados para asignar a la orden de compra.',
-            ]);
-        }
-
-        $unpriced = collect($items)->search(fn (array $item) => ! isset($item['unit_price']));
+        $unpriced = collect($data['items'])->search(fn (array $item) => ! isset($item['unit_price']));
         if ($unpriced !== false) {
             throw ValidationException::withMessages([
-                "items.$unpriced.unit_price" => 'Cada producto de la orden debe tener precio unitario (la oferta del proveedor no lo trae: indícalo manualmente).',
+                "items.$unpriced.unit_price" => 'Cada producto de la orden debe tener precio unitario.',
             ]);
         }
 
-        $budget = AnnualBudget::findOrFail($validated['annual_budget_id']);
+        $budget = AnnualBudget::findOrFail($data['annual_budget_id']);
 
-        $purchase = DB::transaction(function () use ($validated, $user, $quotation, $multi, $quotationService, $items, $supplierId, $budget, $justification) {
-            $items = collect($items);
-
+        return DB::transaction(function () use ($data, $user, $budget) {
+            $items = collect($data['items']);
             $totalCents = $items->sum(fn (array $item) => $this->budgets->cents($item['unit_price']) * $item['quantity']);
 
             $purchase = Purchase::create([
                 'code' => Purchase::generateUniqueCode(),
-                'supplier_id' => $supplierId,
+                'supplier_id' => $data['supplier_id'],
                 'created_by' => $user->id,
                 'annual_budget_id' => $budget->id,
-                'quotation_id' => $quotation?->id,
                 'status' => PurchaseStateMachine::STATUS_PENDING,
-                'quotation_reference' => $validated['quotation_reference'] ?? ($quotation?->code ?? ($multi->isNotEmpty() ? $multi->pluck('code')->implode(', ') : null)),
-                'quotation_justification' => $justification !== '' ? $justification : null,
-                'expected_at' => $validated['expected_at'] ?? null,
-                'notes' => $validated['notes'] ?? null,
+                'quotation_reference' => $data['quotation_reference'] ?? null,
+                'expected_at' => $data['expected_at'] ?? null,
+                'notes' => $data['notes'] ?? null,
                 'total' => $totalCents / 100,
             ]);
 
@@ -202,86 +150,33 @@ class PurchaseService
                     'product_id' => $item['product_id'] ?? null,
                     'name' => $item['name'],
                     'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'] ?? null,
+                    'unit_price' => $item['unit_price'],
                 ]);
             }
 
-            // Crear la compra equivale a aprobarla: reserva el total en el presupuesto.
             $this->budgets->reserve($budget, $totalCents / 100, $purchase, $user->id);
-
-            foreach ($multi as $q) {
-                $quotationService->markAsConverted($q, $purchase);
-            }
-
-            if ($quotation) {
-                // La cotización aprobada queda vinculada y convertida en OC.
-                $quotationService->markAsConverted($quotation, $purchase);
-            }
 
             return $purchase;
         });
-
-        return $purchase;
-    }
-
-    /**
-     * Cotizaciones de `quotation_ids`: todas aceptadas y con el proveedor elegido contactado.
-     *
-     * @return Collection<int, Quotation>
-     *
-     * @throws ValidationException
-     */
-    private function loadAcceptedQuotations(array $validated, QuotationService $quotationService)
-    {
-        $quotations = Quotation::with('items')->whereIn('id', $validated['quotation_ids'])->get();
-
-        foreach ($quotations as $q) {
-            if ($q->status !== Quotation::STATUS_ACCEPTED) {
-                throw ValidationException::withMessages([
-                    'quotation_ids' => "La cotización {$q->code} no está aceptada (estado actual: \"{$q->status}\").",
-                ]);
-            }
-
-            if (! $quotationService->wasContacted($q, (int) $validated['supplier_id'])) {
-                throw ValidationException::withMessages([
-                    'supplier_id' => "El proveedor no fue contactado en la cotización {$q->code}.",
-                ]);
-            }
-        }
-
-        return $quotations;
-    }
-
-    /**
-     * Ítems consolidados por producto (suma de cantidades) con el precio ofertado por el proveedor.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    private function consolidateItems($quotations, int $supplierId): array
-    {
-        $rows = [];
-
-        foreach ($quotations as $q) {
-            foreach ($q->items as $item) {
-                $key = $item->product_id ?? 'n:'.$item->name;
-                $rows[$key] ??= ['product_id' => $item->product_id, 'name' => $item->name, 'quantity' => 0, 'unit_price' => null];
-                $rows[$key]['quantity'] += $item->quantity;
-                $rows[$key]['unit_price'] ??= $this->offeredPrice($q, $supplierId, $item);
-            }
-        }
-
-        return array_values($rows);
     }
 
     /**
      * Cancela la compra (`pendiente` o `en_camino`) y libera su reserva de presupuesto.
+     * Una OC emitida desde una solicitud de compra se cancela cancelando la solicitud.
      *
      * @throws InvalidPurchaseStatusTransition
+     * @throws ValidationException si la OC es de una solicitud y no viene de ella
      */
-    public function cancel(Purchase $purchase, User $user): Purchase
+    public function cancel(Purchase $purchase, User $user, bool $fromPurchaseRequest = false): Purchase
     {
-        return DB::transaction(function () use ($purchase, $user) {
+        return DB::transaction(function () use ($purchase, $user, $fromPurchaseRequest) {
             $locked = Purchase::whereKey($purchase->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->purchase_request_id !== null && ! $fromPurchaseRequest) {
+                throw ValidationException::withMessages([
+                    'status' => 'La orden de compra pertenece a una solicitud de compra: cancela la solicitud.',
+                ]);
+            }
 
             if (! PurchaseStateMachine::canTransition($locked->status, PurchaseStateMachine::STATUS_CANCELLED)) {
                 throw new InvalidPurchaseStatusTransition($locked->status, PurchaseStateMachine::STATUS_CANCELLED);
@@ -295,20 +190,6 @@ class PurchaseService
 
             return $locked;
         });
-    }
-
-    /**
-     * Precio ofertado por el proveedor elegido para un ítem de la cotización (null si no hay oferta).
-     */
-    private function offeredPrice(Quotation $quotation, ?int $supplierId, QuotationItem $item): ?string
-    {
-        if ($supplierId === null || $item->product_id === null) {
-            return null;
-        }
-
-        $contact = $quotation->suppliers()->where('supplier_id', $supplierId)->first();
-
-        return $contact?->offerItems()->where('product_id', $item->product_id)->value('offered_unit_price');
     }
 
     /**

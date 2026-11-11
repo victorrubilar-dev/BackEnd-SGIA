@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\SupplierArea;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
@@ -12,23 +13,34 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
 
 class SupplierController extends Controller
 {
     /**
      * Display a listing of suppliers with filters.
      *
-     * Query params: category, is_active, search, per_page.
+     * Query params: category, area, is_active, search, per_page.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', Supplier::class);
 
+        $request->validate(
+            ['area' => ['sometimes', 'string', Rule::enum(SupplierArea::class)]],
+            ['area.enum' => 'El área debe ser: '.implode(', ', SupplierArea::values()).'.'],
+        );
+
         $query = Supplier::withCount('products');
 
         if ($request->filled('category')) {
             $query->where('category', 'ilike', '%'.$request->string('category').'%');
+        }
+
+        if ($request->filled('area')) {
+            $query->inAreas([$request->string('area')->toString()]);
         }
 
         if ($request->has('is_active')) {
@@ -57,16 +69,21 @@ class SupplierController extends Controller
     {
         $validated = $request->validated();
 
-        $supplier = Supplier::create([
-            'name' => $validated['name'],
-            'contact_name' => $validated['contact_name'] ?? null,
-            'email' => $validated['email'] ?? null,
-            'phone' => $validated['phone'] ?? null,
-            'rut' => $validated['rut'] ?? null,
-            'address' => $validated['address'] ?? null,
-            'category' => $validated['category'] ?? null,
-            'is_active' => $validated['is_active'] ?? true,
-        ]);
+        $supplier = DB::transaction(function () use ($validated) {
+            $supplier = Supplier::create([
+                'name' => $validated['name'],
+                'contact_name' => $validated['contact_name'] ?? null,
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'rut' => $validated['rut'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'category' => $validated['category'] ?? null,
+                'is_active' => $validated['is_active'] ?? true,
+            ]);
+            $supplier->syncAreas($validated['areas']);
+
+            return $supplier;
+        });
 
         return (new SupplierResource($supplier))
             ->response()
@@ -88,7 +105,15 @@ class SupplierController extends Controller
      */
     public function update(UpdateSupplierRequest $request, Supplier $supplier): SupplierResource
     {
-        $supplier->update($request->validated());
+        $validated = $request->validated();
+
+        DB::transaction(function () use ($supplier, $validated) {
+            $supplier->update(collect($validated)->except('areas')->all());
+
+            if (array_key_exists('areas', $validated)) {
+                $supplier->syncAreas($validated['areas']);
+            }
+        });
 
         return new SupplierResource($supplier);
     }
