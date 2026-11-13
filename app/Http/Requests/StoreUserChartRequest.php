@@ -22,6 +22,8 @@ class StoreUserChartRequest extends FormRequest
     {
         return [
             'chart_template_id' => ['required', 'integer', 'exists:chart_templates,id'],
+            // Plantilla propia donde va el gráfico; sin ella entra al panel principal.
+            'dashboard_template_id' => ['nullable', 'integer', Rule::exists('dashboard_templates', 'id')->where('user_id', $this->user()?->id)],
             'custom_title' => ['nullable', 'string', 'max:150'],
             'type' => ['nullable', 'string', Rule::in(MetricsService::CHART_TYPES)],
             'position' => ['nullable', 'integer', 'between:1,'.UserChart::MAX_POSITION],
@@ -40,6 +42,7 @@ class StoreUserChartRequest extends FormRequest
         return [
             'chart_template_id.required' => 'Elige una plantilla de gráfico.',
             'chart_template_id.exists' => 'La plantilla seleccionada no existe.',
+            'dashboard_template_id.exists' => 'La plantilla de dashboard no existe.',
             'custom_title.max' => 'El título no puede superar los 150 caracteres.',
             'type.in' => 'El tipo debe ser '.implode(', ', MetricsService::CHART_TYPES).'.',
             'position.between' => 'La posición debe estar entre 1 y '.UserChart::MAX_POSITION.'.',

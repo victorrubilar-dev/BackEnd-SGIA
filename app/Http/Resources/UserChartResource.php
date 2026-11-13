@@ -20,6 +20,7 @@ class UserChartResource extends JsonResource
             'id' => $this->id,
             'user_id' => $this->user_id,
             'chart_template_id' => $this->chart_template_id,
+            'dashboard_template_id' => $this->dashboard_template_id,
             'template' => new ChartTemplateResource($this->whenLoaded('template')),
             'custom_title' => $this->custom_title,
             'type' => $this->type,

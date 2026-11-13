@@ -7,16 +7,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Gráfico del dashboard personalizado de un usuario (máximo 5 posiciones).
+ * Gráfico del dashboard personalizado de un usuario (máximo 9 posiciones por plantilla; sin plantilla = panel principal).
  */
 class UserChart extends Model
 {
     use HasFactory;
 
-    public const MAX_POSITION = 5;
+    public const MAX_POSITION = 9;
 
     protected $fillable = [
-        'user_id', 'chart_template_id', 'custom_title', 'type', 'position',
+        'user_id', 'chart_template_id', 'dashboard_template_id', 'custom_title', 'type', 'position',
         'entity', 'metric', 'group_by', 'period', 'date_from', 'date_to', 'is_active',
     ];
 
@@ -48,6 +48,12 @@ class UserChart extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /** @return BelongsTo<DashboardTemplate, $this> */
+    public function dashboardTemplate(): BelongsTo
+    {
+        return $this->belongsTo(DashboardTemplate::class);
     }
 
     /** @return BelongsTo<ChartTemplate, $this> */

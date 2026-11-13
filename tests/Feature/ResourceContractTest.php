@@ -9,6 +9,7 @@ use App\Http\Resources\BudgetSummaryResource;
 use App\Http\Resources\CajonResource;
 use App\Http\Resources\CareerResource;
 use App\Http\Resources\ChartTemplateResource;
+use App\Http\Resources\DashboardTemplateResource;
 use App\Http\Resources\EquipmentUnitResource;
 use App\Http\Resources\IncidentReportResource;
 use App\Http\Resources\InvoiceIntakeItemResource;
@@ -40,6 +41,7 @@ use App\Models\BudgetMovement;
 use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\ChartTemplate;
+use App\Models\DashboardTemplate;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
@@ -203,7 +205,13 @@ class ResourceContractTest extends TestCase
     {
         $template = ChartTemplate::factory()->create();
         $this->assertKeys(ChartTemplateResource::class, $template, explode(',', 'chart_type,code,description,entity,group_by,id,metric,name,period,visualization_type'));
-        $this->assertKeys(UserChartResource::class, UserChart::factory()->create(['chart_template_id' => $template->id]), explode(',', 'chart_template_id,created_at,custom_title,date_from,date_to,entity,group_by,id,is_active,metric,metric_input,period,position,type,updated_at,user_id'));
+        $this->assertKeys(UserChartResource::class, UserChart::factory()->create(['chart_template_id' => $template->id]), explode(',', 'chart_template_id,created_at,custom_title,dashboard_template_id,date_from,date_to,entity,group_by,id,is_active,metric,metric_input,period,position,type,updated_at,user_id'));
+    }
+
+    public function test_dashboard_template_resource(): void
+    {
+        $template = DashboardTemplate::factory()->create();
+        $this->assertKeys(DashboardTemplateResource::class, $template->loadCount('charts'), explode(',', 'charts_count,created_at,description,id,max_charts,name,updated_at'));
     }
 
     public function test_audit_log_resource(): void

@@ -6,7 +6,8 @@
 - [x] `MAINTENANCE.failure_type` sigue siendo la gravedad del informe; `groupBy: maintenance_type` (nuevo) cuenta los registros de mantención por tipo (`preventiva`/`correctiva`/`calibracion`, sin anuladas) (`MetricsGraphQLTest`).
 
 ### REQ-15 — Dashboard personalizado por usuario (FU-06, DIR-01 y AD-01)
-Modelos `ChartTemplate` y `UserChart` (`TASKS/Equipos.md`, fase 1). Cada usuario arma su panel con hasta 5 gráficos.
+Modelos `ChartTemplate` y `UserChart` (`TASKS/Equipos.md`, fase 1). Cada usuario arma su panel con hasta 9 gráficos por plantilla. Plantillas de dashboard con nombre (`DashboardTemplate`, `/api/me/dashboard-templates`): `user_charts.dashboard_template_id` agrupa los gráficos; `unique(user_id, dashboard_template_id, position)` (NULLS NOT DISTINCT) y `position` 1–9. Sin plantilla = panel principal.
+- [x] CRUD de plantillas de dashboard del usuario con tests (`UserChartTest`).
 Decisiones: la plantilla trae `chart_type`, `entity`, `metric`, `group_by` y `period` por defecto (las genéricas `bar`, `line`, `pie`, `kpi` solo la visualización) y el gráfico hereda lo que no envía. `type` usa `ChartType` (`BAR`, `LINE`, `DOUGHNUT`, `POLAR_AREA`); `group_by` vacío = serie en el tiempo; `CUSTOM` exige `date_from`. Los inactivos ocupan posición y cuentan para el máximo. Los enums del esquema GraphQL se generan de `MetricsService::entities()`, `METRICS`, `TIME_RANGES` y `CHART_TYPES` (misma fuente que la validación).
 - [x] `GET /api/chart-templates`: plantillas disponibles (sembradas; sin CRUD por ahora).
 - [x] Sin gráficos repetidos por usuario: misma consulta y tipo (`type`, `entity`, `metric`, `group_by`, `period`, fechas) → `422` en `chart`, al crear y al editar la consulta; las escrituras del panel se serializan bloqueando la fila del usuario (doble clic). Test en `UserChartTest`.
