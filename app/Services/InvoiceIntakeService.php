@@ -125,7 +125,7 @@ class InvoiceIntakeService
                 default => $this->linkablePurchase($purchaseId),
             };
 
-            $this->assertNotDuplicate($locked, $documentNumber, $purchase?->supplier_id ?? ($locked->raw_ocr_payload['supplier_id'] ?? null));
+            $this->assertNotDuplicate($locked, $documentNumber, $purchase->supplier_id ?? ($locked->raw_ocr_payload['supplier_id'] ?? null));
 
             // Con compra manda su presupuesto; sin compra, el elegido o el del borrador (por carrera detectada).
             $budgetId ??= $locked->annual_budget_id ?? $purchase?->annual_budget_id;
@@ -180,7 +180,7 @@ class InvoiceIntakeService
             ->where('document_number', $documentNumber)
             ->whereKeyNot($intake->id)
             ->get()
-            ->contains(fn (InvoiceIntake $other) => ($other->purchase?->supplier_id ?? ($other->raw_ocr_payload['supplier_id'] ?? null)) === $supplierId);
+            ->contains(fn (InvoiceIntake $other) => ($other->purchase->supplier_id ?? ($other->raw_ocr_payload['supplier_id'] ?? null)) === $supplierId);
 
         if ($duplicate) {
             throw ValidationException::withMessages(['document_number' => 'Ya existe una factura vigente con ese número para el mismo proveedor.']);
@@ -244,7 +244,11 @@ class InvoiceIntakeService
         return $purchase;
     }
 
-    /** Órdenes que aún esperan factura: no canceladas y sin otro ingreso vigente. */
+    /**
+     * Órdenes que aún esperan factura: no canceladas y sin otro ingreso vigente.
+     *
+     * @return Builder<Purchase>
+     */
     private function linkableQuery(): Builder
     {
         return Purchase::linkable();

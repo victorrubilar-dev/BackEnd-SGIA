@@ -443,3 +443,5 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 - `POST /api/purchases/{id}/cancel` sobre una OC de solicitud → `422` en `status`: cancelar desde la solicitud.
 - `GET /api/purchases/{id}/trace` suma `purchase_request` (o `null`) con `items`, `areas` y `quotations`.
 - `POST /api/quotations` y `POST /api/purchases` se retiraron (ver Fase 7 arriba).
+
+- **2026-11-12 — `PurchaseRequestResource`:** `annual_budget` incluye `career` (`{id, code, name, …}`) en el listado y el detalle de `/api/purchase-requests`; antes llegaba sin carrera y el front rotulaba "Carrera #N". No rompe contrato.

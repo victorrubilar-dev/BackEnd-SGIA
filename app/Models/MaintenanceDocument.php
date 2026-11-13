@@ -60,16 +60,19 @@ class MaintenanceDocument extends Model
         $query->where(fn ($q) => $q->whereNull('valid_until')->orWhere('valid_until', '>=', now()));
     }
 
+    /** @return BelongsTo<EquipmentUnit, $this> */
     public function equipmentUnit(): BelongsTo
     {
         return $this->belongsTo(EquipmentUnit::class);
     }
 
+    /** @return BelongsTo<MaintenanceRecord, $this> */
     public function maintenanceRecord(): BelongsTo
     {
         return $this->belongsTo(MaintenanceRecord::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');

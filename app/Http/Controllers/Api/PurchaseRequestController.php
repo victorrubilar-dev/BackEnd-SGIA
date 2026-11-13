@@ -35,7 +35,7 @@ class PurchaseRequestController extends Controller
     /** Relaciones del detalle: ítems, áreas, contactados, cotizaciones, OC y su factura. */
     private const DETAIL = [
         'items.product', 'areas', 'suppliers.supplier', 'quotations.supplier', 'quotations.items',
-        'purchase.supplier', 'purchase.items', 'purchase.invoiceIntakes', 'annualBudget', 'creator', 'approver',
+        'purchase.supplier', 'purchase.items', 'purchase.invoiceIntakes', 'annualBudget.career', 'creator', 'approver',
     ];
 
     /**
@@ -52,7 +52,7 @@ class PurchaseRequestController extends Controller
             'to' => ['sometimes', 'date'],
         ], ['status.in' => 'El estado debe ser: '.implode(', ', PurchaseRequestStateMachine::STATUSES).'.']);
 
-        $query = PurchaseRequest::query()->with(['items.product', 'annualBudget', 'creator', 'purchase'])->withCount('quotations');
+        $query = PurchaseRequest::query()->with(['items.product', 'annualBudget.career', 'creator', 'purchase'])->withCount('quotations');
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));

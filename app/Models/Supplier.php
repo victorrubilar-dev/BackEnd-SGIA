@@ -89,11 +89,13 @@ class Supplier extends Model
         return $query->whereHas('areas', fn (Builder $q) => $q->whereIn('area', $values));
     }
 
+    /** @return HasMany<QuotationSupplier, $this> */
     public function quotationSuppliers(): HasMany
     {
         return $this->hasMany(QuotationSupplier::class);
     }
 
+    /** @return HasMany<Product, $this> */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);

@@ -56,23 +56,31 @@ class Purchase extends Model
         ];
     }
 
-    /** Órdenes que aún esperan factura: no canceladas y sin otro ingreso vigente. */
+    /**
+     * Órdenes que aún esperan factura: no canceladas y sin otro ingreso vigente.
+     *
+     * @param  Builder<Purchase>  $query
+     * @return Builder<Purchase>
+     */
     public function scopeLinkable(Builder $query): Builder
     {
         return $query->whereIn('status', [self::STATUS_PENDING, self::STATUS_IN_TRANSIT, self::STATUS_COMPLETED])
             ->whereNotIn('id', InvoiceIntake::query()->whereNotNull('purchase_id')->where('status', '!=', InvoiceIntake::STATUS_CANCELLED)->select('purchase_id'));
     }
 
+    /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
+    /** @return BelongsTo<AnnualBudget, $this> */
     public function annualBudget(): BelongsTo
     {
         return $this->belongsTo(AnnualBudget::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -80,12 +88,15 @@ class Purchase extends Model
 
     /**
      * Cotización aceptada a partir de la cual se generó esta orden (REQ-07 -> REQ-08).
+     *
+     * @return BelongsTo<Quotation, $this>
      */
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
     }
 
+    /** @return HasMany<PurchaseItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);

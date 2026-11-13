@@ -160,11 +160,13 @@ class IncidentReport extends Model
         return $this->problems === null;
     }
 
+    /** @return BelongsTo<Location, $this> */
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
     }
 
+    /** @return BelongsTo<EquipmentUnit, $this> */
     public function equipmentUnit(): BelongsTo
     {
         return $this->belongsTo(EquipmentUnit::class);
@@ -180,11 +182,13 @@ class IncidentReport extends Model
         return $map[$this->status] ?? [];
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');

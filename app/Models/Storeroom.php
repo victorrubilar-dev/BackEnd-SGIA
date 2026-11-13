@@ -25,16 +25,19 @@ class Storeroom extends Model
         );
     }
 
+    /** @return HasMany<User, $this> */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
     }
 
+    /** @return HasMany<Location, $this> */
     public function locations(): HasMany
     {
         return $this->hasMany(Location::class);
     }
 
+    /** @return HasMany<Loan, $this> */
     public function loans(): HasMany
     {
         return $this->hasMany(Loan::class);

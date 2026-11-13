@@ -21,13 +21,13 @@ class QuotationController extends Controller
     /**
      * List quotations with filters (REQ-07).
      *
-     * Query params: status (alias: estado), search, per_page.
+     * Query params: status (alias: estado), search (código de cotización u OC), per_page.
      */
     public function index(Request $request): AnonymousResourceCollection|JsonResponse
     {
         Gate::authorize('viewAny', Quotation::class);
 
-        $query = Quotation::with(['items', 'suppliers.supplier']);
+        $query = Quotation::with(['items', 'suppliers.supplier', 'purchase']);
 
         $status = $request->input('status', $request->input('estado'));
 
@@ -43,7 +43,9 @@ class QuotationController extends Controller
 
         if ($request->filled('search')) {
             $search = '%'.$request->string('search').'%';
-            $query->where('code', 'ilike', $search);
+            // Por código de la cotización o de la OC a la que se convirtió.
+            $query->where(fn ($q) => $q->where('code', 'ilike', $search)
+                ->orWhereHas('purchase', fn ($p) => $p->where('code', 'ilike', $search)));
         }
 
         $perPage = $this->perPage($request);

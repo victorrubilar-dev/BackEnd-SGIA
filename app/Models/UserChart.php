@@ -44,11 +44,13 @@ class UserChart extends Model
         ], fn ($value) => $value !== null);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<ChartTemplate, $this> */
     public function template(): BelongsTo
     {
         return $this->belongsTo(ChartTemplate::class, 'chart_template_id');

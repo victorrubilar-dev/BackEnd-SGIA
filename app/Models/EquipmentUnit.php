@@ -57,6 +57,7 @@ class EquipmentUnit extends Model
         ];
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
@@ -95,16 +96,19 @@ class EquipmentUnit extends Model
         $query->where('status', self::STATUS_AVAILABLE)->inStoreroom($storeroomId);
     }
 
+    /** @return HasMany<IncidentReport, $this> */
     public function incidentReports(): HasMany
     {
         return $this->hasMany(IncidentReport::class);
     }
 
+    /** @return HasMany<MaintenanceRecord, $this> */
     public function maintenanceRecords(): HasMany
     {
         return $this->hasMany(MaintenanceRecord::class);
     }
 
+    /** @return HasMany<MaintenanceDocument, $this> */
     public function maintenanceDocuments(): HasMany
     {
         return $this->hasMany(MaintenanceDocument::class);
@@ -117,11 +121,13 @@ class EquipmentUnit extends Model
             ->withTimestamps();
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');

@@ -77,7 +77,9 @@ class PurchaseRequestTest extends TestCase
         foreach ([User::ROLE_ADMIN, User::ROLE_WAREHOUSE] as $role) {
             Sanctum::actingAs($this->userWithRole($role));
             $this->getJson('/api/purchase-requests')->assertOk();
-            $this->getJson("/api/purchase-requests/{$request->id}")->assertOk()->assertJsonPath('data.code', $request->code);
+            // El presupuesto trae su carrera (la interfaz lo rotula "ISD · …" y no "Carrera #1").
+            $this->getJson("/api/purchase-requests/{$request->id}")->assertOk()->assertJsonPath('data.code', $request->code)
+                ->assertJsonPath('data.annual_budget.career.id', $request->annualBudget->career_id);
         }
 
         Sanctum::actingAs($this->userWithRole(User::ROLE_TEACHER));

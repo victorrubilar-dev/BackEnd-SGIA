@@ -64,11 +64,13 @@ class Product extends Model
         ];
     }
 
+    /** @return BelongsTo<Category, $this> */
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
 
+    /** @return BelongsTo<Career, $this> */
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
@@ -82,26 +84,31 @@ class Product extends Model
         return in_array($this->type, [self::TYPE_EQUIPMENT, self::TYPE_SCALE_MODEL], true);
     }
 
+    /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
 
+    /** @return BelongsTo<Cajon, $this> */
     public function cajon(): BelongsTo
     {
         return $this->belongsTo(Cajon::class);
     }
 
+    /** @return BelongsTo<Location, $this> */
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
@@ -113,6 +120,7 @@ class Product extends Model
         return $this->hasMany(EquipmentUnit::class);
     }
 
+    /** @return HasMany<StockAlert, $this> */
     public function stockAlerts(): HasMany
     {
         return $this->hasMany(StockAlert::class);
@@ -120,6 +128,8 @@ class Product extends Model
 
     /**
      * Informes de novedades/fallas asociados al equipo (REQ-12, REQ-13).
+     *
+     * @return HasMany<IncidentReport, $this>
      */
     public function incidentReports(): HasMany
     {

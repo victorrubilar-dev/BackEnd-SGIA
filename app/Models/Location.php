@@ -51,26 +51,31 @@ class Location extends Model
         return ['floor' => 'integer'];
     }
 
+    /** @return BelongsTo<Storeroom, $this> */
     public function storeroom(): BelongsTo
     {
         return $this->belongsTo(Storeroom::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /** @return HasMany<Cajon, $this> */
     public function cajones(): HasMany
     {
         return $this->hasMany(Cajon::class);
     }
 
+    /** @return HasMany<Product, $this> */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);
