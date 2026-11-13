@@ -48,16 +48,19 @@ class QuotationSupplier extends Model
         ];
     }
 
+    /** @return BelongsTo<Quotation, $this> */
     public function quotation(): BelongsTo
     {
         return $this->belongsTo(Quotation::class);
     }
 
+    /** @return HasMany<QuotationOfferItem, $this> */
     public function offerItems(): HasMany
     {
         return $this->hasMany(QuotationOfferItem::class);
     }
 
+    /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);

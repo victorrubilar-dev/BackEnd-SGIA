@@ -365,6 +365,7 @@ class RealisticDemoSeeder extends Seeder
     {
         // [título, estado, producto, cantidad, [[proveedor, factor de precio] ...]] — sin ofertas si está pendiente.
         $offers = [['redsur', 1.0], ['systelec', 0.97], ['compintegral', 1.05]];
+        /** @var list<array{string, string, string, int, list<array{string, float}>}> $defs */
         $defs = [
             ['Reposición de pilas AAA', Quotation::STATUS_ACCEPTED, 'aaa', 40, [['electroplus', 1.0], ['systelec', 0.97], ['arbol', 1.05]]],
             ['Reposición de pilas AA', Quotation::STATUS_ACCEPTED, 'aa', 60, [['electroplus', 1.0], ['systelec', 0.97], ['arbol', 1.05]]],
@@ -444,7 +445,7 @@ class RealisticDemoSeeder extends Seeder
             $loan = Loan::create([
                 'code' => Loan::generateUniqueCode($direct ? Loan::TYPE_DIRECT : Loan::TYPE_REMOTE),
                 'type' => $direct ? Loan::TYPE_DIRECT : Loan::TYPE_REMOTE,
-                'requested_by' => $teacher->id, 'borrower_name' => $student?->full_name ?? $teacher->name,
+                'requested_by' => $teacher->id, 'borrower_name' => $student->full_name ?? $teacher->name,
                 'borrower_document' => $student?->rut, 'student_id' => $student?->id,
                 'subject' => $subjects[$career][array_rand($subjects[$career])], 'career_id' => $careers[$career],
                 'location_id' => $room->id, 'room' => $room->nombre, 'start_time' => $start, 'end_time' => $end, 'time_block' => $block,
@@ -529,7 +530,7 @@ class RealisticDemoSeeder extends Seeder
         }
 
         // Alertas de stock reales para los insumos bajo el mínimo.
-        foreach (Product::where('type', Product::TYPE_SUPPLY)->whereColumn('quantity', '<=', DB::raw('stock_minimo + 5'))->where('quantity', '>', 0)->get() as $p) {
+        foreach (Product::where('type', Product::TYPE_SUPPLY)->whereRaw('quantity <= stock_minimo + 5')->where('quantity', '>', 0)->get() as $p) {
             app(StockAlertService::class)->checkStock($p);
         }
     }
@@ -537,6 +538,7 @@ class RealisticDemoSeeder extends Seeder
     private function incidents(User|Collection $teachers, $locations, $products): void
     {
         // [equipo, título, descripción, gravedad, estado, tipo de solicitud]
+        /** @var list<array{string, string, string, string, string, string}> $cases */
         $cases = [
             ['router', 'Router sin respuesta por consola', 'El equipo enciende pero no responde por el puerto de consola; se probó con dos cables.', 'media', 'en_revision', 'falla'],
             ['osciloscopio', 'Canal 2 con lectura inestable', 'La señal del canal 2 fluctúa aun con la sonda en cortocircuito.', 'media', 'en_reparacion', 'falla'],

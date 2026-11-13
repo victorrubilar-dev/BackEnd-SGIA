@@ -57,6 +57,7 @@ class Role extends Model
         return self::$ids ??= self::query()->pluck('id', 'code')->map(fn ($id) => (int) $id)->all();
     }
 
+    /** @return HasMany<User, $this> */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

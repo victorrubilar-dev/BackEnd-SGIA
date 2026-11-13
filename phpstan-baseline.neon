@@ -25,42 +25,6 @@ parameters:
 			path: app/Http/Controllers/Api/BudgetReportController.php
 
 		-
-			message: '#^Parameter \#1 \$product of method App\\Services\\EquipmentPdfService\:\:reportsList\(\) expects App\\Models\\Product, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/EquipmentReportController.php
-
-		-
-			message: '#^Parameter \#2 \$reports of method App\\Services\\EquipmentPdfService\:\:reportsList\(\) expects Illuminate\\Support\\Collection\<int, App\\Models\\IncidentReport\>, Illuminate\\Database\\Eloquent\\Collection\<int, Illuminate\\Database\\Eloquent\\Model\> given\.$#'
-			identifier: argument.type
-			count: 2
-			path: app/Http/Controllers/Api/EquipmentReportController.php
-
-		-
-			message: '#^Parameter \#1 \$product of method App\\Services\\EquipmentUnitService\:\:syncProductCounters\(\) expects App\\Models\\Product, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/EquipmentUnitController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/LoanController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/LoanController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$units\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/LoanController.php
-
-		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
@@ -77,18 +41,6 @@ parameters:
 			identifier: generics.notGeneric
 			count: 1
 			path: app/Http/Controllers/Api/LoanController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:current\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Http/Controllers/Api/MaintenanceDocumentController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$location\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/ProductController.php
 
 		-
 			message: '#^Dead catch \- Illuminate\\Database\\QueryException is never thrown in the try block\.$#'
@@ -1687,18 +1639,6 @@ parameters:
 			path: app/Models/MaintenanceDocument.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/MaintenanceRecord.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/User.php
-
-		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 2
@@ -1723,94 +1663,10 @@ parameters:
 			path: app/Notifications/LoanStatusNotification.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Notifications/PurchaseArrivalNotification.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Notifications/StockThresholdNotification.php
-
-		-
-			message: '#^Access to an undefined property App\\Models\\User\:\:\$role\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Observers/UserAuditObserver.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:current\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/EquipmentPdfService.php
-
-		-
 			message: '#^Offset ''invoice_intake_item…'' on array\{cajon_id\: int, code\?\: string\|null, serial_number\?\: string\|null\} on left side of \?\? does not exist\.$#'
 			identifier: nullCoalesce.offset
 			count: 1
 			path: app/Services/EquipmentUnitService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/InvoiceIntakeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/InvoiceIntakeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$units\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/InvoiceIntakeService.php
-
-		-
-			message: '#^Parameter \#4 \$intakeItem of method App\\Services\\InvoiceIntakeService\:\:receiveStock\(\) expects App\\Models\\InvoiceIntakeItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/InvoiceIntakeService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 4
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product\.$#'
-			identifier: property.notFound
-			count: 3
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$product_id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$quantity\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$returned_at\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/LoanService.php
 
 		-
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Builder\:\:overdue\(\)\.$#'
@@ -1821,30 +1677,6 @@ parameters:
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 1
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Parameter \#1 \$item of method App\\Services\\LoanService\:\:assignUnits\(\) expects App\\Models\\LoanItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Parameter \#1 \$item of method App\\Services\\LoanService\:\:checkinUnits\(\) expects App\\Models\\LoanItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Parameter \#1 \$item of method App\\Services\\LoanService\:\:replaceUnits\(\) expects App\\Models\\LoanItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/LoanService.php
-
-		-
-			message: '#^Parameter \#1 \$item of method App\\Services\\LoanService\:\:restoreItem\(\) expects App\\Models\\LoanItem, Illuminate\\Database\\Eloquent\\Model given\.$#'
-			identifier: argument.type
 			count: 1
 			path: app/Services/LoanService.php
 
@@ -1897,30 +1729,6 @@ parameters:
 			path: app/Services/MetricsService.php
 
 		-
-			message: '#^Parameter \#1 \$budget of method App\\Services\\AnnualBudgetService\:\:releaseReservation\(\) expects App\\Models\\AnnualBudget, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Services/PurchaseService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$is_active\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReminderService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReminderService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:notify\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/ReminderService.php
-
-		-
 			message: '#^Cannot call method format\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1943,12 +1751,6 @@ parameters:
 			identifier: method.nonObject
 			count: 2
 			path: app/Services/UserChartService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
-			identifier: property.notFound
-			count: 2
-			path: database/seeders/DemoMetricsSeeder.php
 
 		-
 			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'

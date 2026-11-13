@@ -109,31 +109,37 @@ class MaintenanceRecord extends Model
         return $this;
     }
 
+    /** @return BelongsTo<EquipmentUnit, $this> */
     public function equipmentUnit(): BelongsTo
     {
         return $this->belongsTo(EquipmentUnit::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function responsible(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responsible_id');
     }
 
+    /** @return BelongsTo<Supplier, $this> */
     public function externalSupplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'external_supplier_id');
     }
 
+    /** @return BelongsTo<IncidentReport, $this> */
     public function incidentReport(): BelongsTo
     {
         return $this->belongsTo(IncidentReport::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return HasMany<MaintenanceDocument, $this> */
     public function documents(): HasMany
     {
         return $this->hasMany(MaintenanceDocument::class);

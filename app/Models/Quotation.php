@@ -43,16 +43,19 @@ class Quotation extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<Career, $this> */
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
     }
 
+    /** @return HasMany<QuotationItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(QuotationItem::class);
@@ -60,12 +63,15 @@ class Quotation extends Model
 
     /**
      * Proveedores contactados por esta cotización (con su respuesta individual).
+     *
+     * @return HasMany<QuotationSupplier, $this>
      */
     public function suppliers(): HasMany
     {
         return $this->hasMany(QuotationSupplier::class);
     }
 
+    /** @return BelongsTo<Purchase, $this> */
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);

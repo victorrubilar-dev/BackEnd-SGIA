@@ -40,6 +40,7 @@ class LoanItem extends Model
         ];
     }
 
+    /** @return BelongsTo<Loan, $this> */
     public function loan(): BelongsTo
     {
         return $this->belongsTo(Loan::class);
@@ -53,6 +54,7 @@ class LoanItem extends Model
             ->withTimestamps();
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

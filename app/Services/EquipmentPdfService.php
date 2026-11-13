@@ -127,8 +127,10 @@ class EquipmentPdfService
     /**
      * Personal de atención: todos los informes. Resto de usuarios: solo los que reportaron.
      *
-     * @param  HasMany<IncidentReport, Product|EquipmentUnit>  $reports
-     * @return HasMany<IncidentReport, Product|EquipmentUnit>
+     * @template TParent of Product|EquipmentUnit
+     *
+     * @param  HasMany<IncidentReport, TParent>  $reports
+     * @return HasMany<IncidentReport, TParent>
      */
     private function visibleReports(HasMany $reports, ?User $viewer): HasMany
     {

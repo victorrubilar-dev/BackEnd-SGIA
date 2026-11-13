@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Ingreso de una factura leída por OCR: descuenta presupuesto e ingresa stock al confirmarse.
+ *
+ * @property array<string, mixed>|null $raw_ocr_payload
  */
 class InvoiceIntake extends Model
 {
@@ -36,21 +38,25 @@ class InvoiceIntake extends Model
         ];
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<AnnualBudget, $this> */
     public function annualBudget(): BelongsTo
     {
         return $this->belongsTo(AnnualBudget::class);
     }
 
+    /** @return BelongsTo<Purchase, $this> */
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
     }
 
+    /** @return HasMany<InvoiceIntakeItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceIntakeItem::class);

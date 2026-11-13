@@ -73,11 +73,13 @@ class Loan extends Model
         });
     }
 
+    /** @return BelongsTo<Storeroom, $this> */
     public function storeroom(): BelongsTo
     {
         return $this->belongsTo(Storeroom::class);
     }
 
+    /** @return BelongsTo<Student, $this> */
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
@@ -95,36 +97,43 @@ class Loan extends Model
         ];
     }
 
+    /** @return HasMany<LoanItem, $this> */
     public function items(): HasMany
     {
         return $this->hasMany(LoanItem::class);
     }
 
+    /** @return BelongsTo<Location, $this> */
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
     }
 
+    /** @return BelongsTo<Career, $this> */
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function requester(): BelongsTo
     {
         return $this->belongsTo(User::class, 'requested_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function processor(): BelongsTo
     {
         return $this->belongsTo(User::class, 'processed_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function returner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'returned_by');
