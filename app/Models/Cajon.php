@@ -36,21 +36,25 @@ class Cajon extends Model
         return $this->belongsTo(Location::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
     }
 
+    /** @return HasMany<EquipmentUnit, $this> */
     public function equipmentUnits(): HasMany
     {
         return $this->hasMany(EquipmentUnit::class);
     }
 
+    /** @return HasMany<Product, $this> */
     public function products(): HasMany
     {
         return $this->hasMany(Product::class);

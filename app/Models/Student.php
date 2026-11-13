@@ -18,11 +18,13 @@ class Student extends Model
         return ['registered_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<Career, $this> */
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
     }
 
+    /** @return HasMany<Loan, $this> */
     public function loans(): HasMany
     {
         return $this->hasMany(Loan::class);

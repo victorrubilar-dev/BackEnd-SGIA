@@ -28,7 +28,7 @@ class BudgetSummaryResource extends JsonResource
             'reserved_amount' => $this->reserved_amount,
             'consumed_amount' => number_format($consumed, 2, '.', ''),
             'available_amount' => $this->available_amount,
-            'free_amount' => number_format((float) $this->available_amount - $reserved, 2, '.', ''),
+            'free_amount' => number_format((float) $this->resource->available_amount - $reserved, 2, '.', ''),
             'execution_percent' => $initial > 0 ? round(($consumed + $reserved) / $initial * 100, 2) : 0,
         ];
     }
