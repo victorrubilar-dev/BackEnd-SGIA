@@ -21,7 +21,7 @@ class AnnualBudgetResource extends JsonResource
             'available_amount' => $this->available_amount,
             'reserved_amount' => $this->reserved_amount,
             'free_amount' => number_format((float) $this->available_amount - (float) $this->reserved_amount, 2, '.', ''),
-            'consumed_amount' => number_format((float) $this->initial_amount - (float) $this->available_amount, 2, '.', ''),
+            'consumed_amount' => number_format((float) $this->initial_amount - (float) $this->resource->available_amount, 2, '.', ''),
             'invoice_intakes' => InvoiceIntakeResource::collection($this->whenLoaded('invoiceIntakes')),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,

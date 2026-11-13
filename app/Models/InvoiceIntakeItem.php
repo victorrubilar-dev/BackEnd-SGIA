@@ -22,17 +22,23 @@ class InvoiceIntakeItem extends Model
         ];
     }
 
+    /** @return BelongsTo<InvoiceIntake, $this> */
     public function intake(): BelongsTo
     {
         return $this->belongsTo(InvoiceIntake::class, 'invoice_intake_id');
     }
 
-    /** Unidades de equipo creadas al confirmar este ítem (REQ-23). */
+    /**
+     * Unidades de equipo creadas al confirmar este ítem (REQ-23).
+     *
+     * @return HasMany<EquipmentUnit, $this>
+     */
     public function units(): HasMany
     {
         return $this->hasMany(EquipmentUnit::class);
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

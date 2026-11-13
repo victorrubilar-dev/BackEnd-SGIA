@@ -23,11 +23,13 @@ class QuotationOfferItem extends Model
         ];
     }
 
+    /** @return BelongsTo<QuotationSupplier, $this> */
     public function quotationSupplier(): BelongsTo
     {
         return $this->belongsTo(QuotationSupplier::class);
     }
 
+    /** @return BelongsTo<Product, $this> */
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);

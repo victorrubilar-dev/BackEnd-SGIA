@@ -23,6 +23,7 @@ class SupplierAreaAssignment extends Model
         return ['area' => SupplierArea::class];
     }
 
+    /** @return BelongsTo<Supplier, $this> */
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);

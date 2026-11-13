@@ -32,6 +32,7 @@ class QuotationResource extends JsonResource
             'items' => QuotationItemResource::collection($this->whenLoaded('items')),
             'suppliers' => QuotationSupplierResource::collection($this->whenLoaded('suppliers')),
             'purchase_id' => $this->purchase_id,
+            'purchase_code' => $this->whenLoaded('purchase', fn () => $this->resource->purchase?->code),
             'purchase' => new PurchaseResource($this->whenLoaded('purchase')),
             'converted_at' => $this->converted_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

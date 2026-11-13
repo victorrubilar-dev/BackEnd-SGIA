@@ -40,21 +40,25 @@ class BudgetMovement extends Model
         ];
     }
 
+    /** @return BelongsTo<AnnualBudget, $this> */
     public function annualBudget(): BelongsTo
     {
         return $this->belongsTo(AnnualBudget::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /** @return BelongsTo<Purchase, $this> */
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
     }
 
+    /** @return BelongsTo<InvoiceIntake, $this> */
     public function invoiceIntake(): BelongsTo
     {
         return $this->belongsTo(InvoiceIntake::class);

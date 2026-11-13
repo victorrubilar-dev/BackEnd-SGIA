@@ -15,6 +15,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * @property string|null $role Código del rol (`AD-01`…), derivado de `role_id`.
+ */
 #[Fillable(['name', 'email', 'password', 'last_login_at', 'role', 'area', 'is_active', 'storeroom_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -96,11 +99,13 @@ class User extends Authenticatable
         ];
     }
 
+    /** @return BelongsTo<Role, $this> */
     public function roleModel(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'role_id');
     }
 
+    /** @return BelongsTo<Storeroom, $this> */
     public function storeroom(): BelongsTo
     {
         return $this->belongsTo(Storeroom::class);
@@ -111,16 +116,19 @@ class User extends Authenticatable
         return $this->belongsToMany(Career::class)->withTimestamps();
     }
 
+    /** @return HasMany<UserChart, $this> */
     public function charts(): HasMany
     {
         return $this->hasMany(UserChart::class);
     }
 
+    /** @return HasMany<DeviceToken, $this> */
     public function deviceTokens(): HasMany
     {
         return $this->hasMany(DeviceToken::class);
     }
 
+    /** @return HasMany<LoginRecord, $this> */
     public function loginRecords(): HasMany
     {
         return $this->hasMany(LoginRecord::class);

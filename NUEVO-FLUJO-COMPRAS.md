@@ -1,7 +1,7 @@
 # Nuevo flujo de compras — plan de desarrollo
 
 Origen: reunión de noviembre 2026. Reemplaza el flujo "Cotización → OC → Factura" descrito en `CLAUDE.md` y `TASK.md`.
-Estado: **Fases 1–7 implementadas en backend y frontend** (el flujo antiguo de cotizaciones quedó en solo lectura). Pendiente: prueba en navegador. Al cerrar cada fase, marcar aquí y en `TASK.md` §10.
+Estado: **Fases 1–7 implementadas en backend y frontend** (el flujo antiguo de cotizaciones quedó en solo lectura). Prueba en navegador hecha el 2026-11-12. Al cerrar cada fase, marcar aquí y en `TASK.md` §10.
 
 ## 1. Flujo acordado
 
@@ -171,7 +171,7 @@ Cada fase deja `php artisan test` en verde y `pint --dirty` limpio (backend) y t
 - [x] Backend: `ENDPOINTS.md` (§6.1 y §8 en solo lectura), `CLAUDE.md`, `TASKS/Compra.md`, `TASKS/Cotizaciones.md`, `TASKS/front-end.md` (rutas retiradas).
 - [x] Frontend: `ENDPOINTS.md` (§8.0 y §8 en solo lectura) y `RUTAS.md`. El repo del frontend no tiene `CONTRATO.md`.
 - [x] Prueba de punta a punta por API (tests `PurchaseRequest*Test`: solicitud → aprobar → enviar → 3 cotizaciones → OC → factura → anular → re-facturar).
-- [ ] Prueba en el navegador (pendiente).
+- [x] Prueba en el navegador (2026-11-12, Chrome headless contra una BD aparte con `RealisticDemoSeeder`): SC-2026-0007 creada → aprobada → enviada a Telecomunicaciones (4 correos, driver `log`) → 3 cotizaciones → elegida Electroplus (no la más barata) → OC subida (reserva $59.800) → factura `prueba1.jpeg` por código de solicitud (stock +20/+30, solicitud `facturada`) → anulación (stock a 0, solicitud `con_oc`) → nuevo borrador. Corrigió 4 detalles de interfaz (FIX-042 del frontend).
 
 ## 8. Riesgos
 

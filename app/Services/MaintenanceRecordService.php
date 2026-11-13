@@ -86,7 +86,7 @@ class MaintenanceRecordService
             ->selectRaw('products.career_id, count(distinct maintenance_records.equipment_unit_id) as units')
             ->pluck('units', 'career_id');
 
-        $blank = fn (?int $id, string $name, ?string $code) => [
+        $blank = fn (?int $id, string $name, ?string $code): array => [
             'career_id' => $id, 'name' => $name, 'code' => $code, 'total' => 0,
             'by_status' => array_fill_keys(MaintenanceRecord::STATUSES, 0), 'units' => (int) ($units[$id] ?? 0),
         ];
@@ -95,10 +95,10 @@ class MaintenanceRecordService
 
         foreach ($rows as $row) {
             $key = $row->career_id ?? 0;
-            $careers[$key]['by_status'][$row->status] = (int) $row->total;
-            $careers[$key]['total'] += (int) $row->total;
+            $careers[$key]['by_status'][$row->status] = (int) $row->getAttribute('total');
+            $careers[$key]['total'] += (int) $row->getAttribute('total');
         }
-        if ($careers[0]['total'] === 0) {
+        if (! $rows->contains('career_id', null)) {
             unset($careers[0]);
         }
 

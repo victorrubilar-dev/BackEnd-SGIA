@@ -16,6 +16,7 @@ class ChartTemplate extends Model
 
     protected $fillable = ['code', 'name', 'visualization_type', 'chart_type', 'entity', 'metric', 'group_by', 'period', 'description'];
 
+    /** @return HasMany<UserChart, $this> */
     public function charts(): HasMany
     {
         return $this->hasMany(UserChart::class);

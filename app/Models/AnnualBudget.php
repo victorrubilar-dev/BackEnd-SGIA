@@ -26,31 +26,37 @@ class AnnualBudget extends Model
         ];
     }
 
+    /** @return BelongsTo<Career, $this> */
     public function career(): BelongsTo
     {
         return $this->belongsTo(Career::class);
     }
 
+    /** @return HasMany<InvoiceIntake, $this> */
     public function invoiceIntakes(): HasMany
     {
         return $this->hasMany(InvoiceIntake::class);
     }
 
+    /** @return HasMany<BudgetMovement, $this> */
     public function movements(): HasMany
     {
         return $this->hasMany(BudgetMovement::class);
     }
 
+    /** @return HasMany<Purchase, $this> */
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class);
     }
 
+    /** @return BelongsTo<User, $this> */
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** @return BelongsTo<User, $this> */
     public function updater(): BelongsTo
     {
         return $this->belongsTo(User::class, 'updated_by');
