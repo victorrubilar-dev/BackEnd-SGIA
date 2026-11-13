@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\StockAlertResource;
+use App\Models\PurchaseRequest;
+use App\Models\PurchaseRequestItem;
 use App\Models\StockAlert;
 use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +37,16 @@ class StockAlertController extends Controller
 
         $perPage = $this->perPage($request);
         $alerts = $query->orderByDesc('created_at')->orderByDesc('id')->paginate($perPage);
+
+        // Solicitud de compra abierta (no cancelada ni facturada) de cada producto, en una sola consulta.
+        $openRequests = PurchaseRequestItem::query()
+            ->whereIn('product_id', $alerts->pluck('product_id'))
+            ->whereHas('purchaseRequest', fn ($q) => $q->whereNotIn('status', [PurchaseRequest::STATUS_CANCELLED, PurchaseRequest::STATUS_INVOICED]))
+            ->with('purchaseRequest:id,code,status')
+            ->orderBy('id')
+            ->get()
+            ->keyBy('product_id');
+        $alerts->each(fn (StockAlert $a) => $a->setRelation('openPurchaseRequest', $openRequests->get($a->product_id)?->purchaseRequest));
 
         // Totales reales, independientes de filtros y paginación (campana y cinta de la bandeja).
         $open = StockAlert::where('is_resolved', false);

@@ -23,6 +23,9 @@ class StockAlertResource extends JsonResource
             'current_stock' => $this->current_stock,
             'stock_minimo' => $this->stock_minimo,
             'message' => $this->message,
+            'open_purchase_request' => $this->resource->relationLoaded('openPurchaseRequest')
+                ? $this->resource->getRelation('openPurchaseRequest')?->only(['id', 'code', 'status'])
+                : null,
             'is_resolved' => (bool) $this->is_resolved,
             'created_at' => $this->created_at?->toIso8601String(),
         ];

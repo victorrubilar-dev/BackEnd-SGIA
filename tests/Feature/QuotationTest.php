@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\Quotation;
 use App\Models\QuotationSupplier;
 use App\Models\Supplier;
@@ -45,6 +46,24 @@ class QuotationTest extends TestCase
             ->assertJsonFragment(['id' => $pending->id]);
 
         $this->getJson('/api/quotations?status=no_existe')->assertStatus(422);
+    }
+
+    public function test_search_by_quotation_or_purchase_code_and_list_exposes_purchase_code(): void
+    {
+        $plain = Quotation::factory()->create(['created_by' => $this->director->id]);
+        $linked = Quotation::factory()->create(['created_by' => $this->director->id]);
+        $purchase = Purchase::factory()->create();
+        $linked->update(['purchase_id' => $purchase->id]);
+
+        Sanctum::actingAs($this->director);
+
+        $byQuotation = $this->getJson('/api/quotations?search='.$plain->code)->assertOk();
+        $this->assertSame([$plain->id], collect($byQuotation->json('data'))->pluck('id')->all());
+        $this->assertNull($byQuotation->json('data.0.purchase_code'));
+
+        $byPurchase = $this->getJson('/api/quotations?search='.$purchase->code)->assertOk();
+        $this->assertSame([$linked->id], collect($byPurchase->json('data'))->pluck('id')->all());
+        $byPurchase->assertJsonPath('data.0.purchase_code', $purchase->code);
     }
 
     public function test_quotation_detail_includes_items_and_contacted_suppliers_without_transitions(): void

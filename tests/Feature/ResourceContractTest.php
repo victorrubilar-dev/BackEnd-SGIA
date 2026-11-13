@@ -123,7 +123,7 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(ProductResource::class, $withAvailability, $keys);
 
         $alert = StockAlert::create(['product_id' => $product->id, 'alert_type' => 'warning', 'current_stock' => 1, 'stock_minimo' => 1, 'message' => 'm', 'is_resolved' => false]);
-        $this->assertKeys(StockAlertResource::class, $alert, explode(',', 'alert_type,created_at,current_stock,id,is_resolved,message,product_barcode,product_id,product_name,stock_minimo'));
+        $this->assertKeys(StockAlertResource::class, $alert, explode(',', 'alert_type,created_at,current_stock,id,is_resolved,message,open_purchase_request,product_barcode,product_id,product_name,stock_minimo'));
     }
 
     public function test_loan_resources(): void
