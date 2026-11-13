@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\AnnualBudget;
+use App\Models\DashboardTemplate;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
@@ -22,6 +23,7 @@ use App\Observers\InventoryAuditObserver;
 use App\Observers\PurchasingAuditObserver;
 use App\Observers\UserAuditObserver;
 use App\Policies\AnnualBudgetPolicy;
+use App\Policies\DashboardTemplatePolicy;
 use App\Policies\EquipmentUnitPolicy;
 use App\Policies\IncidentReportPolicy;
 use App\Policies\InvoiceIntakePolicy;
@@ -92,6 +94,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(MaintenanceRecord::class, MaintenanceRecordPolicy::class);
         Gate::policy(MaintenanceDocument::class, MaintenanceDocumentPolicy::class);
         Gate::policy(UserChart::class, UserChartPolicy::class);
+        Gate::policy(DashboardTemplate::class, DashboardTemplatePolicy::class);
         Gate::policy(Storeroom::class, StoreroomPolicy::class);
 
         // REQ-NF-01: auditoría de eventos críticos.

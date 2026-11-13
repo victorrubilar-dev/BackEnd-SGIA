@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\ChartTemplate;
+use App\Models\DashboardTemplate;
 use App\Models\User;
 use App\Models\UserChart;
 use Database\Seeders\ChartTemplateSeeder;
@@ -11,7 +12,7 @@ use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
- * REQ-15: dashboard personalizado por usuario (hasta 5 gráficos).
+ * REQ-15: dashboard personalizado por usuario (hasta 9 gráficos por plantilla).
  */
 class UserChartTest extends TestCase
 {
@@ -89,7 +90,7 @@ class UserChartTest extends TestCase
         $user = $this->actingAsRole(User::ROLE_ADMIN);
         $generic = $this->template('bar')->id;
 
-        $this->postJson('/api/me/charts', ['chart_template_id' => $generic, 'position' => 6])
+        $this->postJson('/api/me/charts', ['chart_template_id' => $generic, 'position' => 10])
             ->assertStatus(422)->assertJsonValidationErrors('position');
         $this->postJson('/api/me/charts', ['chart_template_id' => $generic, 'entity' => 'PLANETS'])
             ->assertStatus(422)->assertJsonValidationErrors('entity');
@@ -107,7 +108,7 @@ class UserChartTest extends TestCase
         $this->postJson('/api/me/charts', ['chart_template_id' => $template, 'position' => 2])
             ->assertStatus(422)->assertJsonValidationErrors('position');
 
-        foreach ([1, 3, 4, 5] as $position) {
+        foreach ([1, 3, 4, 5, 6, 7, 8, 9] as $position) {
             UserChart::factory()->create(['user_id' => $user->id, 'chart_template_id' => $template, 'position' => $position]);
         }
         $this->postJson('/api/me/charts', ['chart_template_id' => $template])
@@ -214,7 +215,7 @@ class UserChartTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('positions');
         $this->putJson('/api/me/charts/positions', ['positions' => [['id' => $a->id, 'position' => 1], ['id' => $b->id, 'position' => 1]]])
             ->assertStatus(422)->assertJsonValidationErrors('positions.1.position');
-        $this->putJson('/api/me/charts/positions', ['positions' => [['id' => $a->id, 'position' => 6]]])
+        $this->putJson('/api/me/charts/positions', ['positions' => [['id' => $a->id, 'position' => 10]]])
             ->assertStatus(422)->assertJsonValidationErrors('positions.0.position');
     }
 
@@ -259,5 +260,82 @@ class UserChartTest extends TestCase
             $this->putJson('/api/me/charts/positions', ['positions' => [['id' => $chart->id, 'position' => 2]]])->assertForbidden();
             $this->deleteJson("/api/me/charts/{$chart->id}")->assertForbidden();
         }
+    }
+
+    public function test_named_templates_hold_up_to_nine_charts_each(): void
+    {
+        $user = $this->actingAsRole(User::ROLE_DIRECTOR);
+        $base = $this->template('loans_trend')->id;
+
+        $created = $this->postJson('/api/me/dashboard-templates', ['name' => 'Semestre', 'description' => 'KPIs'])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Semestre')
+            ->assertJsonPath('data.charts_count', 0)
+            ->assertJsonPath('data.max_charts', 9)
+            ->json('data.id');
+
+        $this->postJson('/api/me/dashboard-templates', ['name' => 'Semestre'])
+            ->assertStatus(422)->assertJsonValidationErrors('name');
+
+        // El mismo gráfico puede vivir en el panel principal y en una plantilla.
+        $this->postJson('/api/me/charts', ['chart_template_id' => $base])->assertCreated()
+            ->assertJsonPath('data.dashboard_template_id', null);
+        $this->postJson('/api/me/charts', ['chart_template_id' => $base, 'dashboard_template_id' => $created])->assertCreated()
+            ->assertJsonPath('data.dashboard_template_id', $created)
+            ->assertJsonPath('data.position', 1);
+
+        // Llena la plantilla (ya tiene 1) hasta 9; el décimo se rechaza.
+        foreach (range(2, 9) as $position) {
+            UserChart::factory()->create([
+                'user_id' => $user->id, 'chart_template_id' => $base, 'dashboard_template_id' => $created,
+                'position' => $position, 'metric' => 'SUM', 'custom_title' => "G{$position}",
+            ]);
+        }
+        $this->postJson('/api/me/charts', [
+            'chart_template_id' => $this->template('loans_by_status')->id, 'dashboard_template_id' => $created,
+        ])->assertStatus(422)->assertJsonValidationErrors('position');
+
+        $this->getJson("/api/me/charts?dashboard_template_id={$created}")->assertOk()->assertJsonCount(9, 'data');
+        $this->getJson('/api/me/charts')->assertOk()->assertJsonCount(1, 'data');
+        $this->getJson('/api/me/dashboard-templates')->assertOk()->assertJsonPath('data.0.charts_count', 9);
+
+        // Borrar la plantilla borra sus gráficos y deja el panel principal intacto.
+        $this->deleteJson("/api/me/dashboard-templates/{$created}")->assertNoContent();
+        $this->assertSame(0, UserChart::where('dashboard_template_id', $created)->count());
+        $this->getJson('/api/me/charts')->assertOk()->assertJsonCount(1, 'data');
+    }
+
+    public function test_dashboard_templates_are_isolated_between_users(): void
+    {
+        $owner = $this->actingAsRole(User::ROLE_DIRECTOR);
+        $mine = DashboardTemplate::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->getJson('/api/me/dashboard-templates')->assertOk()->assertJsonCount(0, 'data');
+        $this->patchJson("/api/me/dashboard-templates/{$mine->id}", ['name' => 'x'])->assertNotFound();
+        $this->deleteJson("/api/me/dashboard-templates/{$mine->id}")->assertNotFound();
+        $this->postJson('/api/me/charts', ['chart_template_id' => $this->template('loans_trend')->id, 'dashboard_template_id' => $mine->id])
+            ->assertStatus(422)->assertJsonValidationErrors('dashboard_template_id');
+    }
+
+    public function test_reorder_is_scoped_to_a_template_and_charts_cannot_change_template(): void
+    {
+        $user = $this->actingAsRole(User::ROLE_DIRECTOR);
+        $tpl = DashboardTemplate::factory()->create(['user_id' => $user->id]);
+        $base = $this->template('loans_trend')->id;
+        $a = UserChart::factory()->create(['user_id' => $user->id, 'chart_template_id' => $base, 'dashboard_template_id' => $tpl->id, 'position' => 1, 'metric' => 'COUNT']);
+        $b = UserChart::factory()->create(['user_id' => $user->id, 'chart_template_id' => $base, 'dashboard_template_id' => $tpl->id, 'position' => 9, 'metric' => 'SUM']);
+
+        $this->putJson('/api/me/charts/positions', [
+            'dashboard_template_id' => $tpl->id,
+            'positions' => [['id' => $a->id, 'position' => 9], ['id' => $b->id, 'position' => 1]],
+        ])->assertOk()->assertJsonPath('data.0.id', $b->id);
+
+        // Sin indicar la plantilla se opera sobre el panel principal: esos ids no existen allí.
+        $this->putJson('/api/me/charts/positions', ['positions' => [['id' => $a->id, 'position' => 2]]])
+            ->assertStatus(422);
+
+        $this->patchJson("/api/me/charts/{$a->id}", ['dashboard_template_id' => null])
+            ->assertStatus(422)->assertJsonValidationErrors('dashboard_template_id');
     }
 }

@@ -20,12 +20,29 @@ class UpdateUserChartRequest extends StoreUserChartRequest
         $rules = parent::rules();
         $rules['chart_template_id'][0] = 'sometimes';
         $rules['user_id'] = ['prohibited'];
+        unset($rules['dashboard_template_id']);
 
         return $rules;
     }
 
+    /**
+     * `prohibited` no rechaza un `null` explícito, por eso se revisa la presencia de la clave.
+     *
+     * @return array<int, callable>
+     */
+    public function after(): array
+    {
+        return [function ($validator) {
+            if ($this->has('dashboard_template_id')) {
+                $validator->errors()->add('dashboard_template_id', 'El gráfico no se puede mover a otra plantilla; créalo de nuevo allí.');
+            }
+        }];
+    }
+
     public function messages(): array
     {
-        return parent::messages() + ['user_id.prohibited' => 'El gráfico no se puede traspasar a otro usuario.'];
+        return parent::messages() + [
+            'user_id.prohibited' => 'El gráfico no se puede traspasar a otro usuario.',
+        ];
     }
 }

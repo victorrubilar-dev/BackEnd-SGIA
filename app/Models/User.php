@@ -116,6 +116,12 @@ class User extends Authenticatable
         return $this->belongsToMany(Career::class)->withTimestamps();
     }
 
+    /** @return HasMany<DashboardTemplate, $this> */
+    public function dashboardTemplates(): HasMany
+    {
+        return $this->hasMany(DashboardTemplate::class);
+    }
+
     /** @return HasMany<UserChart, $this> */
     public function charts(): HasMany
     {

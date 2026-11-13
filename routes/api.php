@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\BudgetReportController;
 use App\Http\Controllers\Api\CajonController;
 use App\Http\Controllers\Api\CareerController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\DashboardTemplateController;
 use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
@@ -239,6 +240,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-15: Dashboard personalizado (FU-06, DIR-01/AD-01; cada uno solo ve sus gráficos)
     Route::middleware('role:DIR-01,AD-01')->group(function () {
         Route::get('/chart-templates', [UserChartController::class, 'templates']);
+        Route::get('/me/dashboard-templates', [DashboardTemplateController::class, 'index']);
+        Route::post('/me/dashboard-templates', [DashboardTemplateController::class, 'store']);
+        Route::get('/me/dashboard-templates/{dashboardTemplate}', [DashboardTemplateController::class, 'show']);
+        Route::patch('/me/dashboard-templates/{dashboardTemplate}', [DashboardTemplateController::class, 'update']);
+        Route::delete('/me/dashboard-templates/{dashboardTemplate}', [DashboardTemplateController::class, 'destroy']);
         Route::get('/me/charts', [UserChartController::class, 'index']);
         Route::post('/me/charts', [UserChartController::class, 'store']);
         // Estática: antes de /me/charts/{userChart}

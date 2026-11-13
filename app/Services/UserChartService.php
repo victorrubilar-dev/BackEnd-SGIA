@@ -5,12 +5,13 @@ namespace App\Services;
 use App\Models\ChartTemplate;
 use App\Models\User;
 use App\Models\UserChart;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Dashboard personalizado (REQ-15): hasta 5 gráficos por usuario, uno por posición y sin
- * repetidos. Cada gráfico pertenece a un usuario y a una plantilla; lo que no envía lo hereda de ella; la combinación final se valida contra los mismos
+ * Dashboard personalizado (REQ-15): hasta 9 gráficos por plantilla (o por el panel principal), uno por posición y sin
+ * repetidos dentro de la misma plantilla. Cada gráfico pertenece a un usuario y a una plantilla; lo que no envía lo hereda de ella; la combinación final se valida contra los mismos
  * valores que acepta `customMetric` (MetricsService).
  */
 class UserChartService
@@ -30,11 +31,12 @@ class UserChartService
     {
         return DB::transaction(function () use ($user, $data) {
             $this->lockPanel($user->id);
-            $taken = UserChart::where('user_id', $user->id)->lockForUpdate()->pluck('position')->map(fn ($p) => (int) $p)->all();
+            $templateId = isset($data['dashboard_template_id']) ? (int) $data['dashboard_template_id'] : null;
+            $taken = $this->scope(UserChart::where('user_id', $user->id), $templateId)->lockForUpdate()->pluck('position')->map(fn ($p) => (int) $p)->all();
 
             if (count($taken) >= UserChart::MAX_POSITION) {
                 throw ValidationException::withMessages([
-                    'position' => 'Ya tienes '.UserChart::MAX_POSITION.' gráficos; borra uno o edítalo.',
+                    'position' => 'Esta plantilla ya tiene '.UserChart::MAX_POSITION.' gráficos; borra uno o edítalo.',
                 ]);
             }
 
@@ -47,11 +49,12 @@ class UserChartService
 
             $template = ChartTemplate::findOrFail($data['chart_template_id']);
             $config = $this->resolveConfig($template, $data);
-            $this->ensureNotDuplicate($user->id, $config);
+            $this->ensureNotDuplicate($user->id, $config, null, $templateId);
 
             return UserChart::create([
                 'user_id' => $user->id,
                 'chart_template_id' => $template->id,
+                'dashboard_template_id' => $templateId,
                 'position' => $position,
                 'is_active' => $data['is_active'] ?? true,
                 ...$config,
@@ -73,7 +76,7 @@ class UserChartService
                 $data['position'] = (int) $data['position'];
             }
             if (isset($data['position']) && $data['position'] !== $chart->position) {
-                $occupied = UserChart::where('user_id', $chart->user_id)
+                $occupied = $this->scope(UserChart::where('user_id', $chart->user_id), $chart->dashboard_template_id)
                     ->where('position', $data['position'])
                     ->whereKeyNot($chart->id)
                     ->exists();
@@ -96,7 +99,7 @@ class UserChartService
             $chart->fill($this->resolveConfig($template, $data, $chart));
             // Solo si cambió la consulta: renombrar, ocultar o mover no se bloquea.
             if ($chart->isDirty(self::QUERY_FIELDS)) {
-                $this->ensureNotDuplicate($chart->user_id, $chart->only(self::QUERY_FIELDS), $chart->id);
+                $this->ensureNotDuplicate($chart->user_id, $chart->only(self::QUERY_FIELDS), $chart->id, $chart->dashboard_template_id);
             }
             $chart->save();
 
@@ -105,17 +108,17 @@ class UserChartService
     }
 
     /**
-     * Reordena en bloque. La restricción `unique(user_id, position)` es diferida, así que se
+     * Reordena en bloque dentro de una plantilla (o el panel principal). La restricción `unique(user_id, dashboard_template_id, position)` es diferida, así que se
      * pueden intercambiar posiciones dentro de la transacción.
      *
      * @param  array<int, array{id: int, position: int}>  $positions
      *
      * @throws ValidationException
      */
-    public function reorder(User $user, array $positions): void
+    public function reorder(User $user, array $positions, ?int $templateId = null): void
     {
-        DB::transaction(function () use ($user, $positions) {
-            $charts = UserChart::where('user_id', $user->id)->lockForUpdate()->get()->keyBy('id');
+        DB::transaction(function () use ($user, $positions, $templateId) {
+            $charts = $this->scope(UserChart::where('user_id', $user->id), $templateId)->lockForUpdate()->get()->keyBy('id');
 
             $final = $charts->mapWithKeys(fn (UserChart $chart) => [$chart->id => $chart->position])->all();
             foreach ($positions as $index => $entry) {
@@ -142,6 +145,19 @@ class UserChartService
     }
 
     /**
+     * Limita la consulta a una plantilla (`null` = panel principal).
+     *
+     * @param  Builder<UserChart>  $query
+     * @return Builder<UserChart>
+     */
+    private function scope($query, ?int $templateId)
+    {
+        return $templateId === null
+            ? $query->whereNull('dashboard_template_id')
+            : $query->where('dashboard_template_id', $templateId);
+    }
+
+    /**
      * Serializa las escrituras del panel de un usuario: dos peticiones simultáneas (doble clic)
      * no pueden pasar a la vez la comprobación de duplicados, ni siquiera con el panel vacío.
      */
@@ -151,7 +167,7 @@ class UserChartService
     }
 
     /**
-     * Un usuario no puede tener dos gráficos iguales: misma consulta (`entity`, `metric`,
+     * Un usuario no puede tener dos gráficos iguales en la misma plantilla: misma consulta (`entity`, `metric`,
      * `group_by`, `period` y fechas) con el mismo tipo de gráfico. El título no cuenta y los
      * ocultos también ocupan su consulta.
      *
@@ -159,13 +175,13 @@ class UserChartService
      *
      * @throws ValidationException
      */
-    private function ensureNotDuplicate(int $userId, array $config, ?int $exceptId = null): void
+    private function ensureNotDuplicate(int $userId, array $config, ?int $exceptId = null, ?int $templateId = null): void
     {
         $nullable = fn ($query, string $column, mixed $value) => $value === null
             ? $query->whereNull($column)
             : $query->where($column, $value instanceof \DateTimeInterface ? $value->format('Y-m-d') : $value);
 
-        $twin = UserChart::where('user_id', $userId)
+        $twin = $this->scope(UserChart::where('user_id', $userId), $templateId)
             ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
             ->where('type', $config['type'])
             ->where('entity', $config['entity'])
@@ -179,8 +195,8 @@ class UserChartService
         if ($twin !== null) {
             throw ValidationException::withMessages([
                 'chart' => $twin->is_active
-                    ? "Ya tienes este gráfico en tu panel (\"{$twin->custom_title}\")."
-                    : "Ya tienes este gráfico en tu panel, pero está oculto (\"{$twin->custom_title}\"): vuelve a mostrarlo.",
+                    ? "Ya tienes este gráfico en esta plantilla (\"{$twin->custom_title}\")."
+                    : "Ya tienes este gráfico en esta plantilla, pero está oculto (\"{$twin->custom_title}\"): vuelve a mostrarlo.",
             ]);
         }
     }

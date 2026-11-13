@@ -130,7 +130,7 @@ class CoreModelsSchemaTest extends TestCase
         $this->assertSame(4, ChartTemplate::whereIn('code', ['bar', 'line', 'pie', 'kpi'])->count());
     }
 
-    public function test_user_chart_position_is_unique_per_user_and_limited_to_five(): void
+    public function test_user_chart_position_is_unique_per_user_and_limited_to_nine(): void
     {
         $user = User::factory()->create();
         $template = ChartTemplate::factory()->create();
@@ -143,8 +143,8 @@ class CoreModelsSchemaTest extends TestCase
         $this->assertTrue($chart->template->is($template));
 
         try {
-            $make(6);
-            $this->fail('Posición 6 debía ser rechazada.');
+            $make(10);
+            $this->fail('Posición 10 debía ser rechazada.');
         } catch (QueryException) {
             $this->assertTrue(true);
         }
