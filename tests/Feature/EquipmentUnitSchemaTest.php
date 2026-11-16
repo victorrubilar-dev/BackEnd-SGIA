@@ -6,6 +6,7 @@ use App\Models\Cajon;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -54,6 +55,8 @@ class EquipmentUnitSchemaTest extends TestCase
     {
         $supply = Product::factory()->supply()->create(['quantity' => 5]);
         $orphan = Product::factory()->create(['cajon_id' => null, 'quantity' => 2, 'barcode' => 'SGIA-ORPHAN01']);
+        // La migración es anterior a `locations.code` (NOT NULL): la sala se crea con el modelo y el backfill la reutiliza.
+        Location::firstOrCreate(['nombre' => 'Sin asignar'], ['sala' => 'Sin asignar', 'tipo' => Location::TIPO_BODEGA]);
 
         $this->runBackfill();
 

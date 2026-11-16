@@ -19,11 +19,11 @@
 - [x] Filtros en `GET /api/products` por `cajon_id`, `location_id`, `sala` y `cajon`.
 - [x] Seeder con ubicaciones y cajones precargados para pruebas.
 
-#### Códigos de ubicación (plan en `docs/codigos-ubicacion.md`)
-- [ ] Código corto de sala `locations.code` (`[A-Z0-9]{2,10}`, único), sugerido desde el nombre y no editable una vez creado.
-- [ ] Código del cajón `{código sala}-{código cajón}` en `cajones.barcode` (reemplaza al `EST-…` aleatorio), recalculado al cambiar código o sala; límite de 12 caracteres y sin choques en la misma sala.
-- [ ] Migración: códigos de las salas existentes según la tabla aprobada del plan y recálculo de todos los cajones.
-- [ ] `GET /api/cajones/by-code/{code}` para el escaneo y `GET /api/cajones/{id}/label` (etiqueta 50x30 mm).
+#### Códigos de ubicación (plan en `docs/codigos-ubicacion.md`; Fase 1 backend hecha, tests en `LocationCodeTest`)
+- [x] Código corto de sala `locations.code` (`[A-Z0-9]{2,10}`, único), sugerido desde el nombre y no editable una vez creado.
+- [x] Código del cajón `{código sala}-{código cajón}` en `cajones.barcode` (reemplaza al `EST-…` aleatorio), recalculado al cambiar código o sala; límite de 12 caracteres y sin choques en la misma sala.
+- [x] Migración: códigos de las salas existentes según la tabla aprobada del plan y recálculo de todos los cajones.
+- [x] `GET /api/cajones/by-code/{code}` para el escaneo y `GET /api/cajones/{id}/label` (etiqueta 50x30 mm).
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.

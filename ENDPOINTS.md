@@ -192,19 +192,21 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 ### 2.1 Ubicaciones Físicas y Cajones (`FU-02` / `REQ-05`)
 
-> `locations` añade `storeroom_id` (pañol; por defecto `PAN-TEMUCO`), `building` y `floor`; los cajones añaden `barcode` (`EST-xxxxxxxx`). Una ubicación con cajones, o un cajón con productos o unidades, no se puede borrar (`422`).
+> `locations` añade `storeroom_id` (pañol; por defecto `PAN-TEMUCO`), `building` y `floor`; cada sala tiene `code` corto e inmutable (`L206`, `PCENTRAL`) y el `barcode` del cajón es `{code de la sala}-{codigo normalizado}` (`L206-RACK-R1`, ver `docs/codigos-ubicacion.md`). Una ubicación con cajones, o un cajón con productos o unidades, no se puede borrar (`422`).
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
 | `GET` | `/api/locations` | Todos (`auth`) | Listado paginado de ubicaciones (salas, pañoles, talleres). Soporta filtros por `tipo` (`sala`, `panol`, `taller`, `bodega`), `storeroom_id` (ubicaciones de un pañol) y búsqueda por texto (`search`). Incluye conteo y lista de cajones, más auditoría (`created_by`, `updated_by`). | ✅ Implementado |
-| `POST` | `/api/locations` | `AD-01`, `DIR-01`, `PAN-01` | Crea una nueva ubicación física.<br>**Body:** `nombre`, `tipo` (`sala`, `panol`, `taller`, `bodega`), `descripcion`. Registra automáticamente `created_by` y `updated_by`. | ✅ Implementado |
+| `POST` | `/api/locations` | `AD-01`, `DIR-01`, `PAN-01` | Crea una nueva ubicación física.<br>**Body:** `nombre`, `tipo` (`sala`, `panol`, `taller`, `bodega`), `descripcion`, `code` (opcional; se pasa a mayúsculas, `[A-Z0-9]{2,10}`, único: `422` en `code`). Sin `code`, se sugiere desde el nombre (`L-206` → `L206`, `Pañol Central` → `PCENTRAL`) con sufijo numérico si ya existe (`PREDES2`). Registra automáticamente `created_by` y `updated_by`. | ✅ Implementado |
 | `GET` | `/api/locations/{id}` | Todos (`auth`) | Detalle de ubicación con todos sus cajones registrados y auditoría. | ✅ Implementado |
-| `PUT / PATCH` | `/api/locations/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza nombre, tipo o descripción de la ubicación. Actualiza `updated_by`. | ✅ Implementado |
+| `PUT / PATCH` | `/api/locations/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza nombre, tipo o descripción de la ubicación. Actualiza `updated_by`. El `code` no se puede cambiar: uno distinto al actual → `422` en `code` («El código de la sala no se puede cambiar.»); igual al actual se ignora. | ✅ Implementado |
 | `DELETE` | `/api/locations/{id}` | `AD-01`, `DIR-01` | Elimina una ubicación y sus cajones asociados. | ✅ Implementado |
 | `GET` | `/api/cajones` | Todos (`auth`) | Listado de cajones/gavetas/compartimientos. Soporta filtros por `location_id` y búsqueda por código/descripción (`search`). Incluye relación de ubicación y auditoría. | ✅ Implementado |
-| `POST` | `/api/cajones` | `AD-01`, `DIR-01`, `PAN-01` | Crea un nuevo cajón dentro de una ubicación.<br>**Body:** `location_id`, `codigo`, `descripcion`. Valida código único por ubicación y registra `created_by` / `updated_by`. | ✅ Implementado |
+| `POST` | `/api/cajones` | `AD-01`, `DIR-01`, `PAN-01` | Crea un nuevo cajón dentro de una ubicación.<br>**Body:** `location_id`, `codigo`, `descripcion`. Calcula `barcode` = `{code de la sala}-{codigo normalizado}` (sin tildes, mayúsculas, lo que no sea `[A-Z0-9]` pasa a `-`: `Mesa 1 Cajón` → `E301-MESA-1-CAJON`). `422` en `codigo` si el normalizado supera 12 caracteres, queda vacío o ya existe en la sala («Ya existe un cajón con el código {CODIGO} en esta sala.»). Registra `created_by` / `updated_by`. | ✅ Implementado |
 | `GET` | `/api/cajones/{id}` | Todos (`auth`) | Detalle del cajón con su ubicación padre y total de productos almacenados. | ✅ Implementado |
-| `PUT / PATCH` | `/api/cajones/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza código, descripción o mueve el cajón de ubicación. Actualiza `updated_by`. | ✅ Implementado |
+| `PUT / PATCH` | `/api/cajones/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza código, descripción o mueve el cajón de ubicación; `barcode` se recalcula si cambia `codigo` o `location_id` (mismas validaciones que el alta). Actualiza `updated_by`. | ✅ Implementado |
+| `GET` | `/api/cajones/by-code/{code}` | `AD-01`, `DIR-01`, `PAN-01` | Búsqueda exacta por `barcode` (escaneo), sin distinguir mayúsculas. `CajonResource` con `location` (incluye `code`). `404`: «No existe un cajón con el código {code}.» | ✅ Implementado |
+| `GET` | `/api/cajones/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras Code128 + código), igual que la de unidades. Archivo `etiqueta-{barcode}.pdf`. | ✅ Implementado |
 | `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón. `422` con `products_count` si tiene productos asignados. | ✅ Implementado |
 | `POST` | `/api/cajones/bulk-delete` | `AD-01`, `DIR-01` | Borrado masivo.<br>**Body:** `ids` (array), `partial` (opcional). Sin `partial`, si alguno tiene productos responde `422` con `blocked_ids`, `blocked_cajones` y `deletable_ids` y no borra nada. Con `partial: true` borra los libres (`deleted_ids`, `deleted_count`) e informa los bloqueados. | ✅ Implementado |
 
@@ -495,14 +497,11 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01`, `AD-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
-| `GET` | `/api/cajones/by-code/{code}` | `AD-01`, `DIR-01`, `PAN-01` | Busca un cajón por su código `{código sala}-{código cajón}` (escaneo); `404` si no existe. | `docs/codigos-ubicacion.md` |
-| `GET` | `/api/cajones/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm del cajón (código de barras + código). | `docs/codigos-ubicacion.md` |
 | `POST` | `/api/loans/checkin` (cambio) | `PAN-01`, `AD-01` | **Rompe contrato:** equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`); insumos envían `cajon_id` (debe ser su cajón registrado); extraviado sin cajón; cajón del pañol del préstamo. | `docs/codigos-ubicacion.md` |
-| `POST` / `PATCH` | `/api/locations` (cambio) | `AD-01`, `DIR-01`, `PAN-01` | `code` de sala (`[A-Z0-9]{2,10}`, único, sugerido si no viene, no editable) y `cajones.barcode` = `{código sala}-{código cajón}`. | `docs/codigos-ubicacion.md` |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (174 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (176 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

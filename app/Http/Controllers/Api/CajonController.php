@@ -8,10 +8,13 @@ use App\Http\Requests\StoreCajonRequest;
 use App\Http\Requests\UpdateCajonRequest;
 use App\Http\Resources\CajonResource;
 use App\Models\Cajon;
+use App\Services\BarcodeService;
+use App\Services\EquipmentPdfService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class CajonController extends Controller
 {
@@ -55,6 +58,31 @@ class CajonController extends Controller
         return (new CajonResource($cajon->load('location')))
             ->response()
             ->setStatusCode(201);
+    }
+
+    /**
+     * Búsqueda exacta por código escaneado (`L206-RACK-R1`), sin distinguir mayúsculas.
+     */
+    public function byCode(string $code): CajonResource|JsonResponse
+    {
+        $cajon = Cajon::with('location')->where('barcode', mb_strtoupper(trim($code)))->first();
+
+        if ($cajon === null) {
+            return response()->json(['message' => "No existe un cajón con el código {$code}."], 404);
+        }
+
+        return new CajonResource($cajon);
+    }
+
+    /**
+     * Etiqueta 50x30 mm del cajón (código de barras + código), igual que la de unidades.
+     */
+    public function label(Cajon $cajon, BarcodeService $barcodeService, EquipmentPdfService $pdfService): SymfonyResponse
+    {
+        return $pdfService->download(
+            $pdfService->label($cajon->barcode, $barcodeService),
+            'etiqueta-'.$cajon->barcode.'.pdf'
+        );
     }
 
     /**
