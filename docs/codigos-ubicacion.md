@@ -63,7 +63,8 @@ Se mantienen `loan_id`, `general_notes`, `items[].item_id` o `product_id`, `cond
 |---|---|---|
 | Equipo o maqueta | `units: [{id, cajon_id}]` | **Reemplaza a `unit_ids`**, que se elimina. Obligatorio, con al menos una unidad. Solo se devuelven las enviadas. `cajon_id` obligatorio salvo `extraviado` (`422` en `items.{i}.units.{j}.cajon_id`: «Escanea el cajón donde se guarda la unidad {code}.»). La unidad queda en ese cajón; una extraviada no cambia de cajón. |
 | Insumo | `cajon_id` | Obligatorio salvo `extraviado` (`422` en `items.{i}.cajon_id`: «Escanea el cajón donde se guarda {producto}.»). Si el producto tiene cajón y el escaneado es otro: `422`: «{producto} se guarda en el cajón {CODIGO}; escanea ese cajón o reubica el producto.». Si no tenía, queda registrado el escaneado (`products.cajon_id` y `location_id`). |
-| Todos | — | El cajón debe pertenecer a una sala del pañol del préstamo (`locations.storeroom_id = loans.storeroom_id`; si el préstamo no tiene pañol, no se aplica). Si no: `422`: «El cajón {CODIGO} no pertenece al pañol del préstamo.» |
+| Equipo o maqueta | — | El cajón debe pertenecer a una sala del pañol del préstamo (`locations.storeroom_id = loans.storeroom_id`; si el préstamo no tiene pañol, no se aplica). Si no: `422`: «El cajón {CODIGO} no pertenece al pañol del préstamo.» |
+| Insumo | — | **No** se exige que el cajón sea del pañol del préstamo: los insumos no se controlan por pañol y su cajón registrado puede estar en otro (corrección de la fase 5: un cable registrado en el Pañol de Redes no se podía devolver en un préstamo del Pañol Central). |
 
 - Varias filas pueden apuntar al mismo ítem de equipo con distinta condición (una unidad buena y otra dañada). Una unidad no puede aparecer dos veces.
 - Estados de la unidad, sin cambios: `bueno`/`regular` → `disponible`, `dañado` → `en_reparacion`, `extraviado` → `dado_de_baja`.

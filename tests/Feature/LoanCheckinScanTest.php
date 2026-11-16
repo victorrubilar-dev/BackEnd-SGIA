@@ -225,13 +225,23 @@ class LoanCheckinScanTest extends TestCase
             ->assertJsonPath('errors', ['items.0.units.0.cajon_id' => ["El cajón {$foreign->barcode} no pertenece al pañol del préstamo."]]);
         $this->assertSame('prestado', $units[0]->fresh()->status);
 
-        $product = Product::factory()->supply()->create(['quantity' => 5, 'cajon_id' => null]);
+    }
+
+    /**
+     * Los insumos no se controlan por pañol: su cajón registrado puede estar en otro pañol que el
+     * del préstamo y la devolución a ese cajón es válida (caso real: cable en el Pañol de Redes).
+     */
+    public function test_supply_registered_in_another_storeroom_is_returned_to_its_cajon(): void
+    {
+        $foreign = $this->foreignCajon();
+        $product = Product::factory()->supply()->create(['quantity' => 5, 'cajon_id' => $foreign->id, 'location_id' => $foreign->location_id]);
         $loan = $this->supplyLoan($product);
+
         $this->postJson('/api/loans/checkin', ['loan_id' => $loan->id, 'items' => [
             ['product_id' => $product->id, 'condition' => 'bueno', 'cajon_id' => $foreign->id],
-        ]])->assertUnprocessable()
-            ->assertJsonPath('errors', ['items.0.cajon_id' => ["El cajón {$foreign->barcode} no pertenece al pañol del préstamo."]]);
-        $this->assertNull($product->fresh()->cajon_id);
+        ]])->assertOk()->assertJsonPath('data.is_returned', true);
+
+        $this->assertSame($foreign->id, $product->fresh()->cajon_id);
     }
 
     public function test_show_and_index_include_the_full_code_of_item_and_unit_cajones(): void

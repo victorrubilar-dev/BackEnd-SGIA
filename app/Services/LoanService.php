@@ -670,7 +670,7 @@ class LoanService
 
                 $seen[] = $item->id;
 
-                $cajon = $this->supplyCajon($loan, $item, $row, $condition, $index, $cajones);
+                $cajon = $this->supplyCajon($item, $row, $condition, $index, $cajones);
 
                 $this->restoreItem($item, $condition, $cajon);
 
@@ -838,14 +838,15 @@ class LoanService
 
     /**
      * Cajón escaneado para un insumo: obligatorio salvo `extraviado` y, si el producto ya tiene
-     * cajón, debe ser ese (para guardarlo en otro lado se usa «Reubicar»).
+     * cajón, debe ser ese (para guardarlo en otro lado se usa «Reubicar»). Los insumos no se
+     * controlan por pañol: su cajón registrado puede estar en otro pañol que el del préstamo.
      *
      * @param  array<string, mixed>  $row
      * @param  EloquentCollection<int, Cajon>  $cajones
      *
      * @throws ValidationException
      */
-    private function supplyCajon(Loan $loan, LoanItem $item, array $row, string $condition, int $index, EloquentCollection $cajones): ?Cajon
+    private function supplyCajon(LoanItem $item, array $row, string $condition, int $index, EloquentCollection $cajones): ?Cajon
     {
         if ($condition === LoanItem::CONDITION_LOST || $item->product === null) {
             return null;
@@ -868,8 +869,6 @@ class LoanService
                 $field => "{$name} se guarda en el cajón {$code}; escanea ese cajón o reubica el producto.",
             ]);
         }
-
-        $this->assertCajonInLoanStoreroom($loan, $cajon, $field);
 
         return $cajon;
     }
