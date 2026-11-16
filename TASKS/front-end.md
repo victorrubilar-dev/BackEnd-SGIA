@@ -454,3 +454,13 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 - `master_code`: código `Art` del maestro de artículos de Oracle (p. ej. `OF33075`). Máx. 30, solo letras, números, `.`, `-`, `_`; el backend lo pasa a mayúsculas. **Único** entre productos (`422` en `errors.master_code`).
 - Catálogo: `GET /api/oracle-categories` (lista completa sin paginar, `{id, name}`) y `POST /api/oracle-categories` (`{name}` → `201`; `422` si ya existe). Roles `AD-01`, `DIR-01`, `PAN-01`. El selector debe permitir elegir una existente o agregar una nueva.
 - `GET /api/products?search=` también busca por `master_code`.
+
+## Códigos de ubicación y devolución con escaneo (plan, noviembre 2026) — Rompe contrato
+
+Plan y contrato completos en `docs/codigos-ubicacion.md`. **Aún no implementado.**
+
+- `LocationResource` sumará `code` (código corto de sala, no editable). `POST /api/locations` acepta `code` opcional (si no viene, se sugiere); en `PATCH` un `code` distinto responde `422`.
+- `cajones.barcode` pasará de `EST-…` aleatorio a `{código sala}-{código cajón}` (`L206-RACK-R1`); el `codigo` normalizado tiene máximo 12 caracteres.
+- Rutas nuevas: `GET /api/cajones/by-code/{code}` (escaneo) y `GET /api/cajones/{id}/label` (PDF 50x30 mm).
+- **`POST /api/loans/checkin` cambia:** equipos/maquetas envían `units: [{id, cajon_id}]` en lugar de `unit_ids`; insumos envían `cajon_id`; extraviado no lleva cajón. Las fases de backend y frontend de este cambio se publican juntas.
+
