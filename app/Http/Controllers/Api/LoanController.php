@@ -101,7 +101,7 @@ class LoanController extends Controller
         Gate::authorize('viewAny', Loan::class);
 
         $query = Loan::visibleTo($request->user())
-            ->with(['items.product.location', 'items.units.cajon.location', 'requester', 'student', 'career', 'storeroom', 'location'])
+            ->with(['items.product.location', 'items.product.cajon', 'items.units.cajon.location', 'requester', 'student', 'career', 'storeroom', 'location'])
             ->orderByDesc('created_at');
 
         $loanService->applyHistoryFilters($query, $request);
@@ -120,7 +120,7 @@ class LoanController extends Controller
         Gate::authorize('view', $loan);
 
         return new LoanResource(
-            $loan->load(['items.product.location', 'items.units.cajon.location', 'requester', 'approver', 'processor', 'student', 'career', 'storeroom', 'location'])
+            $loan->load(['items.product.location', 'items.product.cajon', 'items.units.cajon.location', 'requester', 'approver', 'processor', 'student', 'career', 'storeroom', 'location'])
         );
     }
 

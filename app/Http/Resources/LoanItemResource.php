@@ -53,6 +53,8 @@ class LoanItemResource extends JsonResource
                 ? [
                     'id' => $cajon->id,
                     'codigo' => $cajon->codigo,
+                    // Código completo para comparar con el escaneo (`L206-RACK-R1`).
+                    'barcode' => $cajon->barcode,
                     'descripcion' => $cajon->descripcion,
                 ]
                 : null,
@@ -81,7 +83,7 @@ class LoanItemResource extends JsonResource
 
         return [
             'cajon' => $cajon !== null
-                ? ['id' => $cajon->id, 'codigo' => $cajon->codigo, 'descripcion' => $cajon->descripcion]
+                ? ['id' => $cajon->id, 'codigo' => $cajon->codigo, 'barcode' => $cajon->barcode, 'descripcion' => $cajon->descripcion]
                 : null,
             'location' => $location !== null
                 ? [

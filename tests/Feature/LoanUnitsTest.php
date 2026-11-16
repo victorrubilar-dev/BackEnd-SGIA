@@ -76,6 +76,19 @@ class LoanUnitsTest extends TestCase
         return [$loan, $item];
     }
 
+    /**
+     * Filas `units` del checkin: cada unidad escaneada con su cajón (uno nuevo del pañol por defecto si no se indica).
+     *
+     * @param  array<int, int>  $ids
+     * @return array<int, array{id: int, cajon_id: int}>
+     */
+    private function scanned(array $ids, ?int $cajonId = null): array
+    {
+        $cajonId ??= Cajon::factory()->create()->id;
+
+        return array_map(fn (int $id) => ['id' => $id, 'cajon_id' => $cajonId], array_values($ids));
+    }
+
     private function checkout(array $items, array $extra = []): TestResponse
     {
         return $this->postJson('/api/loans/checkout', [
@@ -213,13 +226,16 @@ class LoanUnitsTest extends TestCase
         $loanId = $response->json('data.id');
         $itemId = $response->json('data.items.0.id');
 
+        $cajon = Cajon::factory()->create();
+
         $this->postJson('/api/loans/checkin', [
             'loan_id' => $loanId,
-            'items' => [['item_id' => $itemId, 'condition' => 'regular']],
+            'items' => [['item_id' => $itemId, 'condition' => 'regular', 'units' => $this->scanned($units->pluck('id')->all(), $cajon->id)]],
         ])->assertOk()->assertJsonPath('data.is_returned', true)->assertJsonPath('data.items.0.returned_quantity', 3);
 
         $this->assertSame(3, $product->fresh()->quantity);
         $this->assertSame(['disponible', 'disponible', 'disponible'], $units->map(fn ($u) => $u->fresh()->status)->all());
+        $this->assertSame([$cajon->id, $cajon->id, $cajon->id], $units->map(fn ($u) => $u->fresh()->cajon_id)->all());
         $this->assertNotNull(Loan::findOrFail($loanId)->returned_at);
         $this->assertSame('regular', LoanItem::findOrFail($itemId)->return_condition);
     }
@@ -234,14 +250,14 @@ class LoanUnitsTest extends TestCase
         $ids = collect($response->json('data.items.0.units'))->pluck('id')->sort()->values();
 
         $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [
-            ['item_id' => $itemId, 'condition' => 'bueno', 'unit_ids' => [$ids[0]]],
+            ['item_id' => $itemId, 'condition' => 'bueno', 'units' => $this->scanned([$ids[0]])],
         ]])->assertOk()->assertJsonPath('data.is_returned', false)->assertJsonPath('data.items.0.returned_quantity', 1)->assertJsonPath('data.items.0.is_returned', false);
         $this->assertSame(1, $product->fresh()->quantity);
         $this->assertNull(LoanItem::findOrFail($itemId)->returned_at);
 
         $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [
-            ['item_id' => $itemId, 'condition' => 'danado', 'unit_ids' => [$ids[1]]],
-            ['item_id' => $itemId, 'condition' => 'extraviado', 'unit_ids' => [$ids[2]]],
+            ['item_id' => $itemId, 'condition' => 'danado', 'units' => $this->scanned([$ids[1]])],
+            ['item_id' => $itemId, 'condition' => 'extraviado', 'units' => [['id' => $ids[2]]]],
         ]])->assertOk()->assertJsonPath('data.is_returned', true);
 
         $fresh = $product->fresh();
@@ -262,19 +278,19 @@ class LoanUnitsTest extends TestCase
         $ids = collect($response->json('data.items.0.units'))->pluck('id')->values();
         $notBorrowed = $units->pluck('id')->diff($ids)->first();
 
-        $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [['item_id' => $itemId, 'condition' => 'bueno', 'unit_ids' => [$notBorrowed]]]])
-            ->assertStatus(422)->assertJsonValidationErrors('items.0.unit_ids');
+        $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [['item_id' => $itemId, 'condition' => 'bueno', 'units' => $this->scanned([$notBorrowed])]]])
+            ->assertStatus(422)->assertJsonValidationErrors('items.0.units.0.id');
         $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [
-            ['item_id' => $itemId, 'condition' => 'bueno', 'unit_ids' => [$ids[0]]],
-            ['item_id' => $itemId, 'condition' => 'bueno', 'unit_ids' => [$ids[0]]],
-        ]])->assertStatus(422)->assertJsonValidationErrors('items.1.unit_ids.0');
+            ['item_id' => $itemId, 'condition' => 'bueno', 'units' => $this->scanned([$ids[0]])],
+            ['item_id' => $itemId, 'condition' => 'bueno', 'units' => $this->scanned([$ids[0]])],
+        ]])->assertStatus(422)->assertJsonValidationErrors('items.1.units.0.id');
 
         // La operación fallida no deja devoluciones a medias.
         $this->assertSame(0, LoanItem::findOrFail($itemId)->returned_quantity);
 
-        $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [['item_id' => $itemId, 'condition' => 'bueno']]])->assertOk();
-        $this->postJson('/api/loans/checkin', ['loan_id' => $loanId, 'items' => [['item_id' => $itemId, 'condition' => 'bueno']]])
-            ->assertStatus(422);
+        $all = ['loan_id' => $loanId, 'items' => [['item_id' => $itemId, 'condition' => 'bueno', 'units' => $this->scanned($ids->all())]]];
+        $this->postJson('/api/loans/checkin', $all)->assertOk();
+        $this->postJson('/api/loans/checkin', $all)->assertStatus(422)->assertJsonValidationErrors('items.0');
     }
 
     public function test_checkin_updates_stock_alerts(): void
@@ -286,7 +302,8 @@ class LoanUnitsTest extends TestCase
         $this->assertDatabaseHas('stock_alerts', ['product_id' => $product->id, 'alert_type' => StockAlert::TYPE_CRITICAL, 'is_resolved' => false]);
 
         $product->update(['stock_minimo' => 0]);
-        $this->postJson('/api/loans/checkin', ['loan_id' => $response->json('data.id'), 'items' => [['item_id' => $response->json('data.items.0.id'), 'condition' => 'extraviado']]])->assertOk();
+        $lost = collect($response->json('data.items.0.units'))->map(fn (array $unit) => ['id' => $unit['id']])->all();
+        $this->postJson('/api/loans/checkin', ['loan_id' => $response->json('data.id'), 'items' => [['item_id' => $response->json('data.items.0.id'), 'condition' => 'extraviado', 'units' => $lost]]])->assertOk();
 
         $this->assertSame(2, $product->fresh()->quantity_written_off);
         $this->assertSame(0, $product->fresh()->quantity);
@@ -330,7 +347,7 @@ class LoanUnitsTest extends TestCase
         $this->assertSame(6, $supply->fresh()->quantity);
         $response->assertJsonPath('data.items.0.delivered_quantity', 4)->assertJsonCount(0, 'data.items.0.units');
 
-        $this->postJson('/api/loans/checkin', ['loan_id' => $response->json('data.id'), 'items' => [['item_id' => $response->json('data.items.0.id'), 'condition' => 'bueno']]])
+        $this->postJson('/api/loans/checkin', ['loan_id' => $response->json('data.id'), 'items' => [['item_id' => $response->json('data.items.0.id'), 'condition' => 'bueno', 'cajon_id' => $supply->cajon_id]]])
             ->assertOk()->assertJsonPath('data.items.0.returned_quantity', 4);
         $this->assertSame(10, $supply->fresh()->quantity);
     }
@@ -414,7 +431,7 @@ class LoanUnitsTest extends TestCase
         Sanctum::actingAs($this->warehouse);
 
         $expected = [
-            'cajon' => ['id' => $cajon->id, 'codigo' => 'C-02', 'descripcion' => 'Routers'],
+            'cajon' => ['id' => $cajon->id, 'codigo' => 'C-02', 'barcode' => 'LREDES-C-02', 'descripcion' => 'Routers'],
             'location' => ['id' => $location->id, 'nombre' => 'Laboratorio de Redes', 'tipo' => 'sala', 'storeroom_id' => $storeroom->id],
         ];
 

@@ -1,6 +1,6 @@
 # Códigos de ubicación y devolución con escaneo de cajón
 
-**Estado: Fase 1 implementada (backend).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: Fases 1 y 2 implementadas (backend).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
@@ -131,9 +131,9 @@ Ejemplos de cajones resultantes: `PCENTRAL-CAJON-A1`, `PCENTRAL-GAVETA-01`, `E30
 - [x] Tests Feature (generación, unicidad, inmutabilidad, normalización, recálculo, by-code 200/404/403, label 200/403), `ResourceContractTest`, `ENDPOINTS.md`, `TASKS/front-end.md`.
 
 ### Fase 2 — Backend: devolución con escaneo
-- [ ] `units: [{id, cajon_id}]` en lugar de `unit_ids`; `cajon_id` en insumos; reglas de extraviado, cajón registrado y pañol.
-- [ ] La unidad devuelta queda en el cajón escaneado; el insumo sin cajón lo registra.
-- [ ] Tests (unidad con y sin cajón, extraviada, parcial, insumo correcto/distinto/sin cajón, cajón de otro pañol) y actualización de `LoanReturnTest` y `LoanUnitsTest`.
+- [x] `units: [{id, cajon_id}]` en lugar de `unit_ids`; `cajon_id` en insumos; reglas de extraviado, cajón registrado y pañol.
+- [x] La unidad devuelta queda en el cajón escaneado; el insumo sin cajón lo registra.
+- [x] Tests (unidad con y sin cajón, extraviada, parcial, insumo correcto/distinto/sin cajón, cajón de otro pañol) y actualización de `LoanReturnTest` y `LoanUnitsTest`.
 
 ### Fase 3 — Frontend: Ubicaciones
 - [ ] Tipos y cliente: `code` en sala, `fetchCajonByCode`, descarga de etiqueta.

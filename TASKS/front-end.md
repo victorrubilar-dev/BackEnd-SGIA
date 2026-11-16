@@ -457,7 +457,7 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 
 ## Códigos de ubicación y devolución con escaneo (plan, noviembre 2026) — Rompe contrato
 
-Plan y contrato completos en `docs/codigos-ubicacion.md`. **Fase 1 (códigos de sala y cajón) ya está en el backend; la devolución con escaneo (Fase 2) aún no.**
+Plan y contrato completos en `docs/codigos-ubicacion.md`. **Fases 1 (códigos de sala y cajón) y 2 (devolución con escaneo) ya están en el backend.**
 
 Ya disponible (Fase 1):
 - `LocationResource` suma `code` (código corto de sala, `[A-Z0-9]{2,10}`, único, no editable). `POST /api/locations` acepta `code` opcional (se pasa a mayúsculas; `422` en `code` si es inválido o está tomado); si no viene, el backend lo sugiere con la regla del plan y sufijo numérico si choca (`PREDES2`). En `PATCH`/`PUT` un `code` distinto al actual responde `422` en `code` («El código de la sala no se puede cambiar.»); igual al actual se ignora.
@@ -465,6 +465,7 @@ Ya disponible (Fase 1):
 - Rutas nuevas (`AD-01`, `DIR-01`, `PAN-01`): `GET /api/cajones/by-code/{code}` (sin distinguir mayúsculas; `404` «No existe un cajón con el código {code}.») y `GET /api/cajones/{id}/label` (PDF 50x30 mm, `etiqueta-{barcode}.pdf`).
 - Códigos de la base de desarrollo: `PCENTRAL`, `E301`, `T102`, `PREDES`, `BODEGAE`, `L204`, `L206`, `E205`.
 
-Pendiente (Fase 2, se publica junto con la Fase 4 del frontend):
-- **`POST /api/loans/checkin` cambia:** equipos/maquetas envían `units: [{id, cajon_id}]` en lugar de `unit_ids`; insumos envían `cajon_id`; extraviado no lleva cajón. Las fases de backend y frontend de este cambio se publican juntas.
+Ya disponible (Fase 2, rompe contrato; va junto con la Fase 4 del frontend):
+- **`POST /api/loans/checkin` cambia:** equipos/maquetas envían `units: [{id, cajon_id}]` (obligatorio, ≥1) en lugar de `unit_ids` (eliminado: un payload antiguo responde `422` en `items.{i}.units`). Solo se devuelven las unidades enviadas y cada una queda en el cajón escaneado; `extraviado` no lleva cajón ni cambia el de la unidad. Insumos envían `cajon_id` (debe ser su cajón registrado; si el producto no tenía, lo registra). Todo cajón debe ser del pañol del préstamo. Mensajes y campos de error en `ENDPOINTS.md` y `docs/codigos-ubicacion.md`.
+- `LoanItemResource`: el objeto `cajon` del ítem y el `cajon` de cada unidad suman `barcode` (código completo `L206-RACK-R1`). `GET /api/loans`, `GET /api/loans/{id}` y la respuesta de `checkin` cargan el cajón del producto, así que `items[].cajon` viene con datos cuando el producto tiene cajón. Las claves de primer nivel de `LoanItemResource` no cambian.
 
