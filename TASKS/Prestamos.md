@@ -23,7 +23,7 @@
 ### Devoluciones y vencimiento (FU-04, PAN-01 y AD-01)
 - [x] `due_date` por préstamo (por defecto, el día del préstamo; no puede ser anterior a `loan_date`).
 - [x] `POST /api/loans/checkin`: devolución total o parcial por ítem, con condición `bueno`/`regular` (reintegra stock), `dañado` (a taller) o `extraviado` (a baja).
-- [x] Devolución con escaneo (plan en `docs/codigos-ubicacion.md`): equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`) y la unidad queda en ese cajón; insumos envían `cajon_id`, que debe ser el cajón registrado del producto (o lo registra si no tenía); extraviado sin cajón; el cajón debe ser del pañol del préstamo (`LoanCheckinScanTest`).
+- [x] Devolución con escaneo (plan en `docs/codigos-ubicacion.md`): equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`) y la unidad queda en ese cajón; insumos envían `cajon_id`, que debe ser el cajón registrado del producto (o lo registra si no tenía); extraviado sin cajón; el cajón debe ser del pañol del préstamo (`LoanCheckinScanTest`) (solo unidades; el cajón registrado de un insumo puede estar en otro pañol).
 - [x] Campos `due_date`, `returned_at`, `is_returned` e `is_overdue` en el préstamo y filtros `atrasado` / `devuelto` en `GET /api/loans`.
 - [x] `DELETE /api/loans/requests/{id}`: el docente cancela su solicitud mientras está pendiente.
 - [x] `GET /api/loans/export`: historial en CSV (Excel) o PDF por rango de fechas.
