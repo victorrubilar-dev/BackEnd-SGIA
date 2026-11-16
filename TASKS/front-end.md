@@ -455,9 +455,9 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 - Catálogo: `GET /api/oracle-categories` (lista completa sin paginar, `{id, name}`) y `POST /api/oracle-categories` (`{name}` → `201`; `422` si ya existe). Roles `AD-01`, `DIR-01`, `PAN-01`. El selector debe permitir elegir una existente o agregar una nueva.
 - `GET /api/products?search=` también busca por `master_code`.
 
-## Códigos de ubicación y devolución con escaneo (plan, noviembre 2026) — Rompe contrato
+## Códigos de ubicación y devolución con escaneo (implementado, noviembre 2026) — Rompe contrato
 
-Plan y contrato completos en `docs/codigos-ubicacion.md`. **Fases 1 (códigos de sala y cajón) y 2 (devolución con escaneo) ya están en el backend.**
+Plan y contrato completos en `docs/codigos-ubicacion.md`. **Implementado en backend y frontend (fases 1 a 5), verificado de punta a punta.**
 
 Ya disponible (Fase 1):
 - `LocationResource` suma `code` (código corto de sala, `[A-Z0-9]{2,10}`, único, no editable). `POST /api/locations` acepta `code` opcional (se pasa a mayúsculas; `422` en `code` si es inválido o está tomado); si no viene, el backend lo sugiere con la regla del plan y sufijo numérico si choca (`PREDES2`). En `PATCH`/`PUT` un `code` distinto al actual responde `422` en `code` («El código de la sala no se puede cambiar.»); igual al actual se ignora.
