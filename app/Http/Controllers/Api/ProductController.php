@@ -38,7 +38,7 @@ class ProductController extends Controller
     {
         Gate::authorize('viewAny', Product::class);
 
-        $query = $products->applyFilters(Product::with(['supplier', 'cajon.location', 'location']), $request);
+        $query = $products->applyFilters(Product::with(['supplier', 'cajon.location', 'location', 'oracleCategory']), $request);
 
         if ($request->filled('storeroom_id')) {
             $storeroomId = $request->integer('storeroom_id');
@@ -114,7 +114,7 @@ class ProductController extends Controller
             return $product;
         });
 
-        return (new ProductResource($product->load(['supplier', 'cajon.location', 'location'])))
+        return (new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'oracleCategory'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -126,7 +126,7 @@ class ProductController extends Controller
     {
         Gate::authorize('view', $product);
 
-        return new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'creator', 'updater']));
+        return new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'oracleCategory', 'creator', 'updater']));
     }
 
     /**
@@ -174,7 +174,7 @@ class ProductController extends Controller
             $stockAlertService->checkStock($product);
         }
 
-        return new ProductResource($product->load(['supplier', 'cajon.location', 'location']));
+        return new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'oracleCategory']));
     }
 
     /**
@@ -211,7 +211,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Estado de producto actualizado exitosamente.',
-            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location'])),
+            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'oracleCategory'])),
         ]);
     }
 
@@ -236,7 +236,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Estado del stock actualizado.',
-            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location'])),
+            'product' => new ProductResource($product->load(['supplier', 'cajon.location', 'location', 'oracleCategory'])),
         ]);
     }
 

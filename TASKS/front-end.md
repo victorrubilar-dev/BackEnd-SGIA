@@ -446,3 +446,11 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 - `POST /api/quotations` y `POST /api/purchases` se retiraron (ver Fase 7 arriba).
 
 - **2026-11-12 — `PurchaseRequestResource`:** `annual_budget` incluye `career` (`{id, code, name, …}`) en el listado y el detalle de `/api/purchase-requests`; antes llegaba sin carrera y el front rotulaba "Carrera #N". No rompe contrato.
+
+## Código maestro y descripción de categoría de Oracle en productos (noviembre 2026) — Pronto
+
+- `ProductResource` suma `master_code` (string \| null), `oracle_category_id` (int \| null) y `oracle_category` (`{id, name}` \| null; viene en listado, detalle, alta y edición).
+- `POST /api/products` y `PATCH /api/products/{id}` aceptan ambos campos, **opcionales**. Enviar `null` (o `master_code: ""`) los borra; omitirlos no los toca.
+- `master_code`: código `Art` del maestro de artículos de Oracle (p. ej. `OF33075`). Máx. 30, solo letras, números, `.`, `-`, `_`; el backend lo pasa a mayúsculas. **Único** entre productos (`422` en `errors.master_code`).
+- Catálogo: `GET /api/oracle-categories` (lista completa sin paginar, `{id, name}`) y `POST /api/oracle-categories` (`{name}` → `201`; `422` si ya existe). Roles `AD-01`, `DIR-01`, `PAN-01`. El selector debe permitir elegir una existente o agregar una nueva.
+- `GET /api/products?search=` también busca por `master_code`.

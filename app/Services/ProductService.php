@@ -25,6 +25,7 @@ class ProductService
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'ilike', $search)
                     ->orWhere('barcode', 'ilike', $search)
+                    ->orWhere('master_code', 'ilike', $search)
                     ->orWhere('description', 'ilike', $search);
             });
         }

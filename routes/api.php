@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MaintenanceDocumentController;
 use App\Http\Controllers\Api\MaintenanceRecordController;
 use App\Http\Controllers\Api\MetricsController;
+use App\Http\Controllers\Api\OracleCategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseRequestController;
@@ -74,6 +75,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
         // Catálogo para el alta de productos (`category_id`).
         Route::get('/categories', [CategoryController::class, 'index']);
+        // Descripción de categoría del maestro de Oracle (`oracle_category_id`): se puede agregar una nueva.
+        Route::get('/oracle-categories', [OracleCategoryController::class, 'index']);
+        Route::post('/oracle-categories', [OracleCategoryController::class, 'store']);
     });
     Route::middleware('role:AD-01')->group(function () {
         Route::post('/careers', [CareerController::class, 'store']);

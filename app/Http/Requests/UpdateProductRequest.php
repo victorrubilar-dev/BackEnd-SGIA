@@ -15,6 +15,17 @@ class UpdateProductRequest extends FormRequest
         return $this->user()?->can('update', $product) ?? false;
     }
 
+    /**
+     * `master_code` se guarda como en Oracle: sin espacios y en mayúsculas; vacío pasa a `null`.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('master_code') && is_string($this->input('master_code'))) {
+            $code = mb_strtoupper(trim($this->input('master_code')));
+            $this->merge(['master_code' => $code === '' ? null : $code]);
+        }
+    }
+
     public function rules(): array
     {
         $product = $this->route('product');
@@ -46,6 +57,8 @@ class UpdateProductRequest extends FormRequest
             'descripcion' => ['sometimes', 'nullable', 'string', 'max:255'],
             'area' => ['nullable', 'string', 'max:255'],
             'category_id' => ['sometimes', 'integer', 'exists:categories,id'],
+            'master_code' => ['sometimes', 'nullable', 'string', 'max:30', 'regex:/^[A-Z0-9._\-]+$/', Rule::unique('products', 'master_code')->ignore($productId)],
+            'oracle_category_id' => ['sometimes', 'nullable', 'integer', 'exists:oracle_categories,id'],
             'career_id' => ['nullable', 'integer', 'exists:careers,id'],
             'maintenance_priority' => ['sometimes', 'string', Rule::in(Product::MAINTENANCE_PRIORITIES)],
             'requires_calibration' => ['sometimes', 'boolean'],
@@ -62,6 +75,10 @@ class UpdateProductRequest extends FormRequest
             'name.regex' => 'El nombre del producto no debe contener caracteres especiales.',
             'type.in' => 'El tipo de producto debe ser equipo, insumo o maqueta.',
             'category_id.exists' => 'La categoría seleccionada no existe.',
+            'master_code.max' => 'El código maestro no puede superar los 30 caracteres.',
+            'master_code.regex' => 'El código maestro solo admite letras, números, punto, guion y guion bajo.',
+            'master_code.unique' => 'El código maestro ya está asignado a otro producto.',
+            'oracle_category_id.exists' => 'La descripción de categoría seleccionada no existe.',
             'career_id.exists' => 'La carrera seleccionada no existe.',
             'maintenance_priority.in' => 'La prioridad de mantención debe ser A, B o C.',
             'quantity.min' => 'La cantidad de producto debe ser positiva o cero.',
