@@ -39,6 +39,8 @@ class Product extends Model
         'location_id',
         'area',
         'category_id',
+        'oracle_category_id',
+        'master_code',
         'career_id',
         'maintenance_priority',
         'requires_calibration',
@@ -68,6 +70,16 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Descripción de categoría del maestro de Oracle (opcional).
+     *
+     * @return BelongsTo<OracleCategory, $this>
+     */
+    public function oracleCategory(): BelongsTo
+    {
+        return $this->belongsTo(OracleCategory::class);
     }
 
     /** @return BelongsTo<Career, $this> */

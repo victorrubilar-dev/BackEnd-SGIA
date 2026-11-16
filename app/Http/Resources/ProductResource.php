@@ -2,9 +2,11 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/** @mixin Product */
 class ProductResource extends JsonResource
 {
     /**
@@ -38,6 +40,9 @@ class ProductResource extends JsonResource
             'location' => new LocationResource($location),
             'area' => $this->area,
             'category_id' => $this->category_id,
+            'master_code' => $this->master_code,
+            'oracle_category_id' => $this->oracle_category_id,
+            'oracle_category' => new OracleCategoryResource($this->whenLoaded('oracleCategory')),
             'career_id' => $this->career_id,
             'maintenance_priority' => $this->maintenance_priority,
             'requires_calibration' => (bool) $this->requires_calibration,

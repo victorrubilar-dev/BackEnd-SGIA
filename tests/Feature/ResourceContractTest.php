@@ -20,6 +20,7 @@ use App\Http\Resources\LoanReviewResource;
 use App\Http\Resources\LocationResource;
 use App\Http\Resources\MaintenanceDocumentResource;
 use App\Http\Resources\MaintenanceRecordResource;
+use App\Http\Resources\OracleCategoryResource;
 use App\Http\Resources\ProductResource;
 use App\Http\Resources\PurchaseItemResource;
 use App\Http\Resources\PurchaseRequestItemResource;
@@ -51,6 +52,7 @@ use App\Models\LoanItem;
 use App\Models\Location;
 use App\Models\MaintenanceDocument;
 use App\Models\MaintenanceRecord;
+use App\Models\OracleCategory;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseRequest;
@@ -88,6 +90,7 @@ class ResourceContractTest extends TestCase
     public function test_user_and_catalog_resources(): void
     {
         $this->assertKeys(UserResource::class, User::factory()->create(), explode(',', 'area,created_at,email,id,is_active,last_login_at,name,role,storeroom_id,updated_at'));
+        $this->assertKeys(OracleCategoryResource::class, OracleCategory::factory()->create(), ['id', 'name']);
         $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,areas,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
 
         $location = Location::factory()->create();
@@ -116,12 +119,12 @@ class ResourceContractTest extends TestCase
     {
         $product = Product::factory()->create();
 
-        $this->assertKeys(ProductResource::class, $product, explode(',', 'area,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,name,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by'));
+        $this->assertKeys(ProductResource::class, $product, explode(',', 'area,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,master_code,name,oracle_category_id,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by'));
 
         // Con `?storeroom_id=` el listado suma `available_in_storeroom`.
         $withAvailability = Product::factory()->create();
         $withAvailability->setAttribute('available_in_storeroom', 2);
-        $keys = explode(',', 'area,available_in_storeroom,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,name,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by');
+        $keys = explode(',', 'area,available_in_storeroom,barcode,cajon_id,career_id,category_id,created_at,created_by,description,estado,id,is_active,is_critical_stock,is_warning_stock,location_id,maintenance_frequency_months,maintenance_priority,master_code,name,oracle_category_id,photo_url,quantity,quantity_in_repair,quantity_written_off,reference_price,requires_calibration,stock_minimo,supplier_id,type,updated_at,updated_by');
         $this->assertKeys(ProductResource::class, $withAvailability, $keys);
 
         $alert = StockAlert::create(['product_id' => $product->id, 'alert_type' => 'warning', 'current_stock' => 1, 'stock_minimo' => 1, 'message' => 'm', 'is_resolved' => false]);
