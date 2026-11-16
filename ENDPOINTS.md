@@ -495,6 +495,10 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01`, `AD-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
+| `GET` | `/api/cajones/by-code/{code}` | `AD-01`, `DIR-01`, `PAN-01` | Busca un cajón por su código `{código sala}-{código cajón}` (escaneo); `404` si no existe. | `docs/codigos-ubicacion.md` |
+| `GET` | `/api/cajones/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm del cajón (código de barras + código). | `docs/codigos-ubicacion.md` |
+| `POST` | `/api/loans/checkin` (cambio) | `PAN-01`, `AD-01` | **Rompe contrato:** equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`); insumos envían `cajon_id` (debe ser su cajón registrado); extraviado sin cajón; cajón del pañol del préstamo. | `docs/codigos-ubicacion.md` |
+| `POST` / `PATCH` | `/api/locations` (cambio) | `AD-01`, `DIR-01`, `PAN-01` | `code` de sala (`[A-Z0-9]{2,10}`, único, sugerido si no viene, no editable) y `cajones.barcode` = `{código sala}-{código cajón}`. | `docs/codigos-ubicacion.md` |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
 
 ---
