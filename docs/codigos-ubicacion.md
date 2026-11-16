@@ -1,6 +1,6 @@
 # Códigos de ubicación y devolución con escaneo de cajón
 
-**Estado: Fases 1 y 2 implementadas (backend).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: implementado (noviembre 2026), fases 1 a 5.** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
@@ -137,17 +137,17 @@ Ejemplos de cajones resultantes: `PCENTRAL-CAJON-A1`, `PCENTRAL-GAVETA-01`, `E30
 - [x] Tests (unidad con y sin cajón, extraviada, parcial, insumo correcto/distinto/sin cajón, cajón de otro pañol) y actualización de `LoanReturnTest` y `LoanUnitsTest`.
 
 ### Fase 3 — Frontend: Ubicaciones
-- [ ] Tipos y cliente: `code` en sala, `fetchCajonByCode`, descarga de etiqueta.
-- [ ] Campo de código con sugerencia, vista previa del código del cajón, códigos visibles e «Imprimir etiqueta».
-- [ ] Tests de componentes.
+- [x] Tipos y cliente: `code` en sala, `fetchCajonByCode`, descarga de etiqueta.
+- [x] Campo de código con sugerencia, vista previa del código del cajón, códigos visibles e «Imprimir etiqueta».
+- [x] Tests de componentes.
 
 ### Fase 4 — Frontend: devolución con escaneo
-- [ ] Flujo de escaneo por pares en el mostrador, estados por fila, dañado y extraviado, envío del nuevo `LoanCheckinPayload`.
-- [ ] Tests de componentes (escaneo correcto, código ajeno, cajón equivocado de insumo, extraviada, envío parcial).
+- [x] Flujo de escaneo por pares en el mostrador, estados por fila, dañado y extraviado, envío del nuevo `LoanCheckinPayload`.
+- [x] Tests de componentes (escaneo correcto, código ajeno, cajón equivocado de insumo, extraviada, envío parcial).
 
 ### Fase 5 — Verificación
-- [ ] Recorrido en el navegador contra la API local (alta de sala y cajón, etiqueta, devolución completa y parcial).
-- [ ] Documentación final (`ENDPOINTS.md` de ambos repos, `TASKS`, changelog del frontend).
+- [x] Recorrido en el navegador contra la API local (alta de sala y cajón, etiqueta, devolución completa y parcial). Destapó dos problemas, ya corregidos: la regla del pañol bloqueaba insumos con cajón en otro pañol (ahora vale solo para unidades) y la pestaña Devolución del mostrador pedía `status=activo`, que la API rechaza (ahora `procesado` sin devolver).
+- [x] Documentación final (`ENDPOINTS.md` de ambos repos, `TASKS`, changelog del frontend).
 
 Las fases 2 y 4 cambian el contrato de `checkin` y deben publicarse juntas.
 
