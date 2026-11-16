@@ -59,7 +59,7 @@ class LoanReturnTest extends TestCase
         $this->postJson('/api/loans/checkin', [
             'loan_id' => $loan->id,
             'general_notes' => 'Todo en orden',
-            'items' => [['item_id' => $loan->items[0]->id, 'condition' => 'optimo', 'damaged' => false]],
+            'items' => [['item_id' => $loan->items[0]->id, 'condition' => 'optimo', 'damaged' => false, 'cajon_id' => $product->cajon_id]],
         ])->assertOk()
             ->assertJsonPath('data.is_returned', true)
             ->assertJsonPath('data.items.0.return_condition', 'bueno');
@@ -81,7 +81,7 @@ class LoanReturnTest extends TestCase
         $this->postJson('/api/loans/checkin', [
             'loan_id' => $loan->id,
             'items' => [
-                ['product_id' => $damaged->id, 'condition' => 'bueno', 'damaged' => true],
+                ['product_id' => $damaged->id, 'condition' => 'bueno', 'damaged' => true, 'cajon_id' => $damaged->cajon_id],
                 ['product_id' => $lost->id, 'condition' => 'extraviado'],
             ],
         ])->assertOk();
@@ -102,14 +102,14 @@ class LoanReturnTest extends TestCase
 
         $this->postJson('/api/loans/checkin', [
             'loan_id' => $loan->id,
-            'items' => [['product_id' => $a->id, 'condition' => 'bueno']],
+            'items' => [['product_id' => $a->id, 'condition' => 'bueno', 'cajon_id' => $a->cajon_id]],
         ])->assertOk()->assertJsonPath('data.is_returned', false);
 
         $this->assertNull($loan->fresh()->returned_at);
 
         $this->postJson('/api/loans/checkin', [
             'loan_id' => $loan->id,
-            'items' => [['product_id' => $b->id, 'condition' => 'regular']],
+            'items' => [['product_id' => $b->id, 'condition' => 'regular', 'cajon_id' => $b->cajon_id]],
         ])->assertOk()->assertJsonPath('data.is_returned', true);
     }
 
@@ -135,7 +135,7 @@ class LoanReturnTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('items.0.condition');
 
         // Doble devolución
-        $payload = ['loan_id' => $loan->id, 'items' => [['product_id' => $product->id, 'condition' => 'bueno']]];
+        $payload = ['loan_id' => $loan->id, 'items' => [['product_id' => $product->id, 'condition' => 'bueno', 'cajon_id' => $product->cajon_id]]];
         $this->postJson('/api/loans/checkin', $payload)->assertOk();
         $this->postJson('/api/loans/checkin', $payload)->assertUnprocessable();
         $this->assertSame(6, $product->fresh()->quantity);
@@ -170,7 +170,7 @@ class LoanReturnTest extends TestCase
         $this->assertFalse($ids->contains($onTime->id));
 
         // Al devolverlo deja de estar atrasado
-        $this->postJson('/api/loans/checkin', ['loan_id' => $late->id, 'items' => [['product_id' => $product->id, 'condition' => 'bueno']]])->assertOk();
+        $this->postJson('/api/loans/checkin', ['loan_id' => $late->id, 'items' => [['product_id' => $product->id, 'condition' => 'bueno', 'cajon_id' => $product->cajon_id]]])->assertOk();
         $this->getJson('/api/loans/'.$late->id)->assertJsonPath('data.is_overdue', false);
     }
 

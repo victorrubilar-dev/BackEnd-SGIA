@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\InvalidLoanStatusTransition;
+use App\Models\Cajon;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -615,6 +616,11 @@ class LoanService
      * `quantity_in_repair`; `extraviado` suma a `quantity_written_off`. Cuando
      * todos los ítems fueron devueltos el préstamo queda con `returned_at`.
      *
+     * Devolución con escaneo (`docs/codigos-ubicacion.md`): equipos y maquetas envían
+     * `units: [{id, cajon_id}]` (solo se devuelven esas; la unidad queda en el cajón
+     * escaneado) e insumos `cajon_id` (debe ser su cajón registrado o, si no tenía, se
+     * registra). `extraviado` no lleva cajón. El cajón debe ser del pañol del préstamo.
+     *
      * @param  array<string, mixed>  $validated  datos validados por StoreLoanCheckinRequest
      *
      * @throws ValidationException
@@ -634,6 +640,7 @@ class LoanService
             $seen = [];
             $seenUnits = [];
             $touchedProducts = [];
+            $cajones = $this->scannedCajones($validated['items']);
 
             foreach ($validated['items'] as $index => $row) {
                 $item = isset($row['item_id'])
@@ -649,7 +656,7 @@ class LoanService
                 $condition = $this->normalizeCondition($row['condition'], (bool) ($row['damaged'] ?? false));
 
                 if ($item->product?->hasUnits()) {
-                    $this->checkinUnits($item, $row['unit_ids'] ?? null, $condition, $operator, $index, $seenUnits);
+                    $this->checkinUnits($loan, $item, $row['units'] ?? [], $condition, $operator, $index, $seenUnits, $cajones);
                     $touchedProducts[$item->product_id] = $item->product;
 
                     continue;
@@ -663,7 +670,9 @@ class LoanService
 
                 $seen[] = $item->id;
 
-                $this->restoreItem($item, $condition);
+                $cajon = $this->supplyCajon($loan, $item, $row, $condition, $index, $cajones);
+
+                $this->restoreItem($item, $condition, $cajon);
 
                 $item->forceFill([
                     'returned_at' => now(),
@@ -688,7 +697,7 @@ class LoanService
 
             $loan->forceFill($attributes)->save();
 
-            return $loan->load('items.units.cajon.location');
+            return $loan->load(['items.product.cajon.location', 'items.product.location', 'items.units.cajon.location']);
         });
     }
 
@@ -795,7 +804,87 @@ class LoanService
      *
      * @throws ValidationException
      */
-    private function checkinUnits(LoanItem $item, ?array $unitIds, string $condition, User $operator, int $index, array &$seenUnits): void
+    /**
+     * Cajones escaneados en la devolución, con su sala (para validar el pañol y armar mensajes).
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     * @return EloquentCollection<int, Cajon>
+     */
+    private function scannedCajones(array $rows): EloquentCollection
+    {
+        $ids = collect($rows)
+            ->flatMap(fn (array $row) => [$row['cajon_id'] ?? null, ...array_column($row['units'] ?? [], 'cajon_id')])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        return Cajon::with('location')->whereKey($ids)->get()->keyBy('id');
+    }
+
+    /**
+     * El cajón escaneado debe estar en una sala del pañol del préstamo (si el préstamo tiene pañol).
+     *
+     * @throws ValidationException
+     */
+    private function assertCajonInLoanStoreroom(Loan $loan, Cajon $cajon, string $field): void
+    {
+        if ($loan->storeroom_id !== null && (int) $cajon->location?->storeroom_id !== (int) $loan->storeroom_id) {
+            throw ValidationException::withMessages([
+                $field => "El cajón {$cajon->barcode} no pertenece al pañol del préstamo.",
+            ]);
+        }
+    }
+
+    /**
+     * Cajón escaneado para un insumo: obligatorio salvo `extraviado` y, si el producto ya tiene
+     * cajón, debe ser ese (para guardarlo en otro lado se usa «Reubicar»).
+     *
+     * @param  array<string, mixed>  $row
+     * @param  EloquentCollection<int, Cajon>  $cajones
+     *
+     * @throws ValidationException
+     */
+    private function supplyCajon(Loan $loan, LoanItem $item, array $row, string $condition, int $index, EloquentCollection $cajones): ?Cajon
+    {
+        if ($condition === LoanItem::CONDITION_LOST || $item->product === null) {
+            return null;
+        }
+
+        $field = "items.{$index}.cajon_id";
+        $name = $item->product->name ?? $item->name;
+        $cajon = isset($row['cajon_id']) ? $cajones->get((int) $row['cajon_id']) : null;
+
+        if ($cajon === null) {
+            throw ValidationException::withMessages([$field => "Escanea el cajón donde se guarda {$name}."]);
+        }
+
+        $registered = $item->product->cajon_id;
+
+        if ($registered !== null && $registered !== $cajon->id) {
+            $code = Cajon::whereKey($registered)->value('barcode');
+
+            throw ValidationException::withMessages([
+                $field => "{$name} se guarda en el cajón {$code}; escanea ese cajón o reubica el producto.",
+            ]);
+        }
+
+        $this->assertCajonInLoanStoreroom($loan, $cajon, $field);
+
+        return $cajon;
+    }
+
+    /**
+     * Devuelve las unidades escaneadas del ítem (`units: [{id, cajon_id}]`); las demás siguen
+     * pendientes. Cada unidad queda en el cajón escaneado, salvo la extraviada, que no lo cambia.
+     *
+     * @param  array<int, array{id: int|string, cajon_id?: int|string|null}>  $units
+     * @param  array<int, int>  $seenUnits
+     * @param  EloquentCollection<int, Cajon>  $cajones
+     *
+     * @throws ValidationException
+     */
+    private function checkinUnits(Loan $loan, LoanItem $item, array $units, string $condition, User $operator, int $index, array &$seenUnits, EloquentCollection $cajones): void
     {
         $pending = DB::table('loan_item_units')
             ->where('loan_item_id', $item->id)
@@ -805,28 +894,54 @@ class LoanService
             ->map(fn ($id) => (int) $id)
             ->all();
 
-        $ids = $unitIds !== null ? array_map('intval', $unitIds) : $pending;
-
-        if ($ids === []) {
+        if ($pending === []) {
             throw ValidationException::withMessages([
                 "items.{$index}" => "El ítem \"{$item->name}\" ya fue devuelto.",
             ]);
         }
 
-        foreach ($ids as $id) {
+        if ($units === []) {
+            throw ValidationException::withMessages([
+                "items.{$index}.units" => 'Escanea las unidades que se devuelven.',
+            ]);
+        }
+
+        $ids = array_map(fn (array $unit) => (int) $unit['id'], $units);
+        $codes = EquipmentUnit::whereKey($ids)->pluck('code', 'id');
+        $placement = [];
+
+        foreach ($units as $j => $unit) {
+            $id = (int) $unit['id'];
+
             if (in_array($id, $seenUnits, true)) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.unit_ids" => 'Una unidad no puede devolverse dos veces en la misma operación.',
+                    "items.{$index}.units.{$j}.id" => 'Una unidad no puede devolverse dos veces en la misma operación.',
                 ]);
             }
 
             if (! in_array($id, $pending, true)) {
                 throw ValidationException::withMessages([
-                    "items.{$index}.unit_ids" => "La unidad {$id} no está pendiente de devolución en el ítem \"{$item->name}\".",
+                    "items.{$index}.units.{$j}.id" => "La unidad {$codes->get($id, $id)} no está pendiente de devolución en el ítem \"{$item->name}\".",
                 ]);
             }
 
             $seenUnits[] = $id;
+
+            if ($condition === LoanItem::CONDITION_LOST) {
+                continue;
+            }
+
+            $field = "items.{$index}.units.{$j}.cajon_id";
+            $cajon = isset($unit['cajon_id']) ? $cajones->get((int) $unit['cajon_id']) : null;
+
+            if ($cajon === null) {
+                throw ValidationException::withMessages([
+                    $field => "Escanea el cajón donde se guarda la unidad {$codes->get($id, $id)}.",
+                ]);
+            }
+
+            $this->assertCajonInLoanStoreroom($loan, $cajon, $field);
+            $placement[$cajon->id][] = $id;
         }
 
         $status = match ($condition) {
@@ -836,6 +951,10 @@ class LoanService
         };
 
         EquipmentUnit::whereIn('id', $ids)->update(['status' => $status, 'updated_by' => $operator->id]);
+
+        foreach ($placement as $cajonId => $unitIds) {
+            EquipmentUnit::whereIn('id', $unitIds)->update(['cajon_id' => $cajonId]);
+        }
         DB::table('loan_item_units')
             ->where('loan_item_id', $item->id)
             ->whereIn('equipment_unit_id', $ids)
@@ -906,7 +1025,7 @@ class LoanService
     /**
      * Devuelve el ítem al inventario según su condición.
      */
-    private function restoreItem(LoanItem $item, string $condition): void
+    private function restoreItem(LoanItem $item, string $condition, ?Cajon $cajon = null): void
     {
         if ($item->product_id === null) {
             return;
@@ -923,6 +1042,12 @@ class LoanService
             LoanItem::CONDITION_LOST => $product->quantity_written_off += $item->quantity,
             default => $product->quantity += $item->quantity,
         };
+
+        // Insumo sin cajón registrado: queda en el cajón escaneado al devolverlo.
+        if ($cajon !== null && $product->cajon_id === null) {
+            $product->cajon_id = $cajon->id;
+            $product->location_id = $cajon->location_id;
+        }
 
         $product->save();
 

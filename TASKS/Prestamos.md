@@ -23,7 +23,7 @@
 ### Devoluciones y vencimiento (FU-04, PAN-01 y AD-01)
 - [x] `due_date` por préstamo (por defecto, el día del préstamo; no puede ser anterior a `loan_date`).
 - [x] `POST /api/loans/checkin`: devolución total o parcial por ítem, con condición `bueno`/`regular` (reintegra stock), `dañado` (a taller) o `extraviado` (a baja).
-- [ ] Devolución con escaneo (plan en `docs/codigos-ubicacion.md`): equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`) y la unidad queda en ese cajón; insumos envían `cajon_id`, que debe ser el cajón registrado del producto (o lo registra si no tenía); extraviado sin cajón; el cajón debe ser del pañol del préstamo.
+- [x] Devolución con escaneo (plan en `docs/codigos-ubicacion.md`): equipos/maquetas envían `units: [{id, cajon_id}]` (reemplaza `unit_ids`) y la unidad queda en ese cajón; insumos envían `cajon_id`, que debe ser el cajón registrado del producto (o lo registra si no tenía); extraviado sin cajón; el cajón debe ser del pañol del préstamo (`LoanCheckinScanTest`).
 - [x] Campos `due_date`, `returned_at`, `is_returned` e `is_overdue` en el préstamo y filtros `atrasado` / `devuelto` en `GET /api/loans`.
 - [x] `DELETE /api/loans/requests/{id}`: el docente cancela su solicitud mientras está pendiente.
 - [x] `GET /api/loans/export`: historial en CSV (Excel) o PDF por rango de fechas.
@@ -44,7 +44,7 @@ Modelo `Student` (`TASKS/Equipos.md`, fase 5).
 ### Préstamos con unidades (plan `Equipos.md`, fase 7)
 - [x] `checkout` y `approve` asignan unidades (`unit_ids` o automáticas) y las pasan a `prestado`; stock insuficiente → `422` (`LoanUnitsTest`).
 - [x] `deliver` admite `items: [{item_id, unit_ids}]` para reemplazar la asignación (`LoanUnitsTest`).
-- [x] `checkin` devuelve todas las unidades pendientes o `unit_ids` concretas; `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja` (`LoanUnitsTest`).
+- [x] `checkin` devuelve solo las unidades escaneadas (`units: [{id, cajon_id}]`, obligatorio; ya no hay `unit_ids` ni «todas las pendientes» por defecto); `bueno`/`regular` → `disponible`, `danado` → `en_reparacion`, `extraviado` → `dado_de_baja` (`LoanUnitsTest`, `LoanCheckinScanTest`).
 - [x] `LoanItemResource`: `units`, `delivered_quantity`, `returned_quantity`; export CSV/PDF con los códigos (`LoanUnitsTest`, `ResourceContractTest`).
 - [x] El checkout con RUT válido en `borrower_document` crea o reutiliza el `Student` (`LoanUnitsTest`).
 - [x] Solicitud, aprobación, presencial y entrega usan solo unidades del pañol del préstamo; `422` que nombra el pañol (`LoanUnitsTest`, `LoanRemoteRequestTest`).

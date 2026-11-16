@@ -29,16 +29,29 @@ class StoreLoanCheckinRequest extends FormRequest
             'items.*.product_id' => ['required_without:items.*.item_id', 'nullable', 'integer'],
             'items.*.condition' => ['required', 'string', Rule::in(['bueno', 'optimo', 'regular', 'dañado', 'danado', 'extraviado'])],
             'items.*.damaged' => ['nullable', 'boolean'],
-            'items.*.unit_ids' => ['sometimes', 'array', 'min:1'],
-            'items.*.unit_ids.*' => ['integer', 'distinct', 'exists:equipment_units,id'],
+            // Equipos y maquetas: unidades escaneadas y su cajón; insumos: `cajon_id` (ver LoanService::checkin).
+            'items.*.units' => ['sometimes', 'array', 'min:1'],
+            'items.*.units.*' => ['array'],
+            'items.*.units.*.id' => ['required', 'integer', 'distinct', 'exists:equipment_units,id'],
+            'items.*.units.*.cajon_id' => ['nullable', 'integer', 'exists:cajones,id'],
+            'items.*.cajon_id' => ['nullable', 'integer', 'exists:cajones,id'],
         ];
     }
 
     public function messages(): array
     {
         return [
-            'items.*.unit_ids.*.distinct' => 'Una unidad no puede devolverse dos veces en la misma operación.',
-            'items.*.unit_ids.*.exists' => 'Una de las unidades indicadas no existe.',
+            'items.*.units.array' => 'Las unidades devueltas deben enviarse como lista.',
+            'items.*.units.min' => 'Escanea las unidades que se devuelven.',
+            'items.*.units.*.array' => 'Cada unidad devuelta debe indicar su id y su cajón.',
+            'items.*.units.*.id.required' => 'Falta el id de una de las unidades devueltas.',
+            'items.*.units.*.id.integer' => 'El id de la unidad debe ser un número.',
+            'items.*.units.*.id.distinct' => 'Una unidad no puede devolverse dos veces en la misma operación.',
+            'items.*.units.*.id.exists' => 'Una de las unidades indicadas no existe.',
+            'items.*.units.*.cajon_id.integer' => 'El cajón de la unidad debe ser un número.',
+            'items.*.units.*.cajon_id.exists' => 'El cajón escaneado no existe.',
+            'items.*.cajon_id.integer' => 'El cajón debe ser un número.',
+            'items.*.cajon_id.exists' => 'El cajón escaneado no existe.',
         ];
     }
 }
