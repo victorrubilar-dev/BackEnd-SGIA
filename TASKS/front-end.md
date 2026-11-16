@@ -457,10 +457,14 @@ Rutas y reglas en `ENDPOINTS.md` §6.1. Lectura `AD-01`, `DIR-01`, `PAN-01`; **t
 
 ## Códigos de ubicación y devolución con escaneo (plan, noviembre 2026) — Rompe contrato
 
-Plan y contrato completos en `docs/codigos-ubicacion.md`. **Aún no implementado.**
+Plan y contrato completos en `docs/codigos-ubicacion.md`. **Fase 1 (códigos de sala y cajón) ya está en el backend; la devolución con escaneo (Fase 2) aún no.**
 
-- `LocationResource` sumará `code` (código corto de sala, no editable). `POST /api/locations` acepta `code` opcional (si no viene, se sugiere); en `PATCH` un `code` distinto responde `422`.
-- `cajones.barcode` pasará de `EST-…` aleatorio a `{código sala}-{código cajón}` (`L206-RACK-R1`); el `codigo` normalizado tiene máximo 12 caracteres.
-- Rutas nuevas: `GET /api/cajones/by-code/{code}` (escaneo) y `GET /api/cajones/{id}/label` (PDF 50x30 mm).
+Ya disponible (Fase 1):
+- `LocationResource` suma `code` (código corto de sala, `[A-Z0-9]{2,10}`, único, no editable). `POST /api/locations` acepta `code` opcional (se pasa a mayúsculas; `422` en `code` si es inválido o está tomado); si no viene, el backend lo sugiere con la regla del plan y sufijo numérico si choca (`PREDES2`). En `PATCH`/`PUT` un `code` distinto al actual responde `422` en `code` («El código de la sala no se puede cambiar.»); igual al actual se ignora.
+- `cajones.barcode` pasó de `EST-…` aleatorio a `{code de la sala}-{codigo normalizado}` (`L206-RACK-R1`), calculado al crear y recalculado al cambiar `codigo` o `location_id`. `422` en `codigo` si el normalizado supera 12 caracteres, si queda vacío («El código del cajón debe tener al menos una letra o un número.») o si ya existe en la sala («Ya existe un cajón con el código {CODIGO} en esta sala.»). `CajonResource` trae `location.code` cuando la sala viene cargada.
+- Rutas nuevas (`AD-01`, `DIR-01`, `PAN-01`): `GET /api/cajones/by-code/{code}` (sin distinguir mayúsculas; `404` «No existe un cajón con el código {code}.») y `GET /api/cajones/{id}/label` (PDF 50x30 mm, `etiqueta-{barcode}.pdf`).
+- Códigos de la base de desarrollo: `PCENTRAL`, `E301`, `T102`, `PREDES`, `BODEGAE`, `L204`, `L206`, `E205`.
+
+Pendiente (Fase 2, se publica junto con la Fase 4 del frontend):
 - **`POST /api/loans/checkin` cambia:** equipos/maquetas envían `units: [{id, cajon_id}]` en lugar de `unit_ids`; insumos envían `cajon_id`; extraviado no lleva cajón. Las fases de backend y frontend de este cambio se publican juntas.
 

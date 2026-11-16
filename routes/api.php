@@ -224,8 +224,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/locations/{location}', [LocationController::class, 'destroy']);
     });
 
-    // Estática: antes de /cajones/{cajon}
+    // Estáticas: antes de /cajones/{cajon}
     Route::post('/cajones/bulk-delete', [CajonController::class, 'bulkDestroy'])->middleware('role:AD-01,DIR-01');
+    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+        Route::get('/cajones/by-code/{code}', [CajonController::class, 'byCode']);
+        Route::get('/cajones/{cajon}/label', [CajonController::class, 'label']);
+    });
 
     Route::get('/cajones', [CajonController::class, 'index']);
     Route::get('/cajones/{cajon}', [CajonController::class, 'show']);

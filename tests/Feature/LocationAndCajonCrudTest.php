@@ -93,14 +93,14 @@ class LocationAndCajonCrudTest extends TestCase
 
         $response = $this->postJson('/api/cajones', [
             'location_id' => $location->id,
-            'codigo' => 'Gaveta-PLC-01',
+            'codigo' => 'Gaveta-PLC1',
             'descripcion' => 'Módulos Siemens S7-1200',
         ]);
 
         $response->assertStatus(201);
         $response->assertJson([
             'data' => [
-                'codigo' => 'Gaveta-PLC-01',
+                'codigo' => 'Gaveta-PLC1',
                 'location_id' => $location->id,
                 'created_by' => $this->warehouse->id,
                 'updated_by' => $this->warehouse->id,
@@ -109,7 +109,7 @@ class LocationAndCajonCrudTest extends TestCase
 
         $this->assertDatabaseHas('cajones', [
             'location_id' => $location->id,
-            'codigo' => 'Gaveta-PLC-01',
+            'codigo' => 'Gaveta-PLC1',
             'created_by' => $this->warehouse->id,
         ]);
     }
@@ -164,10 +164,10 @@ class LocationAndCajonCrudTest extends TestCase
         $this->assertEquals($this->warehouse->id, $location->fresh()->updated_by);
 
         $resCajon = $this->patchJson('/api/cajones/'.$cajon->id, [
-            'codigo' => 'Cajon-Renovado',
+            'codigo' => 'Cajon-Nuevo',
         ]);
         $resCajon->assertStatus(200);
-        $this->assertEquals('Cajon-Renovado', $cajon->fresh()->codigo);
+        $this->assertEquals('Cajon-Nuevo', $cajon->fresh()->codigo);
         $this->assertEquals($this->warehouse->id, $cajon->fresh()->updated_by);
     }
 

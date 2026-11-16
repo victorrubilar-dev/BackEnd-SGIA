@@ -61,7 +61,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `docs/solicitud-prestamo-profesor.md`: especificación de la solicitud remota de préstamo del profesor (horario, laboratorio, pañol, cola por pañol).
 - `docs/revision-solicitud-prestamo.md`: contrato de la revisión de solicitudes remotas por el pañol y de la elección de unidades al aprobar.
 - `docs/disponibilidad-por-panol.md`: plan y contrato (sin implementar) de la disponibilidad por pañol en `GET /api/products`.
-- `docs/codigos-ubicacion.md`: plan y contrato (sin implementar) de los códigos de sala y cajón (`L206-RACK-R1`), su etiqueta y la devolución con escaneo de producto y cajón.
+- `docs/codigos-ubicacion.md`: plan y contrato de los códigos de sala y cajón (fase 1 implementada; devolución con escaneo pendiente) (`L206-RACK-R1`), su etiqueta y la devolución con escaneo de producto y cajón.
 - `NUEVO-FLUJO-COMPRAS.md`: plan, decisiones (§3) y fases del flujo de compras por solicitud.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
 - `TASKS/front-end.md`: cambios del backend que afectan al frontend. Actualizarlo cuando un cambio rompa o modifique el contrato de la API.

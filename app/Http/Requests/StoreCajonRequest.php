@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreCajonRequest extends FormRequest
 {
@@ -14,18 +14,22 @@ class StoreCajonRequest extends FormRequest
 
     public function rules(): array
     {
-        $locationId = $this->input('location_id');
-
         return [
             'location_id' => ['required', 'integer', 'exists:locations,id'],
             'codigo' => [
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('cajones', 'codigo')->where(fn ($query) => $query->where('location_id', $locationId)),
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            CajonCodeRules::validate($validator, (string) $this->input('codigo'), (int) $this->input('location_id'), true);
+        }];
     }
 
     public function messages(): array
@@ -34,7 +38,6 @@ class StoreCajonRequest extends FormRequest
             'location_id.required' => 'La ubicación (sala/pañol) es obligatoria.',
             'location_id.exists' => 'La ubicación seleccionada no existe.',
             'codigo.required' => 'El código del cajón es obligatorio.',
-            'codigo.unique' => 'Ya existe un cajón con este código en la ubicación seleccionada.',
         ];
     }
 }

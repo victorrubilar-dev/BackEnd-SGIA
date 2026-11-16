@@ -160,7 +160,7 @@ class CodeSequenceTest extends TestCase
         $this->assertSame(Storeroom::default()->id, $location->storeroom_id);
 
         $cajon = Cajon::create(['codigo' => 'C-1', 'location_id' => $location->id]);
-        $this->assertMatchesRegularExpression('/^EST-\d{8}$/', $cajon->barcode);
+        $this->assertSame($location->code.'-C-1', $cajon->barcode);
     }
 
     public function test_location_with_cajones_cannot_be_deleted(): void
@@ -192,8 +192,8 @@ class CodeSequenceTest extends TestCase
 
     public function test_cajon_barcode_is_unique_across_scans(): void
     {
-        $a = Cajon::factory()->create();
+        $a = Cajon::factory()->create(['codigo' => 'Rack R1']);
         $this->expectException(QueryException::class);
-        Cajon::factory()->create(['barcode' => $a->barcode]);
+        Cajon::factory()->create(['codigo' => 'Rack-R1', 'location_id' => $a->location_id]);
     }
 }

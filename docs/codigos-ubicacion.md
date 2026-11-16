@@ -1,6 +1,6 @@
 # Códigos de ubicación y devolución con escaneo de cajón
 
-**Estado: plan (sin implementar).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: Fase 1 implementada (backend).** Este documento es el plan y el contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05) y `TASKS/Prestamos.md` (devoluciones); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
@@ -44,6 +44,7 @@
 - El primer guion siempre separa sala y cajón, porque el código de sala no lleva guiones. Para escanear se busca el código completo; no hace falta separarlo.
 - Se calcula al crear el cajón y se recalcula si cambia su `codigo` o su sala.
 - El `codigo` normalizado tiene como máximo **12 caracteres** (código completo ≤ 23), para que el Code128 quepa en la etiqueta de 50 mm. `422` en `codigo` si se pasa.
+- Si el `codigo` normalizado queda vacío (`---`): `422` en `codigo`: «El código del cajón debe tener al menos una letra o un número.» (agregado en la Fase 1).
 - Dos cajones de la misma sala no pueden quedar con el mismo código normalizado (`Rack R1` y `Rack-R1`): `422` en `codigo`: «Ya existe un cajón con el código {CODIGO} en esta sala.».
 - `CajonResource` mantiene la clave `barcode` con el valor nuevo e incluye `location.code` cuando la sala viene cargada.
 
@@ -123,11 +124,11 @@ Ejemplos de cajones resultantes: `PCENTRAL-CAJON-A1`, `PCENTRAL-GAVETA-01`, `E30
 ## Fases
 
 ### Fase 1 — Backend: códigos de sala y cajón
-- [ ] Migración `locations.code` con la tabla aprobada y recálculo de `cajones.barcode`.
-- [ ] `Location::suggestCode()`, inmutabilidad del código y `code` en `LocationResource`.
-- [ ] Código del cajón calculado y recalculado; normalización, límite de 12 caracteres y choque en la misma sala.
-- [ ] `GET /api/cajones/by-code/{code}` y `GET /api/cajones/{id}/label`.
-- [ ] Tests Feature (generación, unicidad, inmutabilidad, normalización, recálculo, by-code 200/404/403, label 200/403), `ResourceContractTest`, `ENDPOINTS.md`, `TASKS/front-end.md`.
+- [x] Migración `locations.code` con la tabla aprobada y recálculo de `cajones.barcode`.
+- [x] `Location::suggestCode()`, inmutabilidad del código y `code` en `LocationResource`.
+- [x] Código del cajón calculado y recalculado; normalización, límite de 12 caracteres y choque en la misma sala.
+- [x] `GET /api/cajones/by-code/{code}` y `GET /api/cajones/{id}/label`.
+- [x] Tests Feature (generación, unicidad, inmutabilidad, normalización, recálculo, by-code 200/404/403, label 200/403), `ResourceContractTest`, `ENDPOINTS.md`, `TASKS/front-end.md`.
 
 ### Fase 2 — Backend: devolución con escaneo
 - [ ] `units: [{id, cajon_id}]` en lugar de `unit_ids`; `cajon_id` en insumos; reglas de extraviado, cajón registrado y pañol.

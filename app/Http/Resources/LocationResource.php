@@ -2,9 +2,13 @@
 
 namespace App\Http\Resources;
 
+use App\Models\Location;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @mixin Location
+ */
 class LocationResource extends JsonResource
 {
     /**
@@ -16,6 +20,7 @@ class LocationResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'code' => $this->code,
             'nombre' => $this->nombre ?? $this->sala,
             'tipo' => $this->tipo ?? 'sala',
             'sala' => $this->sala ?? $this->nombre,

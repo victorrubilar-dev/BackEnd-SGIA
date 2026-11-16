@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\Cajon;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class UpdateCajonRequest extends FormRequest
 {
@@ -15,10 +15,6 @@ class UpdateCajonRequest extends FormRequest
 
     public function rules(): array
     {
-        $cajon = $this->route('cajon');
-        $cajonId = $cajon instanceof Cajon ? $cajon->id : $cajon;
-        $locationId = $this->input('location_id', $cajon instanceof Cajon ? $cajon->location_id : null);
-
         return [
             'location_id' => ['sometimes', 'required', 'integer', 'exists:locations,id'],
             'codigo' => [
@@ -26,11 +22,28 @@ class UpdateCajonRequest extends FormRequest
                 'required',
                 'string',
                 'max:50',
-                Rule::unique('cajones', 'codigo')
-                    ->where(fn ($query) => $query->where('location_id', $locationId))
-                    ->ignore($cajonId),
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
         ];
+    }
+
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            /** @var Cajon $cajon */
+            $cajon = $this->route('cajon');
+
+            if (! $this->has('codigo') && ! $this->has('location_id')) {
+                return;
+            }
+
+            CajonCodeRules::validate(
+                $validator,
+                (string) $this->input('codigo', $cajon->codigo),
+                (int) $this->input('location_id', $cajon->location_id),
+                $this->has('codigo'),
+                $cajon->id,
+            );
+        }];
     }
 }
