@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CorsTest extends TestCase
 {
+    use DatabaseTransactions;
+
     public function test_preflight_request_allowed_for_web_origin(): void
     {
         $response = $this->withHeaders([

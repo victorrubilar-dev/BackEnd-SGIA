@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Tests\TestCase;
 
 class LoginRateLimitTest extends TestCase
 {
+    use DatabaseTransactions;
+
     protected function tearDown(): void
     {
         RateLimiter::clear('login:ratelimit_test@inacap.cl|127.0.0.1');
