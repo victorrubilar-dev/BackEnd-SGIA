@@ -78,7 +78,7 @@ class InvoiceOcrService
         $path = $file->getRealPath();
 
         if (strtolower($file->getClientOriginalExtension()) !== 'pdf') {
-            return $this->tesseract($path);
+            return $this->imageText($path);
         }
 
         $text = $this->run(['pdftotext', '-layout', $path, '-']);
@@ -152,16 +152,42 @@ class InvoiceOcrService
     }
 
     /**
-     * Líneas "descripción  cantidad  precio  total". Se exige que
-     * cantidad × precio ≈ total para descartar encabezados y texto suelto.
+     * Ítems en líneas que terminan en "precio total", con la cantidad antes o después de la
+     * descripción ("PILA AAA 20 1.190 23.800", "50,00 GUANTES 4.632,00 231.600"). La cantidad
+     * se calcula como total ÷ precio: Tesseract la lee mal más seguido que los montos, y exigir
+     * que la división sea entera descarta encabezados y texto suelto.
+     * Las lecturas de una misma imagen vienen separadas por "\f": de cada ítem (cantidad y precio)
+     * se conservan tantas apariciones como en la lectura que más tenga.
      *
      * @return array<int, array{name: string, quantity: int, unit_price: float, area: string|null}>
      */
     private function items(string $text): array
     {
-        $items = [];
+        $best = [];
 
+        foreach (explode("\f", $text) as $reading) {
+            $found = [];
+            foreach ($this->readingItems($reading) as $item) {
+                $found[$item['quantity'].'|'.$item['unit_price']][] = $item;
+            }
+            foreach ($found as $key => $list) {
+                if (count($list) > count($best[$key] ?? [])) {
+                    $best[$key] = $list;
+                }
+            }
+        }
+
+        return array_merge(...array_values($best));
+    }
+
+    /**
+     * @return array<int, array{name: string, quantity: int, unit_price: float, area: string|null}>
+     */
+    private function readingItems(string $text): array
+    {
+        $items = [];
         $lines = preg_split('/\R/u', $text);
+        $number = '\$?\s*(\d(?:[\d.,]*\d)?)';
 
         foreach ($lines as $i => $line) {
             if (preg_match('/^\s*(\d+)\s+\d+\s+\$?\s*([\d.]+)\s+\$?\s*([\d.]+)\s*$/u', $line, $c) && ! empty($lines[$i + 1])) {
@@ -169,18 +195,77 @@ class InvoiceOcrService
                 $line = trim($lines[$i + 1])." $c[1] $c[2] $c[3]";
             }
 
-            if (! preg_match('/^\s*(.+?)\s+(\d+)\s+\$?\s*([\d.]+)\s+\$?\s*([\d.]+)\s*$/u', $line, $m)) {
+            if (! preg_match("/^(.*\\pL{3}.*?)\\s+$number\\s+$number(?:\\s+\\pL)?[\\s\\W_]*$/u", $line, $m)) {
                 continue;
             }
 
-            [$quantity, $price, $total] = [(int) $m[2], (float) str_replace('.', '', $m[3]), (float) str_replace('.', '', $m[4])];
+            [$price, $total] = [self::amount($m[2]), self::amount($m[3])];
+            $quantity = $price > 0 ? (int) round($total / $price) : 0;
 
-            if ($quantity > 0 && $price > 0 && abs($quantity * $price - $total) <= 1) {
-                $items[] = ['name' => trim($m[1]), 'quantity' => $quantity, 'unit_price' => $price, 'area' => null];
+            // Con precios de un dígito la tolerancia de $1 deja pasar cualquier número ("TOTAL 5 2044").
+            if ($price < 10 || $quantity < 1 || abs($quantity * $price - $total) > 1
+                || preg_match('/TOTAL|NETO|I\.?V\.?A|DESCUENTO/iu', $m[1])) {
+                continue;
             }
+
+            // Se quita la cantidad (y el ruido de la columna) de cualquiera de los dos extremos.
+            $name = preg_replace('/\s+\d+(?:[.,]\d+)?$/u', '', trim($m[1]));
+            $name = preg_replace('/^[^\pL\d]*(?:'.$quantity.'(?:[.,]\d*)?[^\pL\d]*)?/u', '', $name);
+
+            $items[] = ['name' => trim($name), 'quantity' => $quantity, 'unit_price' => $price, 'area' => null];
         }
 
         return $items;
+    }
+
+    /**
+     * Montos en formato chileno ("1.250.000", "$ 250.000", "1.250,50") o con punto decimal
+     * ("50.00"): un grupo de miles siempre tiene 3 dígitos, así que si el último separador va
+     * seguido de 1 o 2 es decimal.
+     */
+    public static function amount(string $text): float
+    {
+        $clean = preg_replace('/[^\d.,]/', '', $text);
+
+        if (preg_match('/^(.*)[.,](\d{1,2})$/', $clean, $m)) {
+            return (float) (preg_replace('/\D/', '', $m[1]).'.'.$m[2]);
+        }
+
+        return (float) preg_replace('/\D/', '', $clean);
+    }
+
+    /**
+     * Ningún ajuste sirve para todas las fotos (pruebas-facturas: la original lee bien prueba1 y la
+     * ampliada en gris, prueba2), así que se lee de varias formas y `items` combina las lecturas,
+     * separadas por "\f". Se mide con `php artisan sgia:ocr-bench`.
+     */
+    private function imageText(string $path): string
+    {
+        $readings = [$this->tesseract($path), $this->tesseract($path, '4')];
+        // Sin la extensión GD se lee solo la imagen original.
+        $image = function_exists('imagecreatefromstring') ? @imagecreatefromstring(File::get($path)) : false;
+
+        if ($image === false) {
+            return implode("\f", $readings);
+        }
+
+        $tmp = tempnam(sys_get_temp_dir(), 'sgia-ocr');
+
+        try {
+            // Se amplía hasta 2400 px de ancho; las fotos más grandes quedan como están.
+            $gray = imagescale($image, max(imagesx($image), 2400));
+            imagefilter($gray, IMG_FILTER_GRAYSCALE);
+            imagepng($gray, $tmp);
+            $readings[] = $this->tesseract($tmp);
+
+            imagefilter($gray, IMG_FILTER_CONTRAST, -40);
+            imagepng($gray, $tmp);
+            $readings[] = $this->tesseract($tmp);
+        } finally {
+            File::delete($tmp);
+        }
+
+        return implode("\f", $readings);
     }
 
     private function tesseract(string $path, string $psm = '6'): string
