@@ -162,7 +162,6 @@ class TechnicalSheetTest extends TestCase
         $staff = [
             $this->director,
             User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]),
-            User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]),
         ];
 
         foreach ($staff as $user) {

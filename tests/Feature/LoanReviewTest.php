@@ -193,13 +193,10 @@ class LoanReviewTest extends TestCase
     {
         [$loan] = $this->loan($this->unitProduct(), 1);
 
-        foreach ([User::ROLE_TEACHER, User::ROLE_DIRECTOR] as $role) {
+        foreach ([User::ROLE_TEACHER, User::ROLE_DIRECTOR, User::ROLE_ADMIN] as $role) {
             Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
             $this->getJson("/api/loans/{$loan->id}/review")->assertForbidden();
         }
-
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
-        $this->getJson("/api/loans/{$loan->id}/review")->assertOk();
     }
 
     public function test_review_rejects_a_loan_that_is_not_pending(): void

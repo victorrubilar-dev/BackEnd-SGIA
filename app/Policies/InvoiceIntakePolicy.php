@@ -10,7 +10,7 @@ class InvoiceIntakePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR]);
+        return $user->is_active && $user->hasRole([User::ROLE_DIRECTOR]);
     }
 
     public function view(User $user, InvoiceIntake $intake): bool
@@ -19,7 +19,7 @@ class InvoiceIntakePolicy
     }
 
     /**
-     * Subir una factura (presupuesto y compra opcionales): AD-01 y DIR-01 (cualquier carrera del área).
+     * Subir una factura (presupuesto y compra opcionales): DIR-01 (cualquier carrera del área).
      */
     public function create(User $user, ?AnnualBudget $budget = null): bool
     {

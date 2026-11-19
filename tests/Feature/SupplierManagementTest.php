@@ -45,7 +45,7 @@ class SupplierManagementTest extends TestCase
 
         $this->admin = User::factory()->create([
             'email' => 'admin_prov_'.uniqid().'@inacap.cl',
-            'role' => User::ROLE_ADMIN,
+            'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
     }
@@ -179,7 +179,7 @@ class SupplierManagementTest extends TestCase
         $this->assertTrue($supplier->fresh()->is_active);
     }
 
-    public function test_admin_can_delete_supplier_without_products(): void
+    public function test_director_can_delete_supplier_without_products(): void
     {
         $supplier = Supplier::factory()->create();
 

@@ -7,12 +7,15 @@ use Tests\TestCase;
 
 class RouteProtectionTest extends TestCase
 {
+    /** Rutas públicas a propósito: el login y el chequeo de salud (solo estados). */
+    private const PUBLIC = ['api/login', 'api/health'];
+
     public function test_every_api_route_except_login_rejects_guests(): void
     {
         $checked = 0;
 
         foreach (Route::getRoutes() as $route) {
-            if (! str_starts_with($route->uri(), 'api/') || $route->uri() === 'api/login') {
+            if (! str_starts_with($route->uri(), 'api/') || in_array($route->uri(), self::PUBLIC, true)) {
                 continue;
             }
 
@@ -51,7 +54,7 @@ class RouteProtectionTest extends TestCase
         foreach (Route::getRoutes() as $route) {
             $uri = $route->uri();
 
-            if (! str_starts_with($uri, 'api/') || $uri === 'api/login' || in_array($uri, $shared, true)) {
+            if (! str_starts_with($uri, 'api/') || in_array($uri, self::PUBLIC, true) || in_array($uri, $shared, true)) {
                 continue;
             }
 

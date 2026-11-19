@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Models\FailedLogin;
 use App\Models\LoginRecord;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -24,12 +25,16 @@ class AuthController extends Controller
         $user = User::where('email', $validated['email'])->first();
 
         if (! $user || ! Hash::check($validated['password'], $user->password)) {
+            FailedLogin::record($request, FailedLogin::REASON_INVALID_CREDENTIALS, $user);
+
             return response()->json([
                 'message' => 'Credenciales inválidas.',
             ], 401);
         }
 
         if (! $user->is_active) {
+            FailedLogin::record($request, FailedLogin::REASON_INACTIVE, $user);
+
             return response()->json([
                 'message' => 'Tu cuenta ha sido desactivada. Contacta al administrador.',
                 'code' => 'account_inactive',

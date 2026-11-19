@@ -66,8 +66,9 @@ class InvoiceOverBudgetTraceTest extends TestCase
             ->assertJsonPath('code', 'over_budget')->assertJsonPath('over_by', '500.00')
             ->assertJsonPath('free_amount', '1000.00')->assertJsonPath('total', '1500.00');
 
+        // AD-01 ya no opera facturas: ni siquiera llega a la regla del exceso.
         $this->as(User::ROLE_ADMIN);
-        $this->confirm($intake, ['allow_over_budget' => true])->assertForbidden()->assertJsonPath('code', 'over_budget');
+        $this->confirm($intake, ['allow_over_budget' => true])->assertForbidden();
         $this->assertSame('borrador', $intake->fresh()->status);
 
         $director = $this->as(User::ROLE_DIRECTOR);
@@ -83,7 +84,7 @@ class InvoiceOverBudgetTraceTest extends TestCase
 
     public function test_allow_over_budget_without_excess_is_harmless_and_invalid_value_is_422(): void
     {
-        $this->as(User::ROLE_ADMIN);
+        $this->as(User::ROLE_DIRECTOR);
         $this->confirm($this->draft(), ['allow_over_budget' => true], 'F-2', 100)->assertOk();
         $this->confirm($this->draft(), ['allow_over_budget' => 'quizá'], 'F-3', 100)->assertStatus(422)->assertJsonValidationErrors('allow_over_budget');
     }
@@ -145,12 +146,12 @@ class InvoiceOverBudgetTraceTest extends TestCase
             ->assertJsonPath('stock_entries.0.quantity', 1)
             ->assertJsonCount(3, 'budget_movements');
 
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_ADMIN] as $role) {
+        $this->as(User::ROLE_WAREHOUSE);
+        $this->getJson("/api/purchases/$id/trace")->assertOk();
+        foreach ([User::ROLE_ADMIN, User::ROLE_TEACHER] as $role) {
             $this->as($role);
-            $this->getJson("/api/purchases/$id/trace")->assertOk();
+            $this->getJson("/api/purchases/$id/trace")->assertForbidden();
         }
-        $this->as(User::ROLE_TEACHER);
-        $this->getJson("/api/purchases/$id/trace")->assertForbidden();
         $this->getJson('/api/purchases/999999/trace')->assertNotFound();
     }
 

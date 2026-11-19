@@ -9,7 +9,7 @@ use App\Models\StockAlert;
 use App\Support\DashboardPeriod;
 
 /**
- * Indicadores ejecutivos del panel (FU-06, DIR-01/AD-01). Los expone
+ * Indicadores ejecutivos del panel (FU-06, DIR-01). Los expone
  * `MetricsService::executiveKpis` por GraphQL (`POST /api/metrics`).
  */
 class DashboardService

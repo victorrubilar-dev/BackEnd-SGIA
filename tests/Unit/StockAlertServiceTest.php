@@ -78,17 +78,18 @@ class StockAlertServiceTest extends TestCase
         $this->assertSame(0, StockAlert::where('product_id', $product->id)->where('is_resolved', false)->count());
     }
 
-    public function test_only_active_admin_director_and_warehouse_users_are_notified(): void
+    public function test_only_active_director_and_warehouse_users_are_notified(): void
     {
-        $notified = collect([User::ROLE_ADMIN, User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
+        $notified = collect([User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
             ->map(fn ($role) => User::factory()->create(['role' => $role, 'is_active' => true]));
         $teacher = User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true]);
-        $inactive = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => false]);
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $inactive = User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => false]);
 
         $this->service->checkStock(Product::factory()->create(['quantity' => 1, 'stock_minimo' => 10]));
 
         Notification::assertSentTo($notified->all(), StockThresholdNotification::class);
-        Notification::assertNotSentTo([$teacher, $inactive], StockThresholdNotification::class);
+        Notification::assertNotSentTo([$teacher, $admin, $inactive], StockThresholdNotification::class);
     }
 
     public function test_no_notification_when_stock_is_healthy(): void

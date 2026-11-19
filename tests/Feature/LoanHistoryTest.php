@@ -205,7 +205,7 @@ class LoanHistoryTest extends TestCase
         $this->getJson('/api/loans/999999')->assertStatus(404);
     }
 
-    public function test_loan_history_is_restricted_to_warehouse_director_and_admin(): void
+    public function test_loan_history_is_restricted_to_warehouse_and_director(): void
     {
         // Docente no accede al historial general
         Sanctum::actingAs($this->teacher);
@@ -220,13 +220,14 @@ class LoanHistoryTest extends TestCase
         ]));
         $this->getJson('/api/loans')->assertStatus(200);
 
-        // Administrador sí
+        $this->getJson("/api/loans/{$this->loans['pendiente']->id}")->assertStatus(200);
+
+        // Administrador no: su rol se limita a usuarios, auditoría y monitoreo
         Sanctum::actingAs(User::factory()->create([
             'email' => 'admin_hist_'.uniqid().'@inacap.cl',
             'role' => User::ROLE_ADMIN,
             'is_active' => true,
         ]));
-        $this->getJson('/api/loans')->assertStatus(200);
-        $this->getJson("/api/loans/{$this->loans['pendiente']->id}")->assertStatus(200);
+        $this->getJson('/api/loans')->assertStatus(403);
     }
 }

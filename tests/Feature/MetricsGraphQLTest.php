@@ -347,14 +347,14 @@ class MetricsGraphQLTest extends TestCase
         $this->gql($abusive)->assertOk()->assertJsonStructure(['errors']);
     }
 
-    public function test_only_director_and_admin_can_use_the_endpoint(): void
+    public function test_only_director_can_use_the_endpoint(): void
     {
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
+        foreach ([User::ROLE_ADMIN, User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
             Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
             $this->gql(self::KPIS)->assertForbidden();
         }
 
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $this->gql(self::KPIS)->assertOk();
 
         $this->app['auth']->forgetGuards();

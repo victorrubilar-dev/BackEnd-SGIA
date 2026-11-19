@@ -78,7 +78,7 @@ class StockAlertTest extends TestCase
         ]);
 
         Notification::assertSentTo(
-            [$this->admin, $this->director, $this->warehouse],
+            [$this->director, $this->warehouse],
             StockThresholdNotification::class
         );
 
@@ -112,7 +112,7 @@ class StockAlertTest extends TestCase
         ]);
 
         Notification::assertSentTo(
-            [$this->admin, $this->director, $this->warehouse],
+            [$this->director, $this->warehouse],
             StockThresholdNotification::class
         );
     }

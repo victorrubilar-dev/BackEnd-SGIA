@@ -17,10 +17,10 @@ class EquipmentUnitPolicy
         return $user->is_active;
     }
 
-    /** Alta, edición y cambio de estado: AD-01, DIR-01, PAN-01. */
+    /** Alta, edición y cambio de estado: DIR-01, PAN-01. */
     public function create(User $user): bool
     {
-        return $user->is_active && $user->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE]);
+        return $user->is_active && $user->hasRole([User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE]);
     }
 
     public function update(User $user, EquipmentUnit $unit): bool
@@ -33,9 +33,9 @@ class EquipmentUnitPolicy
         return $this->create($user);
     }
 
-    /** Borrado: AD-01, DIR-01. */
+    /** Borrado: DIR-01. */
     public function delete(User $user, EquipmentUnit $unit): bool
     {
-        return $user->is_active && $user->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR]);
+        return $user->is_active && $user->hasRole([User::ROLE_DIRECTOR]);
     }
 }

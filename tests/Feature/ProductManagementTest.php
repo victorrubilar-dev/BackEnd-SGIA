@@ -233,7 +233,7 @@ class ProductManagementTest extends TestCase
 
         $this->assertDatabaseHas('products', ['id' => $id, 'created_by' => $this->warehouse->id]);
 
-        $other = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $other = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
         Sanctum::actingAs($other);
 
         $this->patchJson("/api/products/{$id}", ['description' => 'Actualizado'])->assertOk();

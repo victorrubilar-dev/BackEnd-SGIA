@@ -52,7 +52,7 @@ class LocationCodeTest extends TestCase
 
     public function test_suggested_code_gets_numeric_suffix_when_taken(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
 
         $this->postJson('/api/locations', ['nombre' => 'Pañol de Redes'])->assertCreated()->assertJsonPath('data.code', 'PREDES');
         $this->postJson('/api/locations', ['nombre' => 'Pañol de Redes'])->assertCreated()->assertJsonPath('data.code', 'PREDES2');
@@ -183,7 +183,7 @@ class LocationCodeTest extends TestCase
         $location = Location::factory()->create(['code' => 'L206', 'nombre' => 'Lab L-206']);
         $cajon = Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'Rack R1']);
 
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_DIRECTOR, User::ROLE_ADMIN] as $role) {
+        foreach ([User::ROLE_WAREHOUSE, User::ROLE_DIRECTOR] as $role) {
             $this->actingAsRole($role);
             $this->getJson('/api/cajones/by-code/l206-rack-r1')
                 ->assertOk()
@@ -208,7 +208,7 @@ class LocationCodeTest extends TestCase
         $location = Location::factory()->create(['code' => 'PCENTRAL']);
         $cajon = Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'Gaveta 01']);
 
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_DIRECTOR, User::ROLE_ADMIN] as $role) {
+        foreach ([User::ROLE_WAREHOUSE, User::ROLE_DIRECTOR] as $role) {
             $this->actingAsRole($role);
             $response = $this->get("/api/cajones/{$cajon->id}/label");
             $response->assertOk();

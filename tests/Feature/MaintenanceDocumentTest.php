@@ -83,7 +83,7 @@ class MaintenanceDocumentTest extends TestCase
 
     public function test_upload_validation(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
         $unit = EquipmentUnit::factory()->create();
         $foreignRecord = MaintenanceRecord::factory()->create();
         $url = "/api/equipment-units/{$unit->id}/maintenance-documents";

@@ -40,7 +40,7 @@ TXT;
     {
         parent::setUp();
         Storage::fake('local');
-        $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $this->admin = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
     }
 
     private function user(string $role): User

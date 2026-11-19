@@ -22,9 +22,9 @@ Antes de dar una tarea por terminada: `php artisan test` en verde, `pint --dirty
 
 | Código | Rol | Puede |
 |---|---|---|
-| `AD-01` | Administrador | Todo, incluida la gestión de usuarios |
+| `AD-01` | Administrador | Usuarios, roles, auditoría, pañoles, carreras y monitoreo (`/api/monitoring/*`). **No** opera inventario, préstamos, estudiantes, compras, presupuestos, mantenciones ni dashboards (`403`) ni recibe esos avisos |
 | `DIR-01` | Director de Carrera (de área) | Facturas, solicitudes de compra (única escritura del flujo de compras), dashboards; presupuestos de todas las carreras del Área de Informática |
-| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), crear y atender informes de novedades |
+| `PAN-01` | Pañolero | Productos, ubicaciones, préstamos (solo los de su pañol: `users.storeroom_id` o el por defecto), estudiantes (se desactivan, no se borran), mantenciones, crear y atender informes de novedades |
 | `PRO-01` | Docente | Solicitar préstamos, informes de novedades |
 
 Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` (grueso) y Policies en `app/Policies` (por recurso). `EnsureUserIsActive` (`active`) bloquea tokens de usuarios desactivados.

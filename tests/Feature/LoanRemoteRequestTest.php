@@ -242,7 +242,7 @@ class LoanRemoteRequestTest extends TestCase
         $this->assertEqualsCanonicalizing([$a, $b], $ids('status=pendiente'));
     }
 
-    public function test_warehouse_queue_shows_only_its_storeroom_and_admin_sees_all(): void
+    public function test_warehouse_queue_shows_only_its_storeroom(): void
     {
         Sanctum::actingAs($this->teacher);
         $otherStoreroom = Storeroom::factory()->create();
@@ -261,10 +261,11 @@ class LoanRemoteRequestTest extends TestCase
         $this->assertSame($this->storeroom->id, $rows[0]['storeroom']['id']);
         $this->assertNotNull($rows[0]['career_id']);
 
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true, 'storeroom_id' => $otherStoreroom->id]));
+        $this->assertSame([$theirs], $queue()->pluck('id')->all());
+
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
-        $this->assertEqualsCanonicalizing([$mine, $theirs], $queue()->pluck('id')->intersect([$mine, $theirs])->all());
-        $this->getJson("/api/loans/pending?storeroom_id={$otherStoreroom->id}&per_page=100")
-            ->assertOk()->assertJsonPath('data.0.id', $theirs);
+        $this->getJson('/api/loans/pending')->assertForbidden();
     }
 
     public function test_teacher_reads_the_catalogs_for_the_form(): void

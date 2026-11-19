@@ -24,12 +24,11 @@ class ProductPolicy
     }
 
     /**
-     * Determine whether the user can create products (AD-01, DIR-01, PAN-01).
+     * Determine whether the user can create products (DIR-01, PAN-01).
      */
     public function create(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
         ]);
@@ -41,19 +40,17 @@ class ProductPolicy
     public function update(User $user, Product $product): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
         ]);
     }
 
     /**
-     * Determine whether the user can delete the product (AD-01, DIR-01).
+     * Determine whether the user can delete the product (DIR-01).
      */
     public function delete(User $user, Product $product): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
         ]);
     }
@@ -64,19 +61,17 @@ class ProductPolicy
     public function updateStatus(User $user, Product $product): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
         ]);
     }
 
     /**
-     * Determine whether the user can scan invoices (AD-01, DIR-01).
+     * Determine whether the user can scan invoices (DIR-01).
      */
     public function scanInvoice(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
         ]);
     }

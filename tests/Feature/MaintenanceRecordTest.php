@@ -88,7 +88,7 @@ class MaintenanceRecordTest extends TestCase
 
     public function test_external_maintenance_requires_supplier_and_write_off_skips_checklist(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
         $unit = $this->unit(['maintenance_frequency_months' => 12]);
         $supplier = Supplier::factory()->create();
 
@@ -270,7 +270,7 @@ class MaintenanceRecordTest extends TestCase
         $this->actingAsRole(User::ROLE_TEACHER);
         $this->getJson('/api/maintenance-records/summary')->assertForbidden();
 
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
         $this->getJson('/api/maintenance-records/summary?from=2025-05-01&to=2025-01-01')->assertUnprocessable()->assertJsonValidationErrors('to');
         $this->getJson('/api/maintenance-records/summary?year=abc')->assertUnprocessable()->assertJsonValidationErrors('year');
     }

@@ -7,13 +7,13 @@ use App\Models\User;
 use Illuminate\Auth\Access\Response;
 
 /**
- * Plantillas de dashboard (REQ-15): DIR-01 y AD-01; cada uno solo ve las suyas (una ajena responde `404`).
+ * Plantillas de dashboard (REQ-15): DIR-01; cada uno solo ve las suyas (una ajena responde `404`).
  */
 class DashboardTemplatePolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR]);
+        return $user->is_active && $user->hasRole([User::ROLE_DIRECTOR]);
     }
 
     public function create(User $user): bool

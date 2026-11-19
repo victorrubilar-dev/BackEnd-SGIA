@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
+use App\Http\Requests\UpdateStudentStatusRequest;
 use App\Http\Resources\LoanResource;
 use App\Http\Resources\StudentResource;
 use App\Models\Loan;
@@ -13,7 +14,6 @@ use App\Rules\ChileanRut;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Gate;
 class StudentController extends Controller
 {
     /**
-     * GET /api/students — filtros `search` (RUT o nombre) y `career_id`.
+     * GET /api/students — filtros `search` (RUT o nombre), `career_id` e `is_active`.
      */
     public function index(Request $request): AnonymousResourceCollection
     {
@@ -41,6 +41,10 @@ class StudentController extends Controller
 
         if ($request->filled('career_id')) {
             $query->where('career_id', $request->integer('career_id'));
+        }
+
+        if ($request->has('is_active')) {
+            $query->where('is_active', $request->boolean('is_active'));
         }
 
         return StudentResource::collection(
@@ -86,19 +90,13 @@ class StudentController extends Controller
     }
 
     /**
-     * DELETE /api/students/{student} — `422` si tiene préstamos.
+     * PATCH /api/students/{student}/status — activa o desactiva. No se borran: su historial de préstamos queda para auditoría.
      */
-    public function destroy(Student $student): Response|JsonResponse
+    public function updateStatus(UpdateStudentStatusRequest $request, Student $student): StudentResource
     {
-        Gate::authorize('delete', $student);
+        $student->forceFill(['is_active' => $request->boolean('is_active')])->save();
 
-        if ($student->loans()->exists()) {
-            return $this->unprocessable('El estudiante tiene préstamos registrados y no se puede eliminar.', 'student');
-        }
-
-        $student->delete();
-
-        return response()->noContent();
+        return new StudentResource($student->load('career')->loadCount('loans'));
     }
 
     /**

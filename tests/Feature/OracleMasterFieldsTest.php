@@ -74,7 +74,7 @@ class OracleMasterFieldsTest extends TestCase
 
     public function test_new_category_validation(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
 
         $this->postJson('/api/oracle-categories', [])->assertUnprocessable()->assertJsonValidationErrors('name');
         $this->postJson('/api/oracle-categories', ['name' => str_repeat('A', 101)])->assertUnprocessable()->assertJsonValidationErrors('name');

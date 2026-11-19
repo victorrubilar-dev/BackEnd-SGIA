@@ -92,7 +92,7 @@ class LocationController extends Controller
      */
     public function destroy(Request $request, Location $location): Response|JsonResponse
     {
-        if (! $request->user()?->hasRole(['AD-01', 'DIR-01'])) {
+        if (! $request->user()?->hasRole('DIR-01')) {
             return response()->json(['message' => 'No tienes permisos para eliminar ubicaciones.'], 403);
         }
 

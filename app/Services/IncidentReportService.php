@@ -127,7 +127,7 @@ class IncidentReportService
 
     private function notifyStaff(IncidentReport $report): void
     {
-        $recipients = User::withRole([User::ROLE_WAREHOUSE, User::ROLE_ADMIN, User::ROLE_DIRECTOR])
+        $recipients = User::withRole([User::ROLE_WAREHOUSE, User::ROLE_DIRECTOR])
             ->where('is_active', true)
             ->whereKeyNot($report->reported_by)
             ->get();

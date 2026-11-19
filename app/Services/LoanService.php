@@ -495,7 +495,7 @@ class LoanService
     private function resolveStudent(array $validated): ?Student
     {
         if (! empty($validated['student_id'])) {
-            return Student::findOrFail($validated['student_id']);
+            return $this->ensureActiveStudent(Student::findOrFail($validated['student_id']));
         }
 
         $rut = $validated['student_rut'] ?? $validated['borrower_document'] ?? null;
@@ -512,6 +512,15 @@ class LoanService
         // Completa el nombre de un estudiante registrado solo con su RUT.
         if ($student->full_name === null && ! empty($validated['borrower_name'])) {
             $student->update(['full_name' => $validated['borrower_name']]);
+        }
+
+        return $this->ensureActiveStudent($student);
+    }
+
+    private function ensureActiveStudent(Student $student): Student
+    {
+        if (! $student->is_active) {
+            throw ValidationException::withMessages(['student_id' => 'El estudiante está desactivado y no puede recibir préstamos.']);
         }
 
         return $student;

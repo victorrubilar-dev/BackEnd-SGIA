@@ -35,6 +35,8 @@ class ListQueryPerformanceTest extends TestCase
     public function test_list_endpoints_do_not_trigger_lazy_loading(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        $warehouse = User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]);
 
         $location = Location::factory()->create();
         $cajon = Cajon::factory()->create(['location_id' => $location->id]);
@@ -88,34 +90,41 @@ class ListQueryPerformanceTest extends TestCase
         }
         $template = ChartTemplate::factory()->create();
         foreach ([1, 2, 3] as $position) {
-            UserChart::factory()->create(['user_id' => $admin->id, 'chart_template_id' => $template->id, 'position' => $position]);
+            UserChart::factory()->create(['user_id' => $director->id, 'chart_template_id' => $template->id, 'position' => $position]);
         }
-
-        Sanctum::actingAs($admin);
 
         $unitId = $units->first()->id;
+        // Cada listado con el rol que lo usa (AD-01 solo administra usuarios, auditoría y catálogos del sistema).
         foreach ([
-            '/api/students', "/api/students/{$student->id}/loans", '/api/maintenance-records',
-            "/api/equipment-units/{$unitId}/maintenance-records", "/api/equipment-units/{$unitId}/maintenance-documents",
-            '/api/chart-templates', '/api/me/charts', '/api/storerooms', '/api/audit-logs', '/api/roles',
-            '/api/incident-reports', '/api/careers', '/api/categories',
-        ] as $uri) {
-            DB::flushQueryLog();
-            DB::enableQueryLog();
-            $this->getJson($uri)->assertOk();
-            // Sin N+1: unas pocas consultas fijas (auth, conteo, página, eager loads).
-            $this->assertLessThan(20, count(DB::getQueryLog()), "Demasiadas consultas en {$uri}");
-            DB::disableQueryLog();
+            [$warehouse, ['/api/students', "/api/students/{$student->id}/loans", '/api/maintenance-records',
+                "/api/equipment-units/{$unitId}/maintenance-records", "/api/equipment-units/{$unitId}/maintenance-documents",
+                '/api/incident-reports', '/api/categories']],
+            [$director, ['/api/chart-templates', '/api/me/charts']],
+            [$admin, ['/api/storerooms', '/api/audit-logs', '/api/roles', '/api/careers']],
+        ] as [$user, $uris]) {
+            Sanctum::actingAs($user);
+            foreach ($uris as $uri) {
+                DB::flushQueryLog();
+                DB::enableQueryLog();
+                $this->getJson($uri)->assertOk();
+                // Sin N+1: unas pocas consultas fijas (auth, conteo, página, eager loads).
+                $this->assertLessThan(20, count(DB::getQueryLog()), "Demasiadas consultas en {$uri}");
+                DB::disableQueryLog();
+            }
         }
 
         foreach ([
-            '/api/products', '/api/products?storeroom_id='.$location->storeroom_id, '/api/suppliers', '/api/locations', '/api/cajones',
-            '/api/purchases', '/api/quotations', '/api/loans', '/api/loans/pending',
-            '/api/alerts/critical-stock', '/api/users', '/api/tokens',
-            "/api/equipment/{$products[0]->id}/reports",
-            "/api/products/{$products[0]->id}/units", '/api/equipment-units?search=EQP&maintenance_due=1&status=disponible',
-        ] as $uri) {
-            $this->getJson($uri)->assertOk();
+            [$warehouse, ['/api/products', '/api/products?storeroom_id='.$location->storeroom_id, '/api/suppliers', '/api/locations', '/api/cajones',
+                '/api/purchases', '/api/loans', '/api/loans/pending', '/api/alerts/critical-stock',
+                "/api/equipment/{$products[0]->id}/reports",
+                "/api/products/{$products[0]->id}/units", '/api/equipment-units?search=EQP&maintenance_due=1&status=disponible']],
+            [$director, ['/api/quotations']],
+            [$admin, ['/api/users', '/api/tokens']],
+        ] as [$user, $uris]) {
+            Sanctum::actingAs($user);
+            foreach ($uris as $uri) {
+                $this->getJson($uri)->assertOk();
+            }
         }
     }
 

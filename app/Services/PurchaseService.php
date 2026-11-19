@@ -95,12 +95,12 @@ class PurchaseService
     }
 
     /**
-     * Notifica al pañolero (PAN-01) y al administrador (AD-01) que la orden
+     * Notifica al pañolero (PAN-01) que la orden
      * llegó y debe ingresarse físicamente a stock.
      */
     protected function notifyWarehouseArrival(Purchase $purchase): void
     {
-        $recipients = User::withRole([User::ROLE_WAREHOUSE, User::ROLE_ADMIN])
+        $recipients = User::withRole(User::ROLE_WAREHOUSE)
             ->where('is_active', true)
             ->get();
 

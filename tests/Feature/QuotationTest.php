@@ -98,10 +98,10 @@ class QuotationTest extends TestCase
     {
         $quotation = Quotation::factory()->create(['created_by' => $this->director->id]);
 
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs($this->director);
         $this->getJson("/api/quotations/{$quotation->id}")->assertOk();
 
-        foreach ([User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
+        foreach ([User::ROLE_ADMIN, User::ROLE_WAREHOUSE, User::ROLE_TEACHER] as $role) {
             Sanctum::actingAs(User::factory()->create(['role' => $role, 'is_active' => true]));
             $this->getJson('/api/quotations')->assertForbidden();
         }

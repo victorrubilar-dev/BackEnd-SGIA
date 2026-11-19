@@ -11,7 +11,7 @@ class StoreLocationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->is_active && $this->user()?->hasRole(['AD-01', 'DIR-01', 'PAN-01']);
+        return $this->user()?->is_active && $this->user()?->hasRole(['DIR-01', 'PAN-01']);
     }
 
     protected function prepareForValidation(): void

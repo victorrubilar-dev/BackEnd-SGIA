@@ -9,12 +9,11 @@ class IncidentReportPolicy
 {
     /**
      * Determine whether the user can view the list of incident reports
-     * of an equipment (AD-01, DIR-01, PAN-01).
+     * of an equipment (DIR-01, PAN-01).
      */
     public function viewAny(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
         ]);
@@ -31,7 +30,7 @@ class IncidentReportPolicy
     }
 
     /**
-     * Cambiar el estado de atención de un informe (AD-01, DIR-01, PAN-01).
+     * Cambiar el estado de atención de un informe (DIR-01, PAN-01).
      */
     public function updateStatus(User $user, IncidentReport $incidentReport): bool
     {

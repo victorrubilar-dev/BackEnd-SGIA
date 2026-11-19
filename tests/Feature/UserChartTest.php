@@ -87,7 +87,7 @@ class UserChartTest extends TestCase
 
     public function test_validation_errors(): void
     {
-        $user = $this->actingAsRole(User::ROLE_ADMIN);
+        $user = $this->actingAsRole(User::ROLE_DIRECTOR);
         $generic = $this->template('bar')->id;
 
         $this->postJson('/api/me/charts', ['chart_template_id' => $generic, 'position' => 10])
@@ -152,7 +152,7 @@ class UserChartTest extends TestCase
         $this->patchJson("/api/me/charts/{$second}", ['custom_title' => 'Renombrado'])->assertOk();
 
         // Otro usuario puede tener el mismo gráfico.
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
         $this->postJson('/api/me/charts', ['chart_template_id' => $template])->assertCreated();
     }
 
@@ -240,7 +240,7 @@ class UserChartTest extends TestCase
 
     public function test_delete_returns_204(): void
     {
-        $user = $this->actingAsRole(User::ROLE_ADMIN);
+        $user = $this->actingAsRole(User::ROLE_DIRECTOR);
         $chart = UserChart::factory()->create(['user_id' => $user->id, 'chart_template_id' => $this->template('bar')->id]);
 
         $this->deleteJson("/api/me/charts/{$chart->id}")->assertNoContent();
@@ -310,7 +310,7 @@ class UserChartTest extends TestCase
         $owner = $this->actingAsRole(User::ROLE_DIRECTOR);
         $mine = DashboardTemplate::factory()->create(['user_id' => $owner->id]);
 
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
         $this->getJson('/api/me/dashboard-templates')->assertOk()->assertJsonCount(0, 'data');
         $this->patchJson("/api/me/dashboard-templates/{$mine->id}", ['name' => 'x'])->assertNotFound();
         $this->deleteJson("/api/me/dashboard-templates/{$mine->id}")->assertNotFound();

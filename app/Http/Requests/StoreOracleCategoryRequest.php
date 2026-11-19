@@ -9,7 +9,7 @@ class StoreOracleCategoryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        // El rol se controla con el middleware `role:AD-01,DIR-01,PAN-01` de la ruta.
+        // El rol se controla con el middleware `role:DIR-01,PAN-01` de la ruta.
         return true;
     }
 

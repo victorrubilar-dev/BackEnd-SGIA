@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\EquipmentUnitController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\IncidentReportController;
 use App\Http\Controllers\Api\InvoiceIntakeController;
 use App\Http\Controllers\Api\InvoiceScanController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\Api\LocationController;
 use App\Http\Controllers\Api\MaintenanceDocumentController;
 use App\Http\Controllers\Api\MaintenanceRecordController;
 use App\Http\Controllers\Api\MetricsController;
+use App\Http\Controllers\Api\MonitoringController;
 use App\Http\Controllers\Api\OracleCategoryController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
@@ -35,6 +37,8 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
+// Chequeo público de salud (BD, almacenamiento y cola): solo estados.
+Route::get('/health', HealthController::class)->middleware('throttle:60,1');
 
 Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -55,6 +59,12 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/roles', [RoleController::class, 'index']);
         // REQ-NF-01: registro de eventos críticos (solo lectura).
         Route::get('/audit-logs', [AuditLogController::class, 'index']);
+        // Monitoreo de seguridad y salud del sistema.
+        Route::get('/monitoring/logins', [MonitoringController::class, 'logins']);
+        Route::get('/monitoring/failed-logins', [MonitoringController::class, 'failedLogins']);
+        Route::get('/monitoring/sessions', [MonitoringController::class, 'sessions']);
+        Route::delete('/monitoring/sessions/{session}', [MonitoringController::class, 'revokeSession'])->whereNumber('session');
+        Route::get('/monitoring/health', [MonitoringController::class, 'health']);
     });
 
     // Pañoles: lectura para todos, escritura solo AD-01
@@ -72,7 +82,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/careers', [CareerController::class, 'index']);
         Route::get('/careers/{career}', [CareerController::class, 'show']);
     });
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         // Catálogo para el alta de productos (`category_id`).
         Route::get('/categories', [CategoryController::class, 'index']);
         // Descripción de categoría del maestro de Oracle (`oracle_category_id`): se puede agregar una nueva.
@@ -85,14 +95,14 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/careers/{career}', [CareerController::class, 'destroy']);
     });
 
-    // REQ-03: Escaneo de facturas (AD-01 y DIR-01)
-    Route::middleware(['role:AD-01,DIR-01', 'throttle:sensitive'])->group(function () {
+    // REQ-03: Escaneo de facturas (DIR-01)
+    Route::middleware(['role:DIR-01', 'throttle:sensitive'])->group(function () {
         Route::post('/invoices/scan', [InvoiceScanController::class, 'scan']);
         Route::post('/products/scan-invoice', [InvoiceScanController::class, 'scan']);
     });
 
-    // REQ-16 / REQ-24: Presupuesto anual por carrera (AD-01 y DIR-01, director del área: todas las carreras) y reportes
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    // REQ-16 / REQ-24: Presupuesto anual por carrera (DIR-01, director del área: todas las carreras) y reportes
+    Route::middleware('role:DIR-01')->group(function () {
         Route::get('/budgets', [AnnualBudgetController::class, 'index']);
         Route::get('/budgets/summary', [BudgetReportController::class, 'summary']);
         Route::get('/budgets/{annualBudget}', [AnnualBudgetController::class, 'show']);
@@ -104,8 +114,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::delete('/budgets/{annualBudget}', [AnnualBudgetController::class, 'destroy']);
     });
 
-    // REQ-17: Ingreso de facturas con descuento de presupuesto (AD-01 y DIR-01)
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    // REQ-17: Ingreso de facturas con descuento de presupuesto (DIR-01)
+    Route::middleware('role:DIR-01')->group(function () {
         Route::post('/invoice-intakes', [InvoiceIntakeController::class, 'store'])->middleware('throttle:sensitive');
         Route::get('/invoice-intakes', [InvoiceIntakeController::class, 'index']);
         Route::get('/invoice-intakes/{invoiceIntake}', [InvoiceIntakeController::class, 'show']);
@@ -115,11 +125,11 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-06: Alertas de stock crítico
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/alerts/critical-stock', [StockAlertController::class, 'index']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/alerts/critical-stock', [StockAlertController::class, 'index']);
+    Route::middleware('role:DIR-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
 
     // REQ-08: Compras y órdenes de compra (FU-03)
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
         Route::get('/purchases/{purchase}/trace', [PurchaseController::class, 'trace']);
@@ -130,9 +140,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
     // Las OC se crean solo desde la solicitud de compra (`POST /purchase-requests/{id}/order`); `POST /purchases` se retiró.
 
-    // Nuevo flujo de compras: solicitud de compra (NUEVO-FLUJO-COMPRAS.md). Lectura AD-01, DIR-01, PAN-01; escritura solo DIR-01.
+    // Nuevo flujo de compras: solicitud de compra (NUEVO-FLUJO-COMPRAS.md). Lectura DIR-01, PAN-01; escritura solo DIR-01.
     // `/purchase-requests/areas` va antes de `{purchaseRequest}`.
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
         Route::get('/purchase-requests/areas', [PurchaseRequestController::class, 'areas']);
         Route::get('/purchase-requests/{purchaseRequest}', [PurchaseRequestController::class, 'show']);
@@ -153,23 +163,23 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-07: Proveedores (FU-03)
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
         Route::get('/suppliers/{supplier}', [SupplierController::class, 'show']);
     });
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    Route::middleware('role:DIR-01')->group(function () {
         Route::post('/suppliers', [SupplierController::class, 'store']);
         Route::put('/suppliers/{supplier}', [SupplierController::class, 'update']);
         Route::patch('/suppliers/{supplier}', [SupplierController::class, 'update']);
         Route::patch('/suppliers/{supplier}/status', [SupplierController::class, 'updateStatus']);
     });
-    Route::middleware('role:AD-01')->group(function () {
+    Route::middleware('role:DIR-01')->group(function () {
         Route::delete('/suppliers/{supplier}', [SupplierController::class, 'destroy']);
     });
 
     // REQ-07: Cotizaciones del flujo antiguo (FU-03), solo lectura del historial. Las escrituras se retiraron
     // (Fase 7 del nuevo flujo de compras): las cotizaciones nuevas se suben en la solicitud de compra.
-    Route::middleware('role:AD-01,DIR-01')->group(function () {
+    Route::middleware('role:DIR-01')->group(function () {
         Route::get('/quotations', [QuotationController::class, 'index']);
         Route::get('/quotations/{quotation}', [QuotationController::class, 'show']);
     });
@@ -184,7 +194,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-10: Procesamiento de préstamos presenciales/remotos (FU-04, pañol)
-    Route::middleware('role:PAN-01,AD-01')->group(function () {
+    Route::middleware('role:PAN-01')->group(function () {
         Route::get('/loans/pending', [LoanController::class, 'pending']);
         Route::post('/loans/checkout', [LoanController::class, 'storeCheckout']);
         Route::post('/loans/checkin', [LoanController::class, 'checkin']);
@@ -197,27 +207,27 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-11: Historial y listado de préstamos (FU-04)
     // Va después de las rutas estáticas (/loans/requests, /loans/pending,
     // /loans/checkout) para que no las capture {loan}.
-    Route::middleware('role:PAN-01,DIR-01,AD-01')->group(function () {
+    Route::middleware('role:PAN-01,DIR-01')->group(function () {
         Route::get('/loans/export', [LoanController::class, 'export']);
         Route::get('/loans', [LoanController::class, 'index']);
         Route::get('/loans/{loan}', [LoanController::class, 'show']);
     });
 
-    // REQ-20: Registro de estudiantes (FU-04, PAN-01 y AD-01; borrado solo AD-01)
-    Route::middleware('role:PAN-01,AD-01')->group(function () {
+    // REQ-20: Registro de estudiantes (FU-04, PAN-01). No se borran: se desactivan (auditoría).
+    Route::middleware('role:PAN-01')->group(function () {
         Route::get('/students', [StudentController::class, 'index']);
         Route::get('/students/by-rut/{rut}', [StudentController::class, 'byRut']);
         Route::post('/students', [StudentController::class, 'store']);
         Route::get('/students/{student}', [StudentController::class, 'show']);
         Route::patch('/students/{student}', [StudentController::class, 'update']);
+        Route::patch('/students/{student}/status', [StudentController::class, 'updateStatus']);
         Route::get('/students/{student}/loans', [StudentController::class, 'loans']);
     });
-    Route::middleware('role:AD-01')->delete('/students/{student}', [StudentController::class, 'destroy']);
 
     // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/locations/{location}', [LocationController::class, 'show']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::post('/locations', [LocationController::class, 'store']);
         Route::put('/locations/{location}', [LocationController::class, 'update']);
         Route::patch('/locations/{location}', [LocationController::class, 'update']);
@@ -225,28 +235,28 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // Estáticas: antes de /cajones/{cajon}
-    Route::post('/cajones/bulk-delete', [CajonController::class, 'bulkDestroy'])->middleware('role:AD-01,DIR-01');
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::post('/cajones/bulk-delete', [CajonController::class, 'bulkDestroy'])->middleware('role:DIR-01');
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/cajones/by-code/{code}', [CajonController::class, 'byCode']);
         Route::get('/cajones/{cajon}/label', [CajonController::class, 'label']);
     });
 
     Route::get('/cajones', [CajonController::class, 'index']);
     Route::get('/cajones/{cajon}', [CajonController::class, 'show']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::post('/cajones', [CajonController::class, 'store']);
         Route::put('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
     });
 
-    // REQ-14: Dashboards (FU-06, DIR-01/AD-01): solo GraphQL
-    Route::middleware('role:DIR-01,AD-01')->group(function () {
+    // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL
+    Route::middleware('role:DIR-01')->group(function () {
         Route::post('/metrics', MetricsController::class)->middleware('throttle:metrics');
     });
 
-    // REQ-15: Dashboard personalizado (FU-06, DIR-01/AD-01; cada uno solo ve sus gráficos)
-    Route::middleware('role:DIR-01,AD-01')->group(function () {
+    // REQ-15: Dashboard personalizado (FU-06, DIR-01; cada uno solo ve sus gráficos)
+    Route::middleware('role:DIR-01')->group(function () {
         Route::get('/chart-templates', [UserChartController::class, 'templates']);
         Route::get('/me/dashboard-templates', [DashboardTemplateController::class, 'index']);
         Route::post('/me/dashboard-templates', [DashboardTemplateController::class, 'store']);
@@ -287,48 +297,48 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);
     Route::get('/products/{product}/barcode', [ProductController::class, 'barcode']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/products/{product}/label', [ProductController::class, 'label']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/products/{product}/label', [ProductController::class, 'label']);
     Route::patch('/products/{product}/status', [ProductController::class, 'updateStatus']);
     Route::patch('/products/{product}/condition', [ProductController::class, 'updateCondition']);
     Route::apiResource('products', ProductController::class);
 
     // Unidades de equipo (productos `equipo` y `maqueta`): lectura para todos,
-    // escritura AD-01/DIR-01/PAN-01 y borrado AD-01/DIR-01 (EquipmentUnitPolicy).
+    // escritura DIR-01/PAN-01 y borrado DIR-01 (EquipmentUnitPolicy).
     Route::get('/products/{product}/units', [EquipmentUnitController::class, 'indexForProduct']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->post('/products/{product}/units', [EquipmentUnitController::class, 'storeForProduct']);
+    Route::middleware('role:DIR-01,PAN-01')->post('/products/{product}/units', [EquipmentUnitController::class, 'storeForProduct']);
     Route::get('/equipment-units', [EquipmentUnitController::class, 'index']);
     Route::get('/equipment-units/by-code/{code}', [EquipmentUnitController::class, 'byCode']);
     Route::get('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'show']);
     Route::get('/equipment-units/{equipmentUnit}/barcode', [EquipmentUnitController::class, 'barcode']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->get('/equipment-units/{equipmentUnit}/label', [EquipmentUnitController::class, 'label']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/equipment-units/{equipmentUnit}/label', [EquipmentUnitController::class, 'label']);
     Route::get('/equipment-units/{equipmentUnit}/technical-sheet', [EquipmentUnitController::class, 'technicalSheet']);
     Route::get('/equipment-units/{equipmentUnit}/reports', [EquipmentReportController::class, 'unitIndex']);
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::patch('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'update']);
         Route::patch('/equipment-units/{equipmentUnit}/status', [EquipmentUnitController::class, 'updateStatus']);
     });
-    Route::middleware('role:AD-01,DIR-01')->delete('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'destroy']);
+    Route::middleware('role:DIR-01')->delete('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'destroy']);
 
-    // REQ-18: Registro de mantenciones (FU-05, PAN-01 y AD-01; DIR-01 lectura)
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    // REQ-18: Registro de mantenciones (FU-05, PAN-01; DIR-01 lectura)
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/maintenance-records', [MaintenanceRecordController::class, 'index']);
         Route::get('/maintenance-records/summary', [MaintenanceRecordController::class, 'summary']);
         Route::get('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'show']);
         Route::get('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'unitIndex']);
     });
-    Route::middleware('role:AD-01,PAN-01')->group(function () {
+    Route::middleware('role:PAN-01')->group(function () {
         Route::post('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'store']);
         Route::patch('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'update']);
         Route::post('/maintenance-records/{maintenanceRecord}/finish', [MaintenanceRecordController::class, 'finish']);
         Route::post('/maintenance-records/{maintenanceRecord}/cancel', [MaintenanceRecordController::class, 'cancel']);
     });
 
-    // REQ-19: Documentos de mantenimiento (FU-05, PAN-01 y AD-01; DIR-01 lectura y descarga)
-    Route::middleware('role:AD-01,DIR-01,PAN-01')->group(function () {
+    // REQ-19: Documentos de mantenimiento (FU-05, PAN-01; DIR-01 lectura y descarga)
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/equipment-units/{equipmentUnit}/maintenance-documents', [MaintenanceDocumentController::class, 'index']);
         Route::get('/maintenance-documents/{maintenanceDocument}/file', [MaintenanceDocumentController::class, 'file']);
     });
-    Route::middleware('role:AD-01,PAN-01')->group(function () {
+    Route::middleware('role:PAN-01')->group(function () {
         Route::post('/equipment-units/{equipmentUnit}/maintenance-documents', [MaintenanceDocumentController::class, 'store'])->middleware('throttle:sensitive');
         Route::delete('/maintenance-documents/{maintenanceDocument}', [MaintenanceDocumentController::class, 'destroy']);
     });

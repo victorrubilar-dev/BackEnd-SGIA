@@ -52,8 +52,7 @@ class ErrorFormatTest extends TestCase
 
     public function test_business_rule_errors_also_carry_errors(): void
     {
-        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
-        Sanctum::actingAs($admin);
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
 
         $location = Location::factory()->create();
         Cajon::factory()->create(['location_id' => $location->id]);
@@ -66,6 +65,7 @@ class ErrorFormatTest extends TestCase
         $this->patchJson("/api/equipment-units/{$unit->id}/status", ['status' => 'disponible'])
             ->assertUnprocessable()->assertJsonStructure(['message', 'errors' => ['status']]);
 
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]));
         $loan = Loan::factory()->processed()->create();
         $this->postJson("/api/loans/{$loan->id}/approve")
             ->assertUnprocessable()->assertJsonStructure(['message', 'errors' => ['status'], 'allowed_transitions']);

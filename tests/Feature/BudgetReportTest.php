@@ -37,7 +37,7 @@ class BudgetReportTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $this->admin = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
         $this->budget = AnnualBudget::factory()->create(['year' => (int) now()->format('Y'), 'initial_amount' => 1000000, 'available_amount' => 1000000]);
         $this->supplier = Supplier::factory()->create(['name' => 'Proveedor Uno']);
         $this->supply = Product::factory()->supply()->create(['name' => 'Cable', 'quantity' => 0]);

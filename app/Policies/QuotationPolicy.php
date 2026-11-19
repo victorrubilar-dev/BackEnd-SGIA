@@ -6,17 +6,16 @@ use App\Models\Quotation;
 use App\Models\User;
 
 /**
- * Cotizaciones del flujo antiguo: solo lectura (AD-01, DIR-01).
+ * Cotizaciones del flujo antiguo: solo lectura (DIR-01).
  */
 class QuotationPolicy
 {
     /**
-     * Determine whether the user can view any quotations (AD-01, DIR-01).
+     * Determine whether the user can view any quotations (DIR-01).
      */
     public function viewAny(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
         ]);
     }

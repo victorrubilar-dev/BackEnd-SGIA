@@ -111,7 +111,7 @@ class CajonController extends Controller
      */
     public function destroy(Request $request, Cajon $cajon): Response|JsonResponse
     {
-        if (! $request->user()?->hasRole(['AD-01', 'DIR-01'])) {
+        if (! $request->user()?->hasRole('DIR-01')) {
             return response()->json(['message' => 'No tienes permisos para eliminar cajones.'], 403);
         }
 

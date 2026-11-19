@@ -26,7 +26,7 @@ class LocationAndCajonCrudTest extends TestCase
 
         $this->admin = User::factory()->create([
             'email' => 'admin_loc_'.uniqid().'@inacap.cl',
-            'role' => User::ROLE_ADMIN,
+            'role' => User::ROLE_DIRECTOR,
             'is_active' => true,
         ]);
 

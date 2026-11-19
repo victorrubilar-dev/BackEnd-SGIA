@@ -94,8 +94,9 @@ class IncidentReportTest extends TestCase
         Storage::disk('public')->assertMissing($report->signature_path);
         $this->assertStringStartsWith('NV-', $report->code);
 
-        // Avisa a pañol, administración y dirección (no al docente).
-        Notification::assertSentTo([$this->warehouse, $this->admin, $this->director], IncidentReportNotification::class);
+        // Avisa a pañol y dirección (no al docente ni a administración).
+        Notification::assertSentTo([$this->warehouse, $this->director], IncidentReportNotification::class);
+        Notification::assertNotSentTo($this->admin, IncidentReportNotification::class);
         Notification::assertNotSentTo($this->teacher, IncidentReportNotification::class);
     }
 
@@ -138,7 +139,7 @@ class IncidentReportTest extends TestCase
             ->json('data.id');
 
         // Avisa al resto del personal, no a quien lo creó.
-        Notification::assertSentTo([$otherWarehouse, $this->admin, $this->director], IncidentReportNotification::class);
+        Notification::assertSentTo([$otherWarehouse, $this->director], IncidentReportNotification::class);
         Notification::assertNotSentTo($this->warehouse, IncidentReportNotification::class);
 
         // Cambiar el estado de un informe propio no genera un aviso a uno mismo.
@@ -252,7 +253,7 @@ class IncidentReportTest extends TestCase
         $this->get("/api/incident-reports/{$other->id}/signature")->assertForbidden();
 
         // El personal ve cualquiera; el listado de "mis informes" es solo del docente.
-        foreach ([$this->warehouse, $this->admin, $this->director] as $user) {
+        foreach ([$this->warehouse, $this->director] as $user) {
             Sanctum::actingAs($user);
             $this->getJson("/api/incident-reports/$id")->assertOk();
             $this->get("/api/incident-reports/$id/pdf")->assertOk();

@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Gate;
 class MetricsController extends Controller
 {
     /**
-     * REQ-14: endpoint GraphQL del panel (FU-06, DIR-01/AD-01).
+     * REQ-14: endpoint GraphQL del panel (FU-06, DIR-01).
      *
      * POST /api/metrics  {query, variables?, operationName?}  →  {data, errors?}
      *

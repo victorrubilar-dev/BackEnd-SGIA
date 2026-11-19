@@ -19,9 +19,9 @@ class AnnualBudgetTest extends TestCase
         return User::factory()->create(['role' => $role, 'is_active' => true]);
     }
 
-    public function test_admin_creates_lists_updates_and_deletes_budget(): void
+    public function test_director_creates_lists_updates_and_deletes_budget(): void
     {
-        Sanctum::actingAs($this->user(User::ROLE_ADMIN));
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
         $career = Career::factory()->create();
 
         $id = $this->postJson('/api/budgets', ['career_id' => $career->id, 'year' => 2031, 'initial_amount' => 500000])
@@ -42,7 +42,7 @@ class AnnualBudgetTest extends TestCase
 
     public function test_update_recalculates_available_from_consumed(): void
     {
-        Sanctum::actingAs($this->user(User::ROLE_ADMIN));
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
         $budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 700000]);
 
         $this->patchJson("/api/budgets/{$budget->id}", ['initial_amount' => 900000])
@@ -58,7 +58,7 @@ class AnnualBudgetTest extends TestCase
 
     public function test_validation_errors(): void
     {
-        Sanctum::actingAs($this->user(User::ROLE_ADMIN));
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
         $existing = AnnualBudget::factory()->create(['year' => 2032]);
 
         $this->postJson('/api/budgets', ['career_id' => $existing->career_id, 'year' => 2032, 'initial_amount' => 10])
@@ -114,7 +114,7 @@ class AnnualBudgetTest extends TestCase
 
     public function test_show_lists_only_confirmed_intakes(): void
     {
-        Sanctum::actingAs($this->user(User::ROLE_ADMIN));
+        Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
         $budget = AnnualBudget::factory()->create();
         InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id, 'status' => InvoiceIntake::STATUS_CONFIRMED]);
         InvoiceIntake::factory()->create(['annual_budget_id' => $budget->id]);

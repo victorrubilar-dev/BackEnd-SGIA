@@ -20,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 class AnnualBudgetController extends Controller
 {
     /**
-     * Query params: year, career_id, per_page. AD-01 y DIR-01 ven todas las carreras del área.
+     * Query params: year, career_id, per_page. DIR-01 ve todas las carreras del área.
      */
     public function index(Request $request): AnonymousResourceCollection
     {

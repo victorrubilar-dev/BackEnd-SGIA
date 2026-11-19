@@ -80,7 +80,7 @@ class PurchaseRequestService
         });
     }
 
-    /** `borrador → aprobada` (solo DIR-01). Notifica a AD-01. */
+    /** `borrador → aprobada` (solo DIR-01). Notifica al pañol (PAN-01), que recibirá la compra. */
     public function approve(PurchaseRequest $request, User $user): PurchaseRequest
     {
         $approved = DB::transaction(function () use ($request, $user) {
@@ -90,9 +90,9 @@ class PurchaseRequestService
             return $locked;
         });
 
-        $admins = User::withRole(User::ROLE_ADMIN)->where('is_active', true)->get();
-        if ($admins->isNotEmpty()) {
-            Notification::send($admins, new PurchaseRequestStatusNotification($approved, PurchaseRequest::STATUS_DRAFT));
+        $warehouse = User::withRole(User::ROLE_WAREHOUSE)->where('is_active', true)->get();
+        if ($warehouse->isNotEmpty()) {
+            Notification::send($warehouse, new PurchaseRequestStatusNotification($approved, PurchaseRequest::STATUS_DRAFT));
         }
 
         return $approved;

@@ -13,9 +13,12 @@ class Student extends Model
 
     protected $fillable = ['rut', 'full_name', 'email', 'career_id', 'registered_at'];
 
+    // Igual que el default de la columna: un estudiante recién creado ya viene activo.
+    protected $attributes = ['is_active' => true];
+
     protected function casts(): array
     {
-        return ['registered_at' => 'datetime'];
+        return ['registered_at' => 'datetime', 'is_active' => 'boolean'];
     }
 
     /** @return BelongsTo<Career, $this> */

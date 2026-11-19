@@ -31,7 +31,7 @@ class InvoiceIntakeCancellationTest extends TestCase
     {
         parent::setUp();
         Storage::fake('local');
-        $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $this->admin = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
         $this->budget = AnnualBudget::factory()->create(['initial_amount' => 1000000, 'available_amount' => 1000000]);
         Sanctum::actingAs($this->admin);
     }

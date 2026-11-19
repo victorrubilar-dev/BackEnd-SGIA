@@ -41,6 +41,14 @@ En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la def
 ### A6. Etiquetas en vertical para Firefox — Informativo
 `GET /api/{products|equipment-units|cajones}/{id}/label?orientation=portrait` devuelve la etiqueta girada 90° en página 30x50 mm. Sin el parámetro no cambia nada. La web lo envía solo en Firefox (`labelQuery()` en `packages/api-client/src/http.ts`), porque ese navegador fija la orientación y la Xprinter XP-420B imprimía la etiqueta girada.
 
+### A7. Recorte del administrador, estudiantes sin borrado y monitoreo — Ya (2026-11-18)
+
+- **`AD-01` ya no opera el negocio.** Conserva usuarios, `GET /api/roles`, auditoría, pañoles, carreras y el monitoreo nuevo. En inventario, préstamos, estudiantes, compras, solicitudes, facturas, presupuestos, proveedores, mantenciones, novedades, alertas y dashboards (`/api/metrics`, `/api/me/charts`) responde `403`. Tampoco recibe los avisos de stock, novedades ni compras. El menú y la pantalla de inicio de `AD-01` deben reflejarlo.
+- Lo que solo hacía `AD-01`: borrar proveedores pasa a `DIR-01`; las mantenciones las escribe solo `PAN-01`; aprobar una solicitud de compra avisa a `PAN-01` (antes a `AD-01`).
+- **Estudiantes:** `DELETE /api/students/{id}` se retiró (`405`). Se desactivan con `PATCH /api/students/{id}/status {is_active}`. `StudentResource` suma `is_active`; `GET /api/students` acepta `is_active`. Un estudiante desactivado no recibe préstamos (`422` en `student_id`).
+- **Monitoreo (`AD-01`):** `GET /api/monitoring/logins?hours=`, `GET /api/monitoring/failed-logins`, `GET/DELETE /api/monitoring/sessions[/{id}]`, `GET /api/monitoring/health`. Formato en `ENDPOINTS.md` §2.0c. Los cambios sensibles salen de `GET /api/audit-logs?action=user.` (nueva acción `user.session_revoked`).
+- `GET /api/health` público (sin token).
+
 ## B. Cambios que vienen (rework)
 
 Avisar al frontend **antes** de aplicarlos; ninguno está hecho todavía.

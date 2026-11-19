@@ -165,7 +165,7 @@ class CodeSequenceTest extends TestCase
 
     public function test_location_with_cajones_cannot_be_deleted(): void
     {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $cajon = Cajon::factory()->create();
 
         $this->deleteJson('/api/locations/'.$cajon->location_id)->assertStatus(422)->assertJsonPath('cajones_count', 1);

@@ -23,6 +23,7 @@ class StudentResource extends JsonResource
             'email' => $this->email,
             'career_id' => $this->career_id,
             'career' => new CareerResource($this->whenLoaded('career')),
+            'is_active' => (bool) $this->is_active,
             'loans_count' => $this->whenCounted('loans'),
             'registered_at' => $this->registered_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),

@@ -405,13 +405,13 @@ class LoanUnitsTest extends TestCase
         $this->assertSame('disponible', $foreign[0]->fresh()->status);
     }
 
-    public function test_admin_checkout_for_another_storeroom_takes_its_units(): void
+    public function test_warehouse_checkout_in_its_own_storeroom_takes_its_units(): void
     {
         $product = Product::factory()->create(['quantity' => 0, 'stock_minimo' => 0]);
         $other = Storeroom::factory()->create();
         $foreign = $this->unitsInStoreroom($product, $other, 1);
         $this->unitsInStoreroom($product, Storeroom::default(), 1);
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true, 'storeroom_id' => $other->id]));
 
         $this->checkout([['product_id' => $product->id, 'quantity' => 1, 'unit_ids' => [$foreign[0]->id]]], ['storeroom_id' => $other->id])
             ->assertCreated()->assertJsonPath('data.storeroom_id', $other->id);

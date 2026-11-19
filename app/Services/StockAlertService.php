@@ -161,11 +161,11 @@ class StockAlertService
     }
 
     /**
-     * Notify administrators (AD-01), directors (DIR-01) and warehouse keepers (PAN-01).
+     * Notify directors (DIR-01) and warehouse keepers (PAN-01).
      */
     protected function notifyStaff(StockAlert $alert): void
     {
-        $recipients = User::withRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
+        $recipients = User::withRole([User::ROLE_DIRECTOR, User::ROLE_WAREHOUSE])
             ->where('is_active', true)
             ->get();
 

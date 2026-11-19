@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
- * Reportes de ejecución presupuestaria (REQ-24). AD-01 y DIR-01 ven todas las carreras del área.
+ * Reportes de ejecución presupuestaria (REQ-24). DIR-01 ve todas las carreras del área.
  */
 class BudgetReportController extends Controller
 {

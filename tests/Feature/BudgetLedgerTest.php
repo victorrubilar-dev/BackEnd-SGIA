@@ -29,7 +29,7 @@ class BudgetLedgerTest extends TestCase
     {
         parent::setUp();
         $this->service = app(AnnualBudgetService::class);
-        $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        $this->admin = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
     }
 
     private function budget(int $initial = 1000000): AnnualBudget

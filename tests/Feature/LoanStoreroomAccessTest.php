@@ -127,7 +127,7 @@ class LoanStoreroomAccessTest extends TestCase
         $this->getJson("/api/loans/{$foreign->id}")->assertForbidden();
     }
 
-    public function test_admin_and_director_are_not_limited_by_storeroom(): void
+    public function test_director_reads_every_storeroom_and_admin_has_no_access(): void
     {
         $foreign = $this->loanIn($this->other);
 
@@ -136,8 +136,8 @@ class LoanStoreroomAccessTest extends TestCase
         $this->getJson("/api/loans?storeroom_id={$this->other->id}")->assertOk()->assertJsonPath('data.0.id', $foreign->id);
 
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
-        $this->getJson("/api/loans/{$foreign->id}/review")->assertOk();
-        $this->postJson("/api/loans/{$foreign->id}/approve")->assertOk();
+        $this->getJson("/api/loans/{$foreign->id}")->assertForbidden();
+        $this->postJson("/api/loans/{$foreign->id}/approve")->assertForbidden();
     }
 
     public function test_teacher_still_reaches_only_own_loans(): void
@@ -192,12 +192,11 @@ class LoanStoreroomAccessTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('storeroom_id');
     }
 
-    public function test_admin_registers_checkouts_in_any_storeroom(): void
+    public function test_admin_cannot_register_checkouts(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
 
-        $this->postJson('/api/loans/checkout', $this->checkoutBody(['storeroom_id' => $this->other->id]))
-            ->assertCreated()->assertJsonPath('data.storeroom_id', $this->other->id);
+        $this->postJson('/api/loans/checkout', $this->checkoutBody(['storeroom_id' => $this->other->id]))->assertForbidden();
     }
 
     private function unitOnLoanIn(Storeroom $storeroom): array
@@ -218,7 +217,7 @@ class LoanStoreroomAccessTest extends TestCase
         $this->getJson("/api/equipment-units/{$foreignUnit->id}")->assertOk()->assertJsonPath('data.active_loan', null);
         $this->getJson("/api/equipment-units/{$ownUnit->id}")->assertOk()->assertJsonPath('data.active_loan.id', $ownLoan->id);
 
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $this->getJson("/api/equipment-units/{$foreignUnit->id}")->assertOk()->assertJsonPath('data.active_loan.id', $foreignLoan->id);
     }
 
@@ -234,7 +233,7 @@ class LoanStoreroomAccessTest extends TestCase
         $this->assertStringContainsString($ownLoan->code, $forWarehouse);
         $this->assertStringNotContainsString($foreignLoan->code, $forWarehouse);
 
-        $admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
-        $this->assertStringContainsString($foreignLoan->code, $pdf->unitTechnicalSheetView($unit, $admin)->render());
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        $this->assertStringContainsString($foreignLoan->code, $pdf->unitTechnicalSheetView($unit, $director)->render());
     }
 }

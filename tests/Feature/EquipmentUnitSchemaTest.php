@@ -96,7 +96,7 @@ class EquipmentUnitSchemaTest extends TestCase
 
     public function test_product_with_units_cannot_be_deleted(): void
     {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $unit = EquipmentUnit::factory()->create();
 
         $this->deleteJson('/api/products/'.$unit->product_id)
@@ -107,7 +107,7 @@ class EquipmentUnitSchemaTest extends TestCase
 
     public function test_cajon_with_units_cannot_be_deleted_even_in_bulk(): void
     {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $unit = EquipmentUnit::factory()->create();
         $free = Cajon::factory()->create();
 

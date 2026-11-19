@@ -8,7 +8,7 @@ class BulkDeleteCajonRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return (bool) $this->user()?->hasRole(['AD-01', 'DIR-01']);
+        return (bool) $this->user()?->hasRole('DIR-01');
     }
 
     public function rules(): array

@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\AnnualBudget;
 use App\Models\DashboardTemplate;
 use App\Models\EquipmentUnit;
+use App\Models\FailedLogin;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
 use App\Models\Loan;
@@ -104,13 +105,8 @@ class AppServiceProvider extends ServiceProvider
         Purchase::observe(PurchasingAuditObserver::class);
         InvoiceIntake::observe(PurchasingAuditObserver::class);
 
-        // REQ-14: Dashboards (FU-06) solo para Director de Carrera y Admin.
-        Gate::define('viewDashboard', function (User $user) {
-            return $user->is_active && $user->hasRole([
-                User::ROLE_DIRECTOR,
-                User::ROLE_ADMIN,
-            ]);
-        });
+        // REQ-14: Dashboards (FU-06) solo para Director de Carrera.
+        Gate::define('viewDashboard', fn (User $user) => $user->is_active && $user->hasRole(User::ROLE_DIRECTOR));
 
         // Endpoints costosos o sensibles (cambio de contraseña, OCR, subida de archivos).
         RateLimiter::for('sensitive', fn (Request $request) => Limit::perMinute(10)->by($request->user()?->id ?: $request->ip()));
@@ -123,6 +119,7 @@ class AppServiceProvider extends ServiceProvider
             $throttleKey = $email.'|'.$request->ip();
 
             return Limit::perMinute(5)->by($throttleKey)->response(function (Request $request, array $headers) {
+                FailedLogin::record($request, FailedLogin::REASON_THROTTLED);
                 $retryAfter = $headers['Retry-After'] ?? 60;
 
                 return response()->json([

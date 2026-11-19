@@ -9,12 +9,11 @@ use App\Models\User;
 class PurchasePolicy
 {
     /**
-     * Determine whether the user can view any purchases (AD-01, DIR-01, PAN-01).
+     * Determine whether the user can view any purchases (DIR-01, PAN-01).
      */
     public function viewAny(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
             User::ROLE_WAREHOUSE,
         ]);
@@ -29,18 +28,17 @@ class PurchasePolicy
     }
 
     /**
-     * Determine whether the user can create purchases (AD-01, DIR-01).
+     * Determine whether the user can create purchases (DIR-01).
      */
     public function create(User $user): bool
     {
         return $user->is_active && $user->hasRole([
-            User::ROLE_ADMIN,
             User::ROLE_DIRECTOR,
         ]);
     }
 
     /**
-     * Comprometer presupuesto: AD-01 y DIR-01 (cualquier carrera del área).
+     * Comprometer presupuesto: DIR-01 (cualquier carrera del área).
      */
     public function useBudget(User $user, AnnualBudget $budget): bool
     {
@@ -48,7 +46,7 @@ class PurchasePolicy
     }
 
     /**
-     * Cancelar una compra: AD-01 siempre; DIR-01 si la compra tiene presupuesto.
+     * Cancelar una compra: DIR-01 si la compra tiene presupuesto.
      */
     public function cancel(User $user, Purchase $purchase): bool
     {
@@ -56,11 +54,11 @@ class PurchasePolicy
             return false;
         }
 
-        return $user->isAdmin() || ($purchase->annual_budget_id !== null && $user->managesBudgets());
+        return $purchase->annual_budget_id !== null && $user->managesBudgets();
     }
 
     /**
-     * Determine whether the user can update the purchase status (AD-01, DIR-01, PAN-01).
+     * Determine whether the user can update the purchase status (DIR-01, PAN-01).
      */
     public function updateStatus(User $user, Purchase $purchase): bool
     {
@@ -68,7 +66,7 @@ class PurchasePolicy
     }
 
     /**
-     * Determine whether the user can scan the arrival guide/invoice (AD-01, DIR-01, PAN-01).
+     * Determine whether the user can scan the arrival guide/invoice (DIR-01, PAN-01).
      */
     public function scanArrival(User $user, Purchase $purchase): bool
     {

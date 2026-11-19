@@ -10,7 +10,7 @@ use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Aviso de cambio de estado de una solicitud de compra (p. ej. aprobada por DIR-01 → AD-01).
+ * Aviso de cambio de estado de una solicitud de compra (p. ej. aprobada por DIR-01 → PAN-01).
  */
 class PurchaseRequestStatusNotification extends Notification implements ShouldQueue
 {

@@ -569,7 +569,7 @@ class RealisticDemoSeeder extends Seeder
                 'status' => $statusMap[$status] ?? $status,
                 'subject' => 'Clase práctica', 'report_date' => $at->toDateString(),
                 'location_id' => $locations->values()->random()->id,
-                'problems' => [[IncidentReport::PROBLEM_EQUIPMENT_FAILURE, IncidentReport::PROBLEM_MISSING_SUPPLIES, IncidentReport::PROBLEM_OTHER][$request === 'reposicion' ? 1 : ($request === 'mantencion' ? 2 : 0)]],
+                'problems' => [['type' => [IncidentReport::PROBLEM_EQUIPMENT_FAILURE, IncidentReport::PROBLEM_MISSING_SUPPLIES, IncidentReport::PROBLEM_OTHER][$request === 'reposicion' ? 1 : ($request === 'mantencion' ? 2 : 0)], 'description' => $desc]],
                 'suggestion' => $request === 'falla' ? 'Revisar el equipo antes de la próxima clase.' : null,
             ]);
             $report->forceFill(['created_at' => $at, 'updated_at' => $at])->saveQuietly();

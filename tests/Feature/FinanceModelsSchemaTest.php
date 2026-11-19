@@ -114,7 +114,7 @@ class FinanceModelsSchemaTest extends TestCase
 
     public function test_supplier_with_quotations_cannot_be_deleted(): void
     {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $supplier = Supplier::factory()->create();
         $quotation = Quotation::factory()->create();
         QuotationSupplier::create(['quotation_id' => $quotation->id, 'supplier_id' => $supplier->id]);
@@ -128,7 +128,7 @@ class FinanceModelsSchemaTest extends TestCase
 
     public function test_product_in_offer_cannot_be_deleted_via_api(): void
     {
-        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]));
+        Sanctum::actingAs(User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]));
         $product = Product::factory()->create();
         $contact = QuotationSupplier::create(['quotation_id' => Quotation::factory()->create()->id, 'supplier_id' => Supplier::factory()->create()->id]);
         QuotationOfferItem::create(['quotation_supplier_id' => $contact->id, 'product_id' => $product->id, 'requested_quantity' => 1]);

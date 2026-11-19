@@ -67,7 +67,7 @@ class StudentTest extends TestCase
 
     public function test_lookup_by_rut_accepts_any_format(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
         $student = Student::factory()->create(['rut' => '7654321-6']);
 
         foreach (['7654321-6', '7.654.321-6', '76543216'] as $rut) {
@@ -102,30 +102,50 @@ class StudentTest extends TestCase
     {
         $student = Student::factory()->create();
 
-        foreach ([User::ROLE_TEACHER, User::ROLE_DIRECTOR] as $role) {
+        foreach ([User::ROLE_ADMIN, User::ROLE_TEACHER, User::ROLE_DIRECTOR] as $role) {
             $this->actingAsRole($role);
             $this->getJson('/api/students')->assertForbidden();
             $this->postJson('/api/students', ['rut' => '7654321-6'])->assertForbidden();
             $this->patchJson("/api/students/{$student->id}", ['full_name' => 'X'])->assertForbidden();
+            $this->patchJson("/api/students/{$student->id}/status", ['is_active' => false])->assertForbidden();
             $this->getJson("/api/students/{$student->id}/loans")->assertForbidden();
         }
 
+        // Los estudiantes no se borran (auditoría).
         $this->actingAsRole(User::ROLE_WAREHOUSE);
-        $this->deleteJson("/api/students/{$student->id}")->assertForbidden();
+        $this->deleteJson("/api/students/{$student->id}")->assertStatus(405);
     }
 
-    public function test_admin_deletes_student_without_loans_only(): void
+    public function test_warehouse_deactivates_and_reactivates_a_student_without_losing_history(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
-        $free = Student::factory()->create();
-        $withLoans = Student::factory()->create();
-        Loan::factory()->create(['student_id' => $withLoans->id]);
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        $student = Student::factory()->create(['rut' => '12345678-5']);
+        Loan::factory()->create(['student_id' => $student->id]);
+        $product = Product::factory()->supply()->create(['quantity' => 5, 'stock_minimo' => 0]);
 
-        $this->deleteJson("/api/students/{$free->id}")->assertNoContent();
-        $this->assertDatabaseMissing('students', ['id' => $free->id]);
+        $this->patchJson("/api/students/{$student->id}/status", ['is_active' => false])
+            ->assertOk()->assertJsonPath('data.is_active', false)->assertJsonPath('data.loans_count', 1);
+        $this->getJson('/api/students?is_active=0')->assertOk()->assertJsonPath('data.0.id', $student->id);
+        $this->getJson('/api/students?is_active=1')->assertOk()->assertJsonCount(0, 'data');
 
-        $this->deleteJson("/api/students/{$withLoans->id}")
-            ->assertStatus(422)->assertJsonStructure(['message', 'errors' => ['student']]);
+        // Desactivado: no recibe préstamos, ni por id ni por RUT.
+        $this->postJson('/api/loans/checkout', $this->checkoutPayload($product, ['student_id' => $student->id]))
+            ->assertStatus(422)->assertJsonValidationErrors('student_id');
+        $this->postJson('/api/loans/checkout', $this->checkoutPayload($product, ['student_rut' => '12.345.678-5']))
+            ->assertStatus(422)->assertJsonValidationErrors('student_id');
+
+        $this->patchJson("/api/students/{$student->id}/status", ['is_active' => true])
+            ->assertOk()->assertJsonPath('data.is_active', true);
+        $this->postJson('/api/loans/checkout', $this->checkoutPayload($product, ['student_id' => $student->id]))->assertCreated();
+    }
+
+    public function test_status_requires_a_boolean(): void
+    {
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        $student = Student::factory()->create();
+
+        $this->patchJson("/api/students/{$student->id}/status", [])->assertStatus(422)->assertJsonValidationErrors('is_active');
+        $this->patchJson("/api/students/{$student->id}/status", ['is_active' => 'tal vez'])->assertStatus(422)->assertJsonValidationErrors('is_active');
     }
 
     public function test_checkout_with_existing_student_rut_links_and_fills_borrower(): void

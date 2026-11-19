@@ -132,7 +132,7 @@ class SupplierController extends Controller
     }
 
     /**
-     * Remove the supplier (AD-01). If it has linked products it is only
+     * Remove the supplier (DIR-01). If it has linked products it is only
      * deactivated, to preserve the inventory history.
      */
     public function destroy(Supplier $supplier): Response|JsonResponse

@@ -36,7 +36,6 @@ class LoanPolicy
         return $user->is_active && $user->hasRole([
             User::ROLE_WAREHOUSE,
             User::ROLE_DIRECTOR,
-            User::ROLE_ADMIN,
         ]);
     }
 
@@ -133,7 +132,6 @@ class LoanPolicy
     {
         return $user->is_active && $user->hasRole([
             User::ROLE_WAREHOUSE,
-            User::ROLE_ADMIN,
         ]);
     }
 }

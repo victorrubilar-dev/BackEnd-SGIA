@@ -257,7 +257,7 @@ class LoanOperationTest extends TestCase
         $this->assertEquals(20, $this->product->fresh()->quantity);
     }
 
-    public function test_only_warehouse_and_admin_can_operate_loans(): void
+    public function test_only_warehouse_can_operate_loans(): void
     {
         $loan = $this->makeRemoteLoan();
 
@@ -284,8 +284,8 @@ class LoanOperationTest extends TestCase
 
         $this->getJson('/api/loans/pending')->assertStatus(403);
 
-        // El administrador sí puede operar
+        // El administrador tampoco
         Sanctum::actingAs($this->admin);
-        $this->getJson('/api/loans/pending')->assertStatus(200);
+        $this->getJson('/api/loans/pending')->assertStatus(403);
     }
 }

@@ -74,7 +74,10 @@ class PurchaseRequestTest extends TestCase
             $this->postJson("/api/purchase-requests/{$request->id}/cancel")->assertForbidden();
         }
 
-        foreach ([User::ROLE_ADMIN, User::ROLE_WAREHOUSE] as $role) {
+        Sanctum::actingAs($this->userWithRole(User::ROLE_ADMIN));
+        $this->getJson('/api/purchase-requests')->assertForbidden();
+
+        foreach ([User::ROLE_WAREHOUSE] as $role) {
             Sanctum::actingAs($this->userWithRole($role));
             $this->getJson('/api/purchase-requests')->assertOk();
             // El presupuesto trae su carrera (la interfaz lo rotula "ISD · …" y no "Carrera #1").
@@ -117,10 +120,10 @@ class PurchaseRequestTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('status');
     }
 
-    public function test_approve_notifies_admins_and_only_from_draft(): void
+    public function test_approve_notifies_warehouse_and_only_from_draft(): void
     {
         Notification::fake();
-        $admin = $this->userWithRole(User::ROLE_ADMIN);
+        $warehouse = $this->userWithRole(User::ROLE_WAREHOUSE);
         $request = $this->createRequest();
 
         $this->postJson("/api/purchase-requests/{$request->id}/approve")
@@ -129,7 +132,7 @@ class PurchaseRequestTest extends TestCase
             ->assertJsonPath('data.approved_by', $this->director->id)
             ->assertJsonPath('data.can_send', true);
 
-        Notification::assertSentTo($admin, PurchaseRequestStatusNotification::class);
+        Notification::assertSentTo($warehouse, PurchaseRequestStatusNotification::class);
 
         $this->postJson("/api/purchase-requests/{$request->id}/approve")
             ->assertStatus(422)->assertJsonValidationErrors('status');

@@ -40,7 +40,7 @@ class SupplierAreaTest extends TestCase
 
     public function test_supplier_can_have_all_areas(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
 
         $this->postJson('/api/suppliers', [
             'name' => 'Multiárea',

@@ -7,14 +7,14 @@ use App\Models\UserChart;
 use Illuminate\Auth\Access\Response;
 
 /**
- * Dashboard personalizado (REQ-15): DIR-01 y AD-01 arman su panel; cada uno solo ve el suyo.
+ * Dashboard personalizado (REQ-15): DIR-01 arman su panel; cada uno solo ve el suyo.
  * Un gráfico ajeno responde `404` para no revelar que el id existe.
  */
 class UserChartPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->is_active && $user->hasRole([User::ROLE_ADMIN, User::ROLE_DIRECTOR]);
+        return $user->is_active && $user->hasRole([User::ROLE_DIRECTOR]);
     }
 
     public function create(User $user): bool

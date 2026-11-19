@@ -186,7 +186,7 @@ class ResourceContractTest extends TestCase
 
     public function test_student_resource(): void
     {
-        $this->assertKeys(StudentResource::class, Student::factory()->create(), explode(',', 'career_id,created_at,email,full_name,id,registered_at,rut,updated_at'));
+        $this->assertKeys(StudentResource::class, Student::factory()->create(), explode(',', 'career_id,created_at,email,full_name,id,is_active,registered_at,rut,updated_at'));
     }
 
     public function test_maintenance_resources(): void

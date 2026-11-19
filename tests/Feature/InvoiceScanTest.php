@@ -89,12 +89,12 @@ Generador de Funciones 25MHz       4     $180.000     $720.000
 Neto                                              1.970.000
 TXT;
 
-    public function test_director_and_admin_can_scan_invoice_and_receive_draft_products(): void
+    public function test_director_can_scan_invoice_and_receive_draft_products(): void
     {
         Supplier::factory()->create(['name' => 'Comercial ElectroChile S.A.']);
         Process::fake(['*pdftotext*' => Process::result(self::INVOICE_TEXT)]);
 
-        foreach ([$this->director, $this->admin] as $user) {
+        foreach ([$this->director] as $user) {
             Sanctum::actingAs($user);
 
             $this->postJson('/api/invoices/scan', [

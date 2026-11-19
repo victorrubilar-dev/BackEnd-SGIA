@@ -59,7 +59,7 @@ class EquipmentUnitTest extends TestCase
 
     public function test_bulk_creation_with_count_and_manual_code_rules(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
         $product = $this->product();
         $cajon = Cajon::factory()->create();
 
@@ -235,7 +235,7 @@ class EquipmentUnitTest extends TestCase
 
     public function test_delete_rules(): void
     {
-        $this->actingAsRole(User::ROLE_ADMIN);
+        $this->actingAsRole(User::ROLE_DIRECTOR);
         $product = $this->product();
         $free = EquipmentUnit::factory()->create(['product_id' => $product->id]);
         $onLoan = EquipmentUnit::factory()->onLoan()->create(['product_id' => $product->id]);
