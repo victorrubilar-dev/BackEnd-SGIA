@@ -206,7 +206,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `GET` | `/api/cajones/{id}` | Todos (`auth`) | Detalle del cajón con su ubicación padre y total de productos almacenados. | ✅ Implementado |
 | `PUT / PATCH` | `/api/cajones/{id}` | `AD-01`, `DIR-01`, `PAN-01` | Actualiza código, descripción o mueve el cajón de ubicación; `barcode` se recalcula si cambia `codigo` o `location_id` (mismas validaciones que el alta). Actualiza `updated_by`. | ✅ Implementado |
 | `GET` | `/api/cajones/by-code/{code}` | `AD-01`, `DIR-01`, `PAN-01` | Búsqueda exacta por `barcode` (escaneo), sin distinguir mayúsculas. `CajonResource` con `location` (incluye `code`). `404`: «No existe un cajón con el código {code}.» | ✅ Implementado |
-| `GET` | `/api/cajones/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras Code128 + código), igual que la de unidades. Archivo `etiqueta-{barcode}.pdf`. | ✅ Implementado |
+| `GET` | `/api/cajones/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras Code128 + código), igual que la de unidades. Archivo `etiqueta-{barcode}.pdf`. Con `?orientation=portrait` devuelve la misma etiqueta girada 90° en página 30x50 (la web la pide así en Firefox). | ✅ Implementado |
 | `DELETE` | `/api/cajones/{id}` | `AD-01`, `DIR-01` | Elimina un cajón. `422` con `products_count` si tiene productos asignados. | ✅ Implementado |
 | `POST` | `/api/cajones/bulk-delete` | `AD-01`, `DIR-01` | Borrado masivo.<br>**Body:** `ids` (array), `partial` (opcional). Sin `partial`, si alguno tiene productos responde `422` con `blocked_ids`, `blocked_cajones` y `deletable_ids` y no borra nada. Con `partial: true` borra los libres (`deleted_ids`, `deleted_count`) e informa los bloqueados. | ✅ Implementado |
 
@@ -226,7 +226,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `GET` | `/api/products/{id}/location` | Todos (`auth`) | Obtiene la sala, cajón y descripción de ubicación física de un producto. | ✅ Implementado |
 | `PATCH` | `/api/products/{id}/location` | `AD-01`, `DIR-01`, `PAN-01` | Asigna o actualiza la ubicación física.<br>**Body:** `location_id` o combinación de `sala` y `cajon` con `descripcion` opcional. | ✅ Implementado |
 | `GET` | `/api/products/{id}/barcode` | Todos (`auth`) | Retorna el código de barras del producto, su representación vectorial en SVG y su formato Data URI / HTML. | ✅ Implementado |
-| `GET` | `/api/products/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código en texto) para impresora térmica. Solo insumos; `422` para equipo/maqueta (usar la etiqueta por unidad). | ✅ Implementado |
+| `GET` | `/api/products/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código en texto) para impresora térmica. Solo insumos; `422` para equipo/maqueta (usar la etiqueta por unidad). Con `?orientation=portrait` devuelve la misma etiqueta girada 90° en página 30x50 (la web la pide así en Firefox). | ✅ Implementado |
 
 ---
 
@@ -245,7 +245,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `PATCH` | `/api/equipment-units/{id}/status` | `AD-01`, `DIR-01`, `PAN-01` | Cambia el estado con la máquina de estados; `prestado` solo por préstamos (`422`). **Body:** `status`. | ✅ Implementado |
 | `DELETE` | `/api/equipment-units/{id}` | `AD-01`, `DIR-01` | `204`; `422` si está prestada o tiene préstamos, mantenciones o informes. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/barcode` | Todos (`auth`) | Código de la unidad en SVG, Data URI y HTML. | ✅ Implementado |
-| `GET` | `/api/equipment-units/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código de la unidad) para impresora térmica. | ✅ Implementado |
+| `GET` | `/api/equipment-units/{id}/label` | `AD-01`, `DIR-01`, `PAN-01` | PDF de etiqueta 50x30 mm (código de barras + código de la unidad) para impresora térmica. Con `?orientation=portrait` devuelve la misma etiqueta girada 90° en página 30x50 (la web la pide así en Firefox). | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/technical-sheet` | Todos (`auth`) | PDF con la hoja de vida: producto, ubicación (pañol/sala/estante), mantención, préstamos, mantenciones (con resultado), documentos vigentes e informes. `AD-01`, `DIR-01` y `PAN-01` ven todos los informes; el resto, solo los que reportó. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/reports` | `AD-01`, `DIR-01`, `PAN-01` | Informes de la unidad (JSON paginado o `?format=pdf`). | ✅ Implementado |
 

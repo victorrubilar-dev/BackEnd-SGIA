@@ -278,6 +278,18 @@ class EquipmentUnitTest extends TestCase
         $this->getJson("/api/equipment-units/{$unit->id}/label")->assertStatus(403);
     }
 
+    public function test_label_portrait_orientation_swaps_page_size(): void
+    {
+        $unit = EquipmentUnit::factory()->create(['code' => 'EQP-IC-000557']);
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+
+        $landscape = $this->get("/api/equipment-units/{$unit->id}/label")->getContent();
+        $portrait = $this->get("/api/equipment-units/{$unit->id}/label?orientation=portrait")->getContent();
+
+        $this->assertMatchesRegularExpression('#/MediaBox \[0\.000 0\.000 141\.7\d+ 85\.0\d+\]#', $landscape);
+        $this->assertMatchesRegularExpression('#/MediaBox \[0\.000 0\.000 85\.0\d+ 141\.7\d+\]#', $portrait);
+    }
+
     public function test_product_creation_with_quantity_creates_units(): void
     {
         $this->actingAsRole(User::ROLE_WAREHOUSE);

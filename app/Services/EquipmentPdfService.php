@@ -158,13 +158,14 @@ class EquipmentPdfService
     /**
      * Etiqueta de 50x30 mm (impresora térmica): código de barras y código en texto (insumo o unidad).
      */
-    public function label(string $code, BarcodeService $barcodes): string
+    public function label(string $code, BarcodeService $barcodes, bool $portrait = false): string
     {
         return $this->render(view('products.label', [
             'code' => $code,
+            'portrait' => $portrait,
             // SVG en base64: DomPDF no lee el data URI sin base64 que usa el fallback sin GD.
             'barcodeUri' => 'data:image/svg+xml;base64,'.base64_encode($barcodes->generateSvg($code)),
-        ]), [0, 0, 141.73, 85.04]);
+        ]), $portrait ? [0, 0, 85.04, 141.73] : [0, 0, 141.73, 85.04]);
     }
 
     /**

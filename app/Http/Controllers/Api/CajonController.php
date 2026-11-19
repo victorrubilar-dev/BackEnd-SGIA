@@ -80,7 +80,7 @@ class CajonController extends Controller
     public function label(Cajon $cajon, BarcodeService $barcodeService, EquipmentPdfService $pdfService): SymfonyResponse
     {
         return $pdfService->download(
-            $pdfService->label($cajon->barcode, $barcodeService),
+            $pdfService->label($cajon->barcode, $barcodeService, request()->query('orientation') === 'portrait'),
             'etiqueta-'.$cajon->barcode.'.pdf'
         );
     }

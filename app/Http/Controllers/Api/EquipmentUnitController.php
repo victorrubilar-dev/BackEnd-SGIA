@@ -168,7 +168,7 @@ class EquipmentUnitController extends Controller
         Gate::authorize('view', $equipmentUnit);
 
         return $pdfService->download(
-            $pdfService->label($equipmentUnit->code, $barcodeService),
+            $pdfService->label($equipmentUnit->code, $barcodeService, request()->query('orientation') === 'portrait'),
             'etiqueta-'.$equipmentUnit->code.'.pdf'
         );
     }

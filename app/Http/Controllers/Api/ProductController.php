@@ -338,7 +338,7 @@ class ProductController extends Controller
         }
 
         return $pdfService->download(
-            $pdfService->label($product->barcode, $barcodeService),
+            $pdfService->label($product->barcode, $barcodeService, request()->query('orientation') === 'portrait'),
             'etiqueta-'.$product->barcode.'.pdf'
         );
     }

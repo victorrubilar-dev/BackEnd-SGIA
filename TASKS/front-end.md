@@ -38,6 +38,9 @@ En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la def
 
 ---
 
+### A6. Etiquetas en vertical para Firefox — Informativo
+`GET /api/{products|equipment-units|cajones}/{id}/label?orientation=portrait` devuelve la etiqueta girada 90° en página 30x50 mm. Sin el parámetro no cambia nada. La web lo envía solo en Firefox (`labelQuery()` en `packages/api-client/src/http.ts`), porque ese navegador fija la orientación y la Xprinter XP-420B imprimía la etiqueta girada.
+
 ## B. Cambios que vienen (rework)
 
 Avisar al frontend **antes** de aplicarlos; ninguno está hecho todavía.
