@@ -33,6 +33,15 @@ class Location extends Model
     /** Formato del código de sala: solo letras y dígitos, de 2 a 10. */
     public const CODE_PATTERN = '/^[A-Z0-9]{2,10}$/';
 
+    /** Medidas del plano (REQ-22) cuando la sala aún no las tiene, en cm. */
+    public const DEFAULT_MAP_WIDTH_CM = 1000;
+
+    public const DEFAULT_MAP_HEIGHT_CM = 600;
+
+    public const MAP_MIN_CM = 100;
+
+    public const MAP_MAX_CM = 10000;
+
     /** Palabras que no aportan al código sugerido. */
     private const CODE_STOPWORDS = ['DE', 'DEL', 'LA', 'EL', 'LOS', 'LAS', 'Y'];
 
@@ -46,6 +55,8 @@ class Location extends Model
         'storeroom_id',
         'building',
         'floor',
+        'map_width_cm',
+        'map_height_cm',
         'created_by',
         'updated_by',
     ];
@@ -104,7 +115,24 @@ class Location extends Model
 
     protected function casts(): array
     {
-        return ['floor' => 'integer'];
+        return ['floor' => 'integer', 'map_width_cm' => 'integer', 'map_height_cm' => 'integer'];
+    }
+
+    /** Ancho del plano en cm (el valor por defecto si no se definió). */
+    public function mapWidth(): int
+    {
+        return $this->map_width_cm ?? self::DEFAULT_MAP_WIDTH_CM;
+    }
+
+    /** Alto del plano en cm (el valor por defecto si no se definió). */
+    public function mapHeight(): int
+    {
+        return $this->map_height_cm ?? self::DEFAULT_MAP_HEIGHT_CM;
+    }
+
+    public function hasMapDimensions(): bool
+    {
+        return $this->map_width_cm !== null && $this->map_height_cm !== null;
     }
 
     /** @return BelongsTo<Storeroom, $this> */
@@ -129,6 +157,18 @@ class Location extends Model
     public function cajones(): HasMany
     {
         return $this->hasMany(Cajon::class);
+    }
+
+    /** @return HasMany<Zona, $this> */
+    public function zonas(): HasMany
+    {
+        return $this->hasMany(Zona::class);
+    }
+
+    /** @return HasMany<Estante, $this> */
+    public function estantes(): HasMany
+    {
+        return $this->hasMany(Estante::class);
     }
 
     /** @return HasMany<Product, $this> */

@@ -23,10 +23,19 @@ class CajonController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Cajon::with(['location', 'creator', 'updater'])->withCount('products');
+        $query = Cajon::with(['location', 'estante', 'creator', 'updater'])->withCount('products');
 
         if ($request->filled('location_id')) {
             $query->where('location_id', $request->integer('location_id'));
+        }
+
+        // REQ-22: cajones de un estante o sin estante (para asignarlos desde el mapa).
+        if ($request->filled('estante_id')) {
+            $query->where('estante_id', $request->integer('estante_id'));
+        }
+
+        if ($request->boolean('sin_estante')) {
+            $query->whereNull('estante_id');
         }
 
         if ($request->filled('search')) {
@@ -55,7 +64,7 @@ class CajonController extends Controller
 
         $cajon = Cajon::create($validated);
 
-        return (new CajonResource($cajon->load('location')))
+        return (new CajonResource($cajon->load(['location', 'estante'])))
             ->response()
             ->setStatusCode(201);
     }
@@ -90,7 +99,7 @@ class CajonController extends Controller
      */
     public function show(Cajon $cajon): CajonResource
     {
-        return new CajonResource($cajon->load(['location', 'creator', 'updater'])->loadCount('products'));
+        return new CajonResource($cajon->load(['location', 'estante', 'creator', 'updater'])->loadCount('products'));
     }
 
     /**
@@ -103,7 +112,7 @@ class CajonController extends Controller
 
         $cajon->update($validated);
 
-        return new CajonResource($cajon->load(['location', 'creator', 'updater'])->loadCount('products'));
+        return new CajonResource($cajon->load(['location', 'estante', 'creator', 'updater'])->loadCount('products'));
     }
 
     /**

@@ -40,6 +40,8 @@ class RouteProtectionTest extends TestCase
             'api/me', 'api/password', 'api/logout', 'api/devices', 'api/devices/{id}',
             'api/logout-all', 'api/tokens', 'api/tokens/{tokenId}', 'api/tokens/revoke-others',
             'api/locations', 'api/locations/{location}', 'api/cajones', 'api/cajones/{cajon}',
+            // REQ-22: lectura del plano de la sala para todo usuario autenticado; la escritura exige DIR-01/PAN-01.
+            'api/locations/{location}/map', 'api/estantes', 'api/estantes/{estante}', 'api/estantes/{estante}/contents', 'api/zonas', 'api/zonas/{zona}',
             'api/storerooms', 'api/storerooms/{storeroom}',
             'api/equipment/{product}/technical-sheet', 'api/equipment/{product}/reports',
             'api/incident-reports', 'api/incident-reports/{incidentReport}', 'api/incident-reports/{incidentReport}/pdf', 'api/incident-reports/{incidentReport}/signature', 'api/incident-reports/{incidentReport}/status', 'api/incident-reports/{incidentReport}/attachment',

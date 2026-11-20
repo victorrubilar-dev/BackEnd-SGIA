@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Location;
+use App\Services\RoomMapService;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -24,6 +25,9 @@ class UpdateLocationEntityRequest extends FormRequest
             'storeroom_id' => ['sometimes', 'integer', 'exists:storerooms,id'],
             'building' => ['nullable', 'string', 'max:10'],
             'floor' => ['nullable', 'integer'],
+            // REQ-22: medidas del plano en cm, siempre juntas.
+            'map_width_cm' => ['required_with:map_height_cm', 'integer', 'between:'.Location::MAP_MIN_CM.','.Location::MAP_MAX_CM],
+            'map_height_cm' => ['required_with:map_width_cm', 'integer', 'between:'.Location::MAP_MIN_CM.','.Location::MAP_MAX_CM],
         ];
     }
 
@@ -39,6 +43,15 @@ class UpdateLocationEntityRequest extends FormRequest
 
             if (filled($code) && (! is_string($code) || Str::upper(trim($code)) !== $location->code)) {
                 $validator->errors()->add('code', 'El código de la sala no se puede cambiar.');
+            }
+
+            if ($this->has('map_width_cm') && $this->has('map_height_cm') && ! $validator->errors()->hasAny(['map_width_cm', 'map_height_cm'])) {
+                $conflict = app(RoomMapService::class)->shrinkConflict(
+                    $location, $this->integer('map_width_cm'), $this->integer('map_height_cm'),
+                );
+                if ($conflict !== null) {
+                    $validator->errors()->add('map_width_cm', $conflict);
+                }
             }
         }];
     }

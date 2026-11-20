@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\EquipmentUnitController;
+use App\Http\Controllers\Api\EstanteController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\IncidentReportController;
 use App\Http\Controllers\Api\InvoiceIntakeController;
@@ -28,12 +29,14 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\RoomMapController;
 use App\Http\Controllers\Api\StockAlertController;
 use App\Http\Controllers\Api\StoreroomController;
 use App\Http\Controllers\Api\StudentController;
 use App\Http\Controllers\Api\SupplierController;
 use App\Http\Controllers\Api\UserChartController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\ZonaController;
 use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -227,6 +230,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/locations/{location}', [LocationController::class, 'show']);
+    // REQ-22: plano de la sala (zonas y estantes), docs/mapa-salas.md
+    Route::get('/locations/{location}/map', [RoomMapController::class, 'show']);
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::post('/locations', [LocationController::class, 'store']);
         Route::put('/locations/{location}', [LocationController::class, 'update']);
@@ -248,6 +253,24 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
+    });
+
+    // REQ-22: estantes del plano de cada sala (no son los cajones), docs/mapa-salas.md
+    Route::get('/estantes', [EstanteController::class, 'index']);
+    Route::get('/estantes/{estante}', [EstanteController::class, 'show']);
+    Route::get('/estantes/{estante}/contents', [EstanteController::class, 'contents']);
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
+        Route::post('/estantes', [EstanteController::class, 'store']);
+        Route::patch('/estantes/{estante}', [EstanteController::class, 'update']);
+        Route::delete('/estantes/{estante}', [EstanteController::class, 'destroy']);
+    });
+
+    // REQ-22: zonas del plano de cada sala
+    Route::get('/zonas', [ZonaController::class, 'index']);
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
+        Route::post('/zonas', [ZonaController::class, 'store']);
+        Route::patch('/zonas/{zona}', [ZonaController::class, 'update']);
+        Route::delete('/zonas/{zona}', [ZonaController::class, 'destroy']);
     });
 
     // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL

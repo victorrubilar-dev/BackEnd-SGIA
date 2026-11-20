@@ -94,8 +94,8 @@ class ResourceContractTest extends TestCase
         $this->assertKeys(SupplierResource::class, Supplier::factory()->create(), explode(',', 'address,areas,category,contact_name,created_at,email,id,is_active,name,phone,rut,updated_at'));
 
         $location = Location::factory()->create();
-        $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,code,created_at,created_by,descripcion,floor,id,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
-        $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'barcode,codigo,created_at,created_by,descripcion,id,location_id,updated_at,updated_by'));
+        $this->assertKeys(LocationResource::class, $location, explode(',', 'building,cajon,code,created_at,created_by,descripcion,floor,id,map_height_cm,map_width_cm,nombre,sala,storeroom_id,tipo,updated_at,updated_by'));
+        $this->assertKeys(CajonResource::class, Cajon::factory()->create(['location_id' => $location->id]), explode(',', 'barcode,codigo,created_at,created_by,descripcion,estante_id,id,location_id,updated_at,updated_by'));
         $this->assertKeys(CareerResource::class, Career::factory()->create(), explode(',', 'code,created_at,created_by,id,level,level_label,name,updated_at,updated_by'));
     }
 
