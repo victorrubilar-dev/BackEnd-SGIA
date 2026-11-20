@@ -36,6 +36,10 @@
 - [x] `estante_id` en `POST`/`PATCH /api/cajones`, `CajonResource` y filtros `estante_id`/`sin_estante` (`LocationAndCajonCrudTest`).
 - [x] `ResourceContractTest`, `ENDPOINTS.md` y `TASKS/front-end.md` actualizados.
 
+#### REQ-22 fase 6 · Datos de prueba del mapa (plan en `docs/mapa-salas.md`)
+- [ ] `MapaSalasDemoSeeder` repetible: medidas, zonas A/B/C, siete estantes y cajones asignados en cada ubicación; respeta lo existente (`MapaSalasDemoSeederTest`).
+- [ ] Llamado desde `DatabaseSeeder` fuera de producción y corrido en la base de desarrollo.
+
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.
 - [x] La alerta se dispara al llegar a `stock_minimo + 5` y al llegar a `stock_minimo`; se resuelve al recuperar stock.
