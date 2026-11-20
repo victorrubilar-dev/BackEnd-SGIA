@@ -1,6 +1,6 @@
 # Mapa de salas: zonas y estantes (REQ-22)
 
-**Estado: implementado (20 nov 2026), fases 1 a 5; fase 6 (datos de prueba) en plan.** El frontend detalla sus diferencias con el plan en `FrondEnd-SGIA/docs/mapa-salas.md` §11 (la ruta web es `/mapa-salas/:id`). Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: implementado (20 nov 2026), fases 1 a 6.** El frontend detalla sus diferencias con el plan en `FrondEnd-SGIA/docs/mapa-salas.md` §11 (la ruta web es `/mapa-salas/:id`). Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
@@ -158,14 +158,14 @@ Casillas de la fase 1 en `TASKS/Productos.md` (REQ-22), todas hechas. Endpoints 
 
 Restricción por pañol, salas no rectangulares, puertas y ventanas, rotación libre, varios pisos en un plano, etiqueta del estante, edición en tiempo real y el mapa en la app móvil.
 
-## Datos de prueba (fase 6, plan, 20 nov 2026)
+## Datos de prueba (fase 6, implementado, 20 nov 2026)
 
 `Database\Seeders\MapaSalasDemoSeeder`, llamado desde `DatabaseSeeder` fuera de producción y ejecutable solo con `php artisan db:seed --class=MapaSalasDemoSeeder`. Repetible: correrlo dos veces no crea nada nuevo.
 
 Por cada ubicación (`seedLocation(Location)`):
 1. **Medidas** si no tiene: sala 1000 × 600, pañol 1200 × 800, taller 1400 × 900, bodega 1600 × 1000 cm. Si ya tiene, no se tocan.
 2. **Zonas** «Zona A» (mitad izquierda), «Zona B» (arriba a la derecha) y «Zona C» (abajo a la derecha), proporcionales a la sala, como la imagen de referencia. Si existe una con ese nombre, se deja.
-3. **Estantes** `EST-A1`, `EST-A2`, `EST-A3` verticales en la zona A y `EST-B1`, `EST-B2`, `EST-C1`, `EST-C2` horizontales en B y C, repartidos dentro de su zona. Si el lugar previsto choca con un estante existente (p. ej. `EST-1` de `PCENTRAL`) o se sale, se usa `RoomMapService::placeEstante` en la zona. Si el código ya existe en la sala, se deja.
+3. **Estantes** `EST-A1`, `EST-A2`, `EST-A3` verticales en la zona A (largo: 60 % del alto de la zona) y `EST-B1`, `EST-B2`, `EST-C1`, `EST-C2` horizontales en B y C (cada uno 38 % del ancho de la zona, al 8 % y al 54 %). Si el lugar previsto choca con un estante existente (p. ej. `EST-1` de `PCENTRAL`) o se sale, se usa `RoomMapService::placeEstante` en la zona. Si el código ya existe en la sala, se deja.
 4. **Cajones**: si la ubicación no tiene, crea dos por estante (`A1-1`, `A1-2`…; código completo `{sala}-A1-1`). Los cajones sin estante se reparten en orden entre los estantes de la sala. Un cajón que ya tiene estante no se mueve.
 
 Test `MapaSalasDemoSeederTest`: ubicación vacía → 3 zonas, 7 estantes, 14 cajones asignados y ningún estante superpuesto ni fuera de la sala; ubicación con cajones y un estante propio → no lo pisa, asigna todos los cajones sueltos y no crea cajones nuevos; repetir no crea filas; medidas existentes no cambian.
