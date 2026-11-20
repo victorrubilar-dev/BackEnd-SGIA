@@ -512,6 +512,12 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
+| `GET` | `/api/locations/{id}/map` | Todos (`auth`) | Plano de la sala: `location` (`map_width_cm`, `map_height_cm`, `has_dimensions`), `zonas[]`, `estantes[]` (posición en cm, `rotation` 0/90, `cajones[]` resumidos, `items_count`, `has_critical_stock`) y `cajones_sin_estante_count`. | `docs/mapa-salas.md` (REQ-22) |
+| `PATCH` | `/api/locations/{id}` | `DIR-01`, `PAN-01` | Suma `map_width_cm` y `map_height_cm` (100–10 000). `422` si un estante o zona quedaría afuera. | `docs/mapa-salas.md` (REQ-22) |
+| `GET` / `POST` / `PATCH` / `DELETE` | `/api/estantes` | Todos / `DIR-01`, `PAN-01` | Estante del plano (no es el cajón): `location_id` (inmutable), `codigo` (≤ 12, único por sala), `zona_id?`, `width`, `depth`, `rotation`, `x?`, `y?` (sin posición, primer hueco libre). `422` por límites o superposición; `DELETE` `422` con cajones. | `docs/mapa-salas.md` (REQ-22) |
+| `GET` | `/api/estantes/{id}/contents` | Todos (`auth`) | Cajones del estante con `productos[]` (insumos) y `unidades[]` agrupadas por producto con `by_status` (`disponible`, `prestado`, `en_reparacion`). | `docs/mapa-salas.md` (REQ-22) |
+| `GET` / `POST` / `PATCH` / `DELETE` | `/api/zonas` | Todos / `DIR-01`, `PAN-01` | Zonas de la sala (`nombre`, `x`, `y`, `width`, `depth`). Borrar deja sus estantes sin zona. | `docs/mapa-salas.md` (REQ-22) |
+| `POST` / `PATCH` / `GET` | `/api/cajones` | `DIR-01`, `PAN-01` / Todos | Suma `estante_id` (de la misma sala; el `barcode` no cambia) y los filtros `estante_id` y `sin_estante=1`. | `docs/mapa-salas.md` (REQ-22) |
 
 ---
 
