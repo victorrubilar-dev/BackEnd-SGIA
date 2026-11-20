@@ -122,5 +122,8 @@ class DatabaseSeeder extends Seeder
                 ]
             );
         }
+
+        // REQ-22: plano de prueba (zonas, estantes y cajones asignados) en cada ubicación.
+        $this->call(MapaSalasDemoSeeder::class);
     }
 }
