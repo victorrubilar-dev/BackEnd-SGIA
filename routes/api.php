@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DeviceTokenController;
 use App\Http\Controllers\Api\EquipmentController;
 use App\Http\Controllers\Api\EquipmentReportController;
 use App\Http\Controllers\Api\EquipmentUnitController;
+use App\Http\Controllers\Api\EstanteController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\IncidentReportController;
 use App\Http\Controllers\Api\InvoiceIntakeController;
@@ -251,6 +252,16 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::put('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::patch('/cajones/{cajon}', [CajonController::class, 'update']);
         Route::delete('/cajones/{cajon}', [CajonController::class, 'destroy']);
+    });
+
+    // REQ-22: estantes del plano de cada sala (no son los cajones), docs/mapa-salas.md
+    Route::get('/estantes', [EstanteController::class, 'index']);
+    Route::get('/estantes/{estante}', [EstanteController::class, 'show']);
+    Route::get('/estantes/{estante}/contents', [EstanteController::class, 'contents']);
+    Route::middleware('role:DIR-01,PAN-01')->group(function () {
+        Route::post('/estantes', [EstanteController::class, 'store']);
+        Route::patch('/estantes/{estante}', [EstanteController::class, 'update']);
+        Route::delete('/estantes/{estante}', [EstanteController::class, 'destroy']);
     });
 
     // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL
