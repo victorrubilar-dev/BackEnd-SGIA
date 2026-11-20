@@ -1,6 +1,6 @@
 # Mapa de salas: zonas y estantes (REQ-22)
 
-**Estado: fase 1 (backend) implementada (20 nov 2026); fases 2 a 5 (frontend) pendientes.** Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: implementado (20 nov 2026), fases 1 a 5.** El frontend detalla sus diferencias con el plan en `FrondEnd-SGIA/docs/mapa-salas.md` §11 (la ruta web es `/mapa-salas/:id`). Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
