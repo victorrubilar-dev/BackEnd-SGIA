@@ -94,15 +94,16 @@ class MapaSalasDemoSeeder extends Seeder
         $b = $zonas['Zona B'];
         $c = $zonas['Zona C'];
         $vertical = $this->round(min(2000, $a->depth * 0.6));
-        $horizontal = $this->round(min(2000, $b->width * 0.4));
+        // Dos estantes horizontales por zona: cada uno ocupa el 38 % del ancho, con aire al costado y al medio.
+        $horizontal = $this->round(min(2000, $b->width * 0.38));
 
         $planned = [];
         foreach ([1, 2, 3] as $i) {
             $planned[] = ['EST-A'.$i, $a, $vertical, 70, 90, $a->x + $a->width * $i / 4 - 35, $a->y + ($a->depth - $vertical) / 2];
         }
-        foreach ([[$b, 'B', 0.2], [$c, 'C', 0.55]] as [$zona, $letra, $top]) {
-            foreach ([1, 2] as $i) {
-                $planned[] = ["EST-{$letra}{$i}", $zona, $horizontal, 80, 0, $zona->x + $zona->width * $i / 3 - $horizontal / 2, $zona->y + $zona->depth * $top];
+        foreach ([[$b, 'B', 0.15], [$c, 'C', 0.5]] as [$zona, $letra, $top]) {
+            foreach ([1 => 0.08, 2 => 0.54] as $i => $left) {
+                $planned[] = ["EST-{$letra}{$i}", $zona, $horizontal, 80, 0, $zona->x + $zona->width * $left, $zona->y + $zona->depth * $top];
             }
         }
 

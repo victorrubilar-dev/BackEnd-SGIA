@@ -52,6 +52,16 @@ class MapaSalasDemoSeederTest extends TestCase
         $this->assertSame(['EST-A1', 'EST-A2', 'EST-A3', 'EST-B1', 'EST-B2', 'EST-C1', 'EST-C2'], $estantes->pluck('codigo')->all());
         $this->assertTrue($estantes->where('zona_id', null)->isEmpty());
         $this->assertSame([90], $estantes->filter(fn (Estante $e) => str_starts_with($e->codigo, 'EST-A'))->pluck('rotation')->unique()->values()->all());
+        // Sala vacía: cada estante queda en su lugar previsto, como la referencia (no en el primer hueco libre).
+        $by = $estantes->keyBy('codigo');
+        foreach ([['EST-A1', 'EST-A2'], ['EST-A2', 'EST-A3'], ['EST-B1', 'EST-B2'], ['EST-C1', 'EST-C2']] as [$left, $right]) {
+            $this->assertSame($by[$left]->y, $by[$right]->y, "{$left} y {$right} alineados");
+            $this->assertLessThan($by[$right]->x, $by[$left]->x + $by[$left]->occupiedWidth(), "{$left} a la izquierda de {$right}, sin tocarse");
+        }
+        $zonaId = Zona::where('location_id', $location->id)->pluck('id', 'nombre');
+        $this->assertSame($zonaId['Zona B'], $by['EST-B2']->zona_id);
+        $this->assertSame($zonaId['Zona C'], $by['EST-C1']->zona_id);
+        $this->assertGreaterThan($by['EST-B1']->y, $by['EST-C1']->y);
 
         $cajones = Cajon::where('location_id', $location->id)->get();
         $this->assertCount(14, $cajones);
