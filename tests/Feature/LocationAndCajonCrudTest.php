@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Cajon;
+use App\Models\Estante;
 use App\Models\Location;
 use App\Models\Product;
 use App\Models\User;
@@ -212,5 +213,80 @@ class LocationAndCajonCrudTest extends TestCase
         $this->postJson('/api/cajones/bulk-delete', ['ids' => [$cajon->id]])->assertStatus(403);
         Sanctum::actingAs($this->teacher);
         $this->postJson('/api/cajones/bulk-delete', ['ids' => [$cajon->id]])->assertStatus(403);
+    }
+
+    public function test_cajon_can_be_assigned_to_an_estante_of_the_same_room_without_changing_barcode(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+        $location = Location::factory()->create();
+        $estante = Estante::factory()->create(['location_id' => $location->id, 'codigo' => 'EST-A1']);
+        $cajon = Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'R1']);
+        $barcode = $cajon->fresh()->barcode;
+
+        $this->patchJson("/api/cajones/{$cajon->id}", ['estante_id' => $estante->id])
+            ->assertOk()
+            ->assertJsonPath('data.estante_id', $estante->id)
+            ->assertJsonPath('data.estante', ['id' => $estante->id, 'codigo' => 'EST-A1'])
+            ->assertJsonPath('data.barcode', $barcode);
+
+        $this->postJson('/api/cajones', ['location_id' => $location->id, 'codigo' => 'R2', 'estante_id' => $estante->id])
+            ->assertCreated()
+            ->assertJsonPath('data.estante.codigo', 'EST-A1');
+
+        $this->patchJson("/api/cajones/{$cajon->id}", ['estante_id' => null])
+            ->assertOk()
+            ->assertJsonPath('data.estante_id', null);
+    }
+
+    public function test_cajon_rejects_estante_of_another_room(): void
+    {
+        Sanctum::actingAs($this->admin);
+        $location = Location::factory()->create();
+        $cajon = Cajon::factory()->create(['location_id' => $location->id]);
+        $otherEstante = Estante::factory()->create();
+
+        $this->patchJson("/api/cajones/{$cajon->id}", ['estante_id' => $otherEstante->id])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.estante_id.0', 'El estante no pertenece a la sala del cajón.');
+        $this->postJson('/api/cajones', ['location_id' => $location->id, 'codigo' => 'R9', 'estante_id' => $otherEstante->id])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('estante_id');
+        $this->patchJson("/api/cajones/{$cajon->id}", ['estante_id' => 999999])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('estante_id');
+    }
+
+    public function test_moving_cajon_to_another_room_clears_its_estante(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+        $location = Location::factory()->create();
+        $estante = Estante::factory()->create(['location_id' => $location->id]);
+        $cajon = Cajon::factory()->create(['location_id' => $location->id, 'estante_id' => $estante->id]);
+        $target = Location::factory()->create();
+        $targetEstante = Estante::factory()->create(['location_id' => $target->id]);
+
+        $this->patchJson("/api/cajones/{$cajon->id}", ['location_id' => $target->id])
+            ->assertOk()
+            ->assertJsonPath('data.estante_id', null);
+
+        // Con estante de la sala nueva en el mismo pedido, queda asignado.
+        $this->patchJson("/api/cajones/{$cajon->id}", ['location_id' => $location->id, 'estante_id' => $estante->id])
+            ->assertOk()
+            ->assertJsonPath('data.estante_id', $estante->id);
+        $this->assertNotSame($targetEstante->id, $cajon->fresh()->estante_id);
+    }
+
+    public function test_cajones_can_be_filtered_by_estante_or_without_estante(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $location = Location::factory()->create();
+        $estante = Estante::factory()->create(['location_id' => $location->id]);
+        Cajon::factory()->create(['location_id' => $location->id, 'estante_id' => $estante->id, 'codigo' => 'EN-ESTANTE']);
+        Cajon::factory()->create(['location_id' => $location->id, 'codigo' => 'SUELTO']);
+
+        $this->getJson("/api/cajones?estante_id={$estante->id}")
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.codigo', 'EN-ESTANTE');
+        $this->getJson("/api/cajones?location_id={$location->id}&sin_estante=1")
+            ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.codigo', 'SUELTO');
     }
 }

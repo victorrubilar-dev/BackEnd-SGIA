@@ -21,6 +21,7 @@ class Cajon extends Model
         'codigo',
         'descripcion',
         'location_id',
+        'estante_id',
         'created_by',
         'updated_by',
     ];
@@ -29,6 +30,11 @@ class Cajon extends Model
     {
         // `barcode` = `{locations.code}-{codigo normalizado}` (`L206-RACK-R1`); se recalcula al cambiar el código o la sala.
         static::saving(function (Cajon $cajon) {
+            // Un estante es de una sola sala: si el cajón cambia de sala sin estante nuevo, queda sin estante (REQ-22).
+            if ($cajon->exists && $cajon->isDirty('location_id') && ! $cajon->isDirty('estante_id')) {
+                $cajon->estante_id = null;
+            }
+
             if (! $cajon->exists || $cajon->isDirty(['codigo', 'location_id']) || blank($cajon->barcode)) {
                 $cajon->barcode = static::buildBarcode(
                     (string) Location::whereKey($cajon->location_id)->value('code'),
@@ -60,6 +66,12 @@ class Cajon extends Model
     public function location(): BelongsTo
     {
         return $this->belongsTo(Location::class);
+    }
+
+    /** @return BelongsTo<Estante, $this> */
+    public function estante(): BelongsTo
+    {
+        return $this->belongsTo(Estante::class);
     }
 
     /** @return BelongsTo<User, $this> */
