@@ -29,6 +29,8 @@ class LocationResource extends JsonResource
             'storeroom_id' => $this->storeroom_id,
             'building' => $this->building,
             'floor' => $this->floor,
+            'map_width_cm' => $this->map_width_cm,
+            'map_height_cm' => $this->map_height_cm,
             'cajones_count' => $this->whenCounted('cajones'),
             'cajones' => CajonResource::collection($this->whenLoaded('cajones')),
             'created_by' => $this->created_by,

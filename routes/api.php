@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\RoleController;
+use App\Http\Controllers\Api\RoomMapController;
 use App\Http\Controllers\Api\StockAlertController;
 use App\Http\Controllers\Api\StoreroomController;
 use App\Http\Controllers\Api\StudentController;
@@ -227,6 +228,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
     Route::get('/locations', [LocationController::class, 'index']);
     Route::get('/locations/{location}', [LocationController::class, 'show']);
+    // REQ-22: plano de la sala (zonas y estantes), docs/mapa-salas.md
+    Route::get('/locations/{location}/map', [RoomMapController::class, 'show']);
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::post('/locations', [LocationController::class, 'store']);
         Route::put('/locations/{location}', [LocationController::class, 'update']);

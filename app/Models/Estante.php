@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\Relation;
 
 /**
  * Mueble del plano de una sala (REQ-22): agrupa cajones y tiene posición y tamaño en centímetros.
@@ -57,6 +59,39 @@ class Estante extends Model
             'depth' => 'integer',
             'rotation' => 'integer',
         ];
+    }
+
+    /**
+     * Cajones del estante para el plano: por código, con insumos activos (`products_count`) y unidades
+     * que no están dadas de baja (`units_count`). Los equipos se cuentan por unidades, no por producto.
+     *
+     * @return array<string, \Closure>
+     */
+    public static function mapRelations(): array
+    {
+        return ['cajones' => fn (Relation $query) => $query->orderBy('codigo')->withCount([
+            'products as products_count' => fn (Builder $q) => $q->where('type', Product::TYPE_SUPPLY)->where('is_active', true),
+            'equipmentUnits as units_count' => fn (Builder $q) => $q->where('status', '!=', EquipmentUnit::STATUS_WRITTEN_OFF),
+        ])];
+    }
+
+    /**
+     * `has_critical_stock`: algún insumo activo del estante en o bajo su stock mínimo.
+     *
+     * @return array<string, \Closure>
+     */
+    public static function criticalStockExists(): array
+    {
+        return ['cajones as has_critical_stock' => fn (Builder $query) => $query->whereHas('products', fn (Builder $q) => $q
+            ->where('type', Product::TYPE_SUPPLY)
+            ->where('is_active', true)
+            ->whereColumn('quantity', '<=', 'stock_minimo'))];
+    }
+
+    /** Carga lo que necesita `EstanteResource` (cajones resumidos y stock crítico). */
+    public function loadMapSummary(): static
+    {
+        return $this->load(static::mapRelations())->loadExists(static::criticalStockExists());
     }
 
     /** Ancho ocupado en el plano (con la rotación aplicada). */
