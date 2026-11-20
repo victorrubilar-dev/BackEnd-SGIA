@@ -480,10 +480,10 @@ Ya disponible (Fase 2, rompe contrato; va junto con la Fase 4 del frontend):
 - **`POST /api/loans/checkin` cambia:** equipos/maquetas envían `units: [{id, cajon_id}]` (obligatorio, ≥1) en lugar de `unit_ids` (eliminado: un payload antiguo responde `422` en `items.{i}.units`). Solo se devuelven las unidades enviadas y cada una queda en el cajón escaneado; `extraviado` no lleva cajón ni cambia el de la unidad. Insumos envían `cajon_id` (debe ser su cajón registrado; si el producto no tenía, lo registra). Todo cajón debe ser del pañol del préstamo (solo unidades; el cajón registrado de un insumo puede estar en otro pañol). Mensajes y campos de error en `ENDPOINTS.md` y `docs/codigos-ubicacion.md`.
 - `LoanItemResource`: el objeto `cajon` del ítem y el `cajon` de cada unidad suman `barcode` (código completo `L206-RACK-R1`). `GET /api/loans`, `GET /api/loans/{id}` y la respuesta de `checkin` cargan el cajón del producto, así que `items[].cajon` viene con datos cuando el producto tiene cajón. Las claves de primer nivel de `LoanItemResource` no cambian.
 
-## Mapa de salas: zonas y estantes (REQ-22, plan sin implementar, noviembre 2026) — Informativo
+## Mapa de salas: zonas y estantes (REQ-22, backend implementado, noviembre 2026) — Pronto
 
-Plan y contrato en `docs/mapa-salas.md` (rama `mapa-salas`); la pantalla en `FrondEnd-SGIA/docs/mapa-salas.md`. No rompe contrato: todo es aditivo.
+Plan y contrato en `docs/mapa-salas.md` (rama `mapa-salas`); la pantalla en `FrondEnd-SGIA/docs/mapa-salas.md`; detalle de cada endpoint en `ENDPOINTS.md` §2.2. No rompe contrato: todo es aditivo.
 - Nuevos: `GET /api/locations/{id}/map`, CRUD `/api/estantes` (+ `/{id}/contents`) y CRUD `/api/zonas`.
-- `LocationResource` suma `map_width_cm` y `map_height_cm` (`null` si no se definen); `PATCH /api/locations/{id}` los acepta.
+- `LocationResource` suma `map_width_cm` y `map_height_cm` (`null` si no se definen); `PATCH /api/locations/{id}` los acepta, siempre juntos.
 - `CajonResource` suma `estante_id` y `estante: {id, codigo}`; `POST`/`PATCH /api/cajones` aceptan `estante_id`; `GET /api/cajones` filtra por `estante_id` y `sin_estante=1`.
 - **`/api/estantes` es una entidad nueva** (el mueble del plano), no el alias de cajones que se retiró en B3b.

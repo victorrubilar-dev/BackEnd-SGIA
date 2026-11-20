@@ -224,6 +224,27 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `DELETE` | `/api/cajones/{id}` | `DIR-01` | Elimina un cajón. `422` con `products_count` si tiene productos asignados. | ✅ Implementado |
 | `POST` | `/api/cajones/bulk-delete` | `DIR-01` | Borrado masivo.<br>**Body:** `ids` (array), `partial` (opcional). Sin `partial`, si alguno tiene productos responde `422` con `blocked_ids`, `blocked_cajones` y `deletable_ids` y no borra nada. Con `partial: true` borra los libres (`deleted_ids`, `deleted_count`) e informa los bloqueados. | ✅ Implementado |
 
+### 2.2 Mapa de salas: zonas y estantes (`FU-02` / `REQ-22`)
+
+> Plan y contrato en `BackEnd-SGIA/docs/mapa-salas.md`. Medidas y posiciones en **centímetros enteros** desde la esquina superior izquierda de la sala; `width` es el largo del mueble y `depth` su fondo, sin rotar. Con `rotation: 90` el rectángulo ocupado es `(x, y, depth, width)`. El **estante** es el mueble del plano y agrupa **cajones**; no es el alias de cajones que se retiró. Lecturas para todo usuario autenticado; escritura `DIR-01` y `PAN-01`, sin restricción por pañol.
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/locations/{id}/map` | Todos (`auth`) | Plano de la sala en un pedido: `location` (`id`, `code`, `nombre`, `tipo`, `map_width_cm`, `map_height_cm`, `has_dimensions`; sin medidas usa 1000 × 600 y `has_dimensions: false`), `zonas[]` (por `nombre`), `estantes[]` (por `codigo`, con `cajones[]` `{id, codigo, barcode, products_count, units_count}`, `items_count` y `has_critical_stock`) y `cajones_sin_estante_count`. `products_count` cuenta insumos activos; `units_count`, unidades de equipo o maqueta que no están `dado_de_baja` (el producto equipo no se cuenta). | ✅ Implementado |
+| `PATCH` | `/api/locations/{id}` | `DIR-01`, `PAN-01` | Además acepta `map_width_cm` y `map_height_cm` (100–10 000), **siempre juntos**. `422` en `map_width_cm` si un estante o zona quedaría afuera: «El estante {CODIGO} quedaría fuera de la sala.» `LocationResource` suma ambos campos (`null` si no se definieron). | ✅ Implementado |
+| `GET` | `/api/estantes` | Todos (`auth`) | Paginado (`per_page` 1–200, 50 por defecto). Filtros `location_id` y `search` (código o nombre). Cada estante como en `/map`. | ✅ Implementado |
+| `GET` | `/api/estantes/{id}` | Todos (`auth`) | Estante como en `/map`. | ✅ Implementado |
+| `POST` | `/api/estantes` | `DIR-01`, `PAN-01` | **Body:** `location_id`, `codigo` (se normaliza como el del cajón: `est a1` → `EST-A1`; ≤ 12, único por sala), `nombre?` (≤ 80), `descripcion?`, `zona_id?` (de la misma sala), `width`, `depth` (20–2000), `rotation?` (0 o 90), `x?`, `y?` (juntos). Sin `x`/`y` lo ubica en el primer hueco libre en una rejilla de 10 cm (dentro de la zona si viene y cabe; si no, en la sala). `422` en `x`: «El estante queda fuera de la sala.», «Se superpone con el estante {CODIGO}.» (bordes que se tocan no cuentan) o «No hay espacio libre en la sala para un estante de esas medidas.» `201`. | ✅ Implementado |
+| `PATCH` | `/api/estantes/{id}` | `DIR-01`, `PAN-01` | Parcial: `codigo`, `nombre`, `descripcion`, `zona_id` (`null` lo saca de la zona), `width`, `depth`, `rotation`, `x`, `y`. Valida límites y superposición con los valores resultantes. `location_id` distinto → `422` «Un estante no se puede mover a otra sala.» | ✅ Implementado |
+| `DELETE` | `/api/estantes/{id}` | `DIR-01`, `PAN-01` | `204`. `422` en `estante` con `cajones_count` si tiene cajones: «El estante tiene {n} cajones; muévelos antes de eliminarlo.» | ✅ Implementado |
+| `GET` | `/api/estantes/{id}/contents` | Todos (`auth`) | Pop-up: `estante` (como en `/map`), `zona` `{id, nombre}` o `null`, `location` `{id, code, nombre}` y `cajones[]` `{id, codigo, barcode, descripcion, productos[], unidades[]}`. `productos`: insumos activos por `name` (`id`, `name`, `type`, `barcode`, `quantity`, `stock_minimo`, `is_critical`). `unidades`: agrupadas por producto, por `product_name` (`product_id`, `product_name`, `type`, `total`, `by_status` con `disponible`, `prestado` y `en_reparacion`, siempre las tres). | ✅ Implementado |
+| `GET` | `/api/zonas` | Todos (`auth`) | Sin paginar. Filtro `location_id`. `{id, location_id, nombre, x, y, width, depth}`. | ✅ Implementado |
+| `POST` | `/api/zonas` | `DIR-01`, `PAN-01` | **Body:** `location_id`, `nombre` (≤ 60, único por sala sin distinguir mayúsculas), `x`, `y`, `width`, `depth` (50–10 000). Puede superponerse con otras zonas. `422` en `x`: «La zona queda fuera de la sala.» `201`. | ✅ Implementado |
+| `PATCH` | `/api/zonas/{id}` | `DIR-01`, `PAN-01` | Parcial (mover y redimensionar), validado con los valores resultantes; `location_id` inmutable. | ✅ Implementado |
+| `DELETE` | `/api/zonas/{id}` | `DIR-01`, `PAN-01` | `204`; sus estantes quedan con `zona_id: null`. | ✅ Implementado |
+| `POST` / `PATCH` | `/api/cajones` | `DIR-01`, `PAN-01` | Aceptan `estante_id` (nullable, de la misma sala: `422` «El estante no pertenece a la sala del cajón.»). El `barcode` no cambia. Si el cajón cambia de sala sin `estante_id`, queda sin estante. `CajonResource` suma `estante_id` y `estante: {id, codigo}` (en listado, detalle, alta y edición). | ✅ Implementado |
+| `GET` | `/api/cajones` | Todos (`auth`) | Filtros nuevos `estante_id` y `sin_estante=1`. | ✅ Implementado |
+
 ---
 
 ### 3. Inventario y Productos (`FU-02` / `REQ-03`, `REQ-04`, `REQ-05`)
@@ -512,15 +533,9 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
-| `GET` | `/api/locations/{id}/map` | Todos (`auth`) | Plano de la sala: `location` (`map_width_cm`, `map_height_cm`, `has_dimensions`), `zonas[]`, `estantes[]` (posición en cm, `rotation` 0/90, `cajones[]` resumidos, `items_count`, `has_critical_stock`) y `cajones_sin_estante_count`. | `docs/mapa-salas.md` (REQ-22) |
-| `PATCH` | `/api/locations/{id}` | `DIR-01`, `PAN-01` | Suma `map_width_cm` y `map_height_cm` (100–10 000). `422` si un estante o zona quedaría afuera. | `docs/mapa-salas.md` (REQ-22) |
-| `GET` / `POST` / `PATCH` / `DELETE` | `/api/estantes` | Todos / `DIR-01`, `PAN-01` | Estante del plano (no es el cajón): `location_id` (inmutable), `codigo` (≤ 12, único por sala), `zona_id?`, `width`, `depth`, `rotation`, `x?`, `y?` (sin posición, primer hueco libre). `422` por límites o superposición; `DELETE` `422` con cajones. | `docs/mapa-salas.md` (REQ-22) |
-| `GET` | `/api/estantes/{id}/contents` | Todos (`auth`) | Cajones del estante con `productos[]` (insumos) y `unidades[]` agrupadas por producto con `by_status` (`disponible`, `prestado`, `en_reparacion`). | `docs/mapa-salas.md` (REQ-22) |
-| `GET` / `POST` / `PATCH` / `DELETE` | `/api/zonas` | Todos / `DIR-01`, `PAN-01` | Zonas de la sala (`nombre`, `x`, `y`, `width`, `depth`). Borrar deja sus estantes sin zona. | `docs/mapa-salas.md` (REQ-22) |
-| `POST` / `PATCH` / `GET` | `/api/cajones` | `DIR-01`, `PAN-01` / Todos | Suma `estante_id` (de la misma sala; el `barcode` no cambia) y los filtros `estante_id` y `sin_estante=1`. | `docs/mapa-salas.md` (REQ-22) |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (176 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (193 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

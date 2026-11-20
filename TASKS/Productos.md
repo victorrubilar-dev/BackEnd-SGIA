@@ -25,16 +25,16 @@
 - [x] Migración: códigos de las salas existentes según la tabla aprobada del plan y recálculo de todos los cajones.
 - [x] `GET /api/cajones/by-code/{code}` para el escaneo y `GET /api/cajones/{id}/label` (etiqueta 50x30 mm).
 
-### REQ-22 — Mapa de salas: zonas y estantes (FU-02, plan en `docs/mapa-salas.md`, rama `mapa-salas`)
-- [ ] Migraciones: `locations.map_width_cm`/`map_height_cm`, tablas `zonas` y `estantes`, `cajones.estante_id`.
-- [ ] Modelos `Zona` y `Estante` (relaciones con `Location` y `Cajon`), auditoría `created_by`/`updated_by`.
-- [ ] `RoomMapService`: límites, superposición (rotación 90, bordes que se tocan no cuentan), primer hueco libre y validación al achicar la sala.
-- [ ] `GET /api/locations/{id}/map` sin N+1, con conteos de insumos y unidades sin contar dos veces (`RoomMapTest`).
-- [ ] `PATCH /api/locations/{id}` con medidas y `422` al achicar (`LocationAndCajonCrudTest`).
-- [ ] CRUD `/api/estantes` y `GET /api/estantes/{id}/contents` (`EstanteCrudTest`).
-- [ ] CRUD `/api/zonas` (`ZonaCrudTest`).
-- [ ] `estante_id` en `POST`/`PATCH /api/cajones`, `CajonResource` y filtros `estante_id`/`sin_estante` (`LocationAndCajonCrudTest`).
-- [ ] `ResourceContractTest`, `ENDPOINTS.md` y `TASKS/front-end.md` actualizados.
+### REQ-22 — Mapa de salas: zonas y estantes (FU-02, plan en `docs/mapa-salas.md`, rama `mapa-salas`; fase 1 backend hecha, tests en `RoomMapServiceTest`, `RoomMapTest`, `EstanteCrudTest`, `ZonaCrudTest` y `LocationAndCajonCrudTest`)
+- [x] Migraciones: `locations.map_width_cm`/`map_height_cm`, tablas `zonas` y `estantes`, `cajones.estante_id`.
+- [x] Modelos `Zona` y `Estante` (relaciones con `Location` y `Cajon`), auditoría `created_by`/`updated_by`.
+- [x] `RoomMapService`: límites, superposición (rotación 90, bordes que se tocan no cuentan), primer hueco libre y validación al achicar la sala.
+- [x] `GET /api/locations/{id}/map` sin N+1, con conteos de insumos y unidades sin contar dos veces (`RoomMapTest`).
+- [x] `PATCH /api/locations/{id}` con medidas y `422` al achicar (`LocationAndCajonCrudTest`).
+- [x] CRUD `/api/estantes` y `GET /api/estantes/{id}/contents` (`EstanteCrudTest`).
+- [x] CRUD `/api/zonas` (`ZonaCrudTest`).
+- [x] `estante_id` en `POST`/`PATCH /api/cajones`, `CajonResource` y filtros `estante_id`/`sin_estante` (`LocationAndCajonCrudTest`).
+- [x] `ResourceContractTest`, `ENDPOINTS.md` y `TASKS/front-end.md` actualizados.
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.

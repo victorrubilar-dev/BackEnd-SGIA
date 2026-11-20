@@ -1,6 +1,6 @@
 # Mapa de salas: zonas y estantes (REQ-22)
 
-**Estado: plan, sin implementar (20 nov 2026).** Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
+**Estado: fase 1 (backend) implementada (20 nov 2026); fases 2 a 5 (frontend) pendientes.** Rama `mapa-salas` en ambos repositorios. Este documento es el plan y el contrato común entre backend y frontend. La pantalla (SVG, arrastre, pop-up) está en `FrondEnd-SGIA/docs/mapa-salas.md` y el requisito en `FrondEnd-SGIA/TASKS/REQ-22-MAPA-SALAS.md`. Seguimiento en `TASKS/Productos.md` (REQ-22); cambios de contrato para el frontend en `TASKS/front-end.md`.
 
 ## Problema
 
@@ -47,15 +47,15 @@ cajones    + estante_id (FK estantes null, nullOnDelete)
 
 ### Reglas de dominio
 
-- **Medidas de sala:** 100 a 10 000 cm. Si son `null`, el mapa usa 1000 × 600 y responde `has_dimensions: false`. Achicar una sala que deja afuera un estante o una zona: `422` en `map_width_cm` o `map_height_cm`: «El estante {CODIGO} quedaría fuera de la sala.» (o «La zona {NOMBRE} …»).
+- **Medidas de sala:** 100 a 10 000 cm, siempre las dos juntas. Si son `null`, el mapa usa 1000 × 600 y responde `has_dimensions: false`. Achicar una sala que deja afuera un estante o una zona: `422` en `map_width_cm`: «El estante {CODIGO} quedaría fuera de la sala.» (o «La zona {NOMBRE} …»).
 - **Código del estante:** se normaliza con `Cajon::normalizeCode()` (sin tildes, mayúsculas, lo que no sea `[A-Z0-9]` pasa a `-`); 1 a 12 caracteres; único por sala: «Ya existe un estante con el código {CODIGO} en esta sala.»
-- **Medidas:** estante `width`/`depth` 20 a 2000; zona `width`/`depth` 50 a 10 000; `rotation` 0 o 90; `x`/`y` ≥ 0.
+- **Medidas:** estante `width`/`depth` 20 a 2000; zona `width`/`depth` 50 a 10 000; `rotation` 0 o 90; `x`/`y` ≥ 0. Nombre de zona único por sala sin distinguir mayúsculas.
 - **Límites:** el rectángulo ocupado debe quedar dentro de la sala (`x + ancho ≤ map_width_cm`, `y + alto ≤ map_height_cm`, con las medidas por defecto si son `null`). `422` en `x`: «El estante queda fuera de la sala.» / «La zona queda fuera de la sala.»
 - **Superposición:** un estante no puede intersectar a otro de la misma sala. `422` en `x`: «Se superpone con el estante {CODIGO}.»
 - **Zona del estante:** `zona_id` debe ser de la misma sala (`422` en `zona_id`: «La zona no pertenece a la sala.»). El backend no la recalcula: la web envía la zona que contiene el centro del estante al soltarlo.
 - **Cajón → estante:** `estante_id` debe ser de la misma sala que el cajón (`422` en `estante_id`: «El estante no pertenece a la sala del cajón.»). Si el cajón cambia de `location_id` sin enviar `estante_id`, queda en `null`.
 - **`location_id` inmutable** en estantes y zonas: `422` en `location_id`: «Un estante no se puede mover a otra sala.»
-- La lógica de geometría vive en un servicio (`App\Services\RoomMapService`): límites, superposición, primer hueco libre y validación al achicar la sala. Los Form Requests la llaman en `after()`.
+- La lógica de geometría vive en `App\Services\RoomMapService` (límites, superposición, primer hueco libre y validación al achicar la sala). Los Form Requests la usan en `after()` a través de `EstanteRules` y `ZonaRules`. El primer hueco solo prueba el borde del área y los bordes de los obstáculos llevados a la rejilla: mismo resultado que recorrer cada punto (`RoomMapServiceTest`).
 
 ### Endpoints
 
@@ -128,6 +128,7 @@ Todos bajo `auth:sanctum`; escritura con `role:DIR-01,PAN-01`, en el bloque REQ-
 - `RoomMapTest`: `/map` con `has_dimensions: false` por defecto; conteos (`products_count`, `units_count`, `items_count`) sin contar dos veces equipos ni unidades dadas de baja; `has_critical_stock`; cantidad de consultas acotada (sin N+1).
 - `EstanteCrudTest`: CRUD por rol (`AD-01` y `PRO-01` leen, `403` al escribir); límites; superposición con `rotation` 90 y bordes que se tocan; zona de otra sala; `location_id` inmutable; primer hueco libre y `422` sin espacio; borrar con cajones; `/contents` agrupa unidades por producto.
 - `ZonaCrudTest`: CRUD, límites, borrar deja estantes sin zona.
+- `RoomMapServiceTest` (unitario): rotación, bordes que se tocan, límites y primer hueco comparado con un recorrido completo de la rejilla.
 - `LocationAndCajonCrudTest` (ampliado): medidas de sala y `422` al achicar; `estante_id` de otra sala `422`; cambio de sala limpia `estante_id`; el `barcode` no cambia al asignar estante; filtros `estante_id` y `sin_estante`.
 
 ## Fases
@@ -141,7 +142,7 @@ Todos bajo `auth:sanctum`; escritura con `role:DIR-01,PAN-01`, en el bloque REQ-
 | 4 | Edición: crear estantes y zonas, arrastrar, teclado, medidas de sala, asignar cajones. | Frontend |
 | 5 | Zoom, marcadores, revisión responsiva, prueba con 200 estantes y cierre. | Frontend |
 
-Casillas de la fase 1 en `TASKS/Productos.md` (REQ-22). Al terminar: `ENDPOINTS.md` de ambos repos pasa las filas a ✅ en la sección 2.1 y este documento cambia a «implementado».
+Casillas de la fase 1 en `TASKS/Productos.md` (REQ-22), todas hechas. Endpoints en la sección 2.2 de `ENDPOINTS.md` (ambos repos). Las lecturas están en la lista de rutas compartidas de `RouteProtectionTest`.
 
 ## Riesgos
 
