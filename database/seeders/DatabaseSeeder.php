@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Cajon;
 use App\Models\Location;
+use App\Models\Product;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
@@ -121,6 +122,11 @@ class DatabaseSeeder extends Seeder
                     'updated_by' => $admin->id,
                 ]
             );
+        }
+
+        // Datos de demostración completos solo en desarrollo y una vez (no es idempotente).
+        if (app()->environment('local') && ! Product::exists()) {
+            $this->call(RealisticDemoSeeder::class);
         }
 
         // REQ-22: plano de prueba (zonas, estantes y cajones asignados) en cada ubicación.

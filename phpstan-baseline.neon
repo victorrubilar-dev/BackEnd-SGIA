@@ -1451,9 +1451,3 @@ parameters:
 			identifier: method.nonObject
 			count: 2
 			path: app/Services/UserChartService.php
-
-		-
-			message: '#^Using nullsafe property access "\?\-\>id" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
-			identifier: nullsafe.neverNull
-			count: 1
-			path: database/seeders/DemoMetricsSeeder.php
