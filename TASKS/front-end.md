@@ -49,6 +49,16 @@ En desarrollo sigue siendo `admin@sgia.cl` / `Admin1234!`. En producción la def
 - **Monitoreo (`AD-01`):** `GET /api/monitoring/logins?hours=`, `GET /api/monitoring/failed-logins`, `GET/DELETE /api/monitoring/sessions[/{id}]`, `GET /api/monitoring/health`. Formato en `ENDPOINTS.md` §2.0c. Los cambios sensibles salen de `GET /api/audit-logs?action=user.` (nueva acción `user.session_revoked`).
 - `GET /api/health` público (sin token).
 
+### A8. Errores sin detalles internos y IDs inválidos como 404 — Ya (2026-11-22)
+Auditoría de seguridad (`docs/auditoria-seguridad.md`, H-01, H-03, H-07, H-08, H-09, H-12):
+- Cualquier error no controlado de la API responde `500 {"message": "Ocurrió un error inesperado. Intenta nuevamente o contacta al administrador."}` (503 con su propio texto), aunque `APP_DEBUG` esté activo: sin `exception`, `file`, `line` ni `trace`. 429 y 405 responden en español.
+- Un ID de ruta no numérico o de más de 18 dígitos (`/api/products/abc`) responde **404** `Recurso no encontrado.` (antes 500 con el SQL).
+- `barcode` de productos solo admite `[A-Za-z0-9._-]` (422 `El código de barras solo admite letras, números, punto, guion y guion bajo.`).
+- El cliente (`apiErrorToMessage`) ya no muestra el cuerpo de los 5xx ni el texto de errores de JavaScript o de red.
+- Un rol sin acceso a una ruta recibe **403** aunque el ID no exista (antes 404): el rol se revisa antes de buscar el recurso.
+- Un filtro con arreglo en la query (`?status[]=a`) responde **422** con `errors`.
+- Las respuestas de la API llevan `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` y `Referrer-Policy: no-referrer`.
+
 ## B. Cambios que vienen (rework)
 
 Avisar al frontend **antes** de aplicarlos; ninguno está hecho todavía.
