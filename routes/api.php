@@ -66,7 +66,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::get('/monitoring/logins', [MonitoringController::class, 'logins']);
         Route::get('/monitoring/failed-logins', [MonitoringController::class, 'failedLogins']);
         Route::get('/monitoring/sessions', [MonitoringController::class, 'sessions']);
-        Route::delete('/monitoring/sessions/{session}', [MonitoringController::class, 'revokeSession'])->whereNumber('session');
+        Route::delete('/monitoring/sessions/{session}', [MonitoringController::class, 'revokeSession']);
         Route::get('/monitoring/health', [MonitoringController::class, 'health']);
     });
 

@@ -106,6 +106,27 @@ class ProductManagementTest extends TestCase
         $responseStatus->assertStatus(403);
     }
 
+    /** Auditoría de seguridad (docs/auditoria-seguridad.md): el código se imprime en HTML, no admite marcado. */
+    public function test_barcode_rejects_html_and_unsafe_characters(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+
+        foreach (['<img src=x onerror=alert(1)>', 'ABC 123', "A'B", 'A"B'] as $barcode) {
+            $this->postJson('/api/products', [
+                ...$this->unitPayload(),
+                'name' => 'Cable de red',
+                'type' => Product::TYPE_SUPPLY,
+                'quantity' => 1,
+                'stock_minimo' => 0,
+                'barcode' => $barcode,
+            ])->assertUnprocessable()->assertJsonPath('errors.barcode.0', 'El código de barras solo admite letras, números, punto, guion y guion bajo.');
+        }
+
+        $product = Product::factory()->create();
+        $this->patchJson("/api/products/{$product->id}", ['barcode' => '<b>x</b>'])
+            ->assertUnprocessable()->assertJsonValidationErrors('barcode');
+    }
+
     public function test_warehouse_can_retrieve_barcode_svg_and_image_uri(): void
     {
         Sanctum::actingAs($this->warehouse);
