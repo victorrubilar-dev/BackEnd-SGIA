@@ -151,7 +151,10 @@ class InvoiceOverBudgetTraceTest extends TestCase
         foreach ([User::ROLE_ADMIN, User::ROLE_TEACHER] as $role) {
             $this->as($role);
             $this->getJson("/api/purchases/$id/trace")->assertForbidden();
+            // El rol se revisa antes que el ID: sin acceso es 403 aunque la OC no exista (auditoría H-08).
+            $this->getJson('/api/purchases/999999/trace')->assertForbidden();
         }
+        $this->as(User::ROLE_WAREHOUSE);
         $this->getJson('/api/purchases/999999/trace')->assertNotFound();
     }
 

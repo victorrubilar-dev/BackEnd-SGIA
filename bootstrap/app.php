@@ -2,6 +2,8 @@
 
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RejectArrayQueryParameters;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -9,6 +11,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -28,6 +31,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureUserIsActive::class,
             'role' => CheckRole::class,
         ]);
+        // Auditoría de seguridad (docs/auditoria-seguridad.md): cabeceras de endurecimiento y filtros simples.
+        $middleware->api(prepend: [SecurityHeaders::class, RejectArrayQueryParameters::class]);
+        // H-08: el rol se comprueba antes del model binding; un rol sin acceso recibe 403 exista o no el ID.
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureUserIsActive::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, CheckRole::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
