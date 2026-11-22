@@ -46,11 +46,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /** Parámetros de `routes/api.php` que son IDs numéricos (model binding o `int`). */
+    private const NUMERIC_ROUTE_PARAMETERS = [
+        'annualBudget', 'cajon', 'career', 'dashboardTemplate', 'equipmentUnit', 'estante', 'id', 'incidentReport',
+        'invoiceIntake', 'loan', 'location', 'maintenanceDocument', 'maintenanceRecord', 'product', 'purchase',
+        'purchaseRequest', 'quotation', 'session', 'stockAlert', 'storeroom', 'student', 'supplier', 'tokenId',
+        'user', 'userChart', 'zona',
+    ];
+
     /**
      * Register any application services.
      */
@@ -77,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Auditoría de seguridad (docs/auditoria-seguridad.md, B2): los IDs de ruta son bigint. Un valor no numérico
+        // o fuera de rango ("abc", "1'", 99999999999999999999) responde 404 en vez de llegar a PostgreSQL como 500.
+        Route::patterns(array_fill_keys(self::NUMERIC_ROUTE_PARAMETERS, '[0-9]{1,18}'));
+
         // Lanza excepción ante N+1 fuera de producción para detectarlos en desarrollo y tests.
         Model::preventLazyLoading(! $this->app->isProduction());
 

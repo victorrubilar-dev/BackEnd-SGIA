@@ -2,12 +2,20 @@
 
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\RejectArrayQueryParameters;
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -23,6 +31,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'active' => EnsureUserIsActive::class,
             'role' => CheckRole::class,
         ]);
+        // Auditoría de seguridad (docs/auditoria-seguridad.md): cabeceras de endurecimiento y filtros simples.
+        $middleware->api(prepend: [SecurityHeaders::class, RejectArrayQueryParameters::class]);
+        // H-08: el rol se comprueba antes del model binding; un rol sin acceso recibe 403 exista o no el ID.
+        $middleware->prependToPriorityList(SubstituteBindings::class, EnsureUserIsActive::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, CheckRole::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
@@ -46,5 +59,43 @@ return Application::configure(basePath: dirname(__DIR__))
             if ($request->is('api/*') || $request->expectsJson()) {
                 return response()->json(['message' => 'Recurso no encontrado.'], 404);
             }
+        });
+
+        // Auditoría de seguridad (docs/auditoria-seguridad.md, B2): ninguna respuesta de la API lleva SQL, clases,
+        // archivos ni trazas, aunque APP_DEBUG esté activo. El detalle queda en el log (report() no cambia).
+        $exceptions->render(function (ThrottleRequestsException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => 'Demasiadas solicitudes. Espera un momento e intenta de nuevo.'], 429, $e->getHeaders());
+            }
+        });
+
+        $exceptions->render(function (MethodNotAllowedHttpException $e, Request $request) {
+            if ($request->is('api/*') || $request->expectsJson()) {
+                return response()->json(['message' => 'Método no permitido para este recurso.'], 405, $e->getHeaders());
+            }
+        });
+
+        $exceptions->render(function (Throwable $e, Request $request) {
+            if (! ($request->is('api/*') || $request->expectsJson())
+                || $e instanceof ValidationException
+                || $e instanceof HttpResponseException
+                || $e instanceof AuthenticationException) {
+                return null;
+            }
+
+            // abort(4xx, 'mensaje') del código propio: se conserva el mensaje, sin los campos de depuración.
+            if ($e instanceof HttpExceptionInterface && $e->getStatusCode() < 500) {
+                return response()->json([
+                    'message' => $e->getMessage() !== '' ? $e->getMessage() : 'No se pudo procesar la solicitud.',
+                ], $e->getStatusCode(), $e->getHeaders());
+            }
+
+            $status = $e instanceof HttpExceptionInterface ? $e->getStatusCode() : 500;
+
+            return response()->json([
+                'message' => $status === 503
+                    ? 'El servicio no está disponible en este momento. Intenta más tarde.'
+                    : 'Ocurrió un error inesperado. Intenta nuevamente o contacta al administrador.',
+            ], $status);
         });
     })->create();

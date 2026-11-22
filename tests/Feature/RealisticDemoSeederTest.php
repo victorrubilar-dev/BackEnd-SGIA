@@ -18,6 +18,10 @@ class RealisticDemoSeederTest extends TestCase
 
     public function test_seeded_incident_reports_are_listed(): void
     {
+        if (! is_dir(base_path('pruebas-facturas'))) {
+            $this->markTestSkipped('Requiere las facturas de ejemplo de pruebas-facturas/ (fuera del repositorio).');
+        }
+
         Notification::fake();
         $this->seed(RealisticDemoSeeder::class);
 

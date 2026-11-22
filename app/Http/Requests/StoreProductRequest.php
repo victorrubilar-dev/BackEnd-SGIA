@@ -34,7 +34,7 @@ class StoreProductRequest extends FormRequest
                 'regex:/^[a-zA-Z0-9\sáéíóúÁÉÍÓÚñÑüÜ\-\.\,\/]+$/u',
             ],
             'description' => ['nullable', 'string'],
-            'barcode' => ['nullable', 'string', 'max:50', 'unique:products,barcode'],
+            'barcode' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9._-]+$/', 'unique:products,barcode'],
             'type' => ['sometimes', 'string', Rule::in(Product::TYPES)],
             'quantity' => ['required', 'integer', 'min:0'],
             'units' => ['sometimes', 'array', 'max:'.max(0, (int) $this->input('quantity'))],
@@ -97,6 +97,7 @@ class StoreProductRequest extends FormRequest
             'cajon_id.exists' => 'El cajón seleccionado no existe.',
             'location_id.exists' => 'La ubicación seleccionada no es válida.',
             'barcode.unique' => 'El código de barras ya está registrado para otro producto.',
+            'barcode.regex' => 'El código de barras solo admite letras, números, punto, guion y guion bajo.',
             'stock_minimo.min' => 'El stock mínimo no puede ser negativo.',
         ];
     }

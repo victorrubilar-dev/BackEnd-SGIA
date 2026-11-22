@@ -44,6 +44,7 @@ class UpdateProductRequest extends FormRequest
                 'sometimes',
                 'string',
                 'max:50',
+                'regex:/^[A-Za-z0-9._-]+$/',
                 Rule::unique('products', 'barcode')->ignore($productId),
             ],
             'type' => ['sometimes', 'required', 'string', Rule::in(Product::TYPES)],
@@ -85,6 +86,7 @@ class UpdateProductRequest extends FormRequest
             'supplier_id.exists' => 'El proveedor seleccionado no existe en el sistema.',
             'cajon_id.exists' => 'El cajón seleccionado no existe.',
             'barcode.unique' => 'El código de barras ya está registrado para otro producto.',
+            'barcode.regex' => 'El código de barras solo admite letras, números, punto, guion y guion bajo.',
             'stock_minimo.min' => 'El stock mínimo no puede ser negativo.',
         ];
     }

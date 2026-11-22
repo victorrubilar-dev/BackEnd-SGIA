@@ -23,6 +23,9 @@ class MonitoringTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Otros tests sin transacción (LoginRateLimitTest, ActiveUserTest…) dejan intentos fallidos en la BD;
+        // se borran dentro de la transacción de este test para que los conteos no dependan de corridas previas.
+        FailedLogin::query()->delete();
         $this->admin = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
     }
 
