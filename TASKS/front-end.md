@@ -511,6 +511,6 @@ Plan y contrato en `docs/exportaciones-y-campana.md`. No rompe contrato.
 - `GET /api/loans/export?format=excel` (o `xlsx`) pasa a devolver un `.xlsx` real; `csv` sigue igual. El export filtra fechas con `from`/`to` (no `from_date`/`to_date`).
 - Nuevo `POST /api/alerts/{id}/dismiss` (`DIR-01`, `PAN-01`, `204`): oculta la alerta solo para el usuario. `GET /api/alerts/critical-stock?exclude_dismissed=1` la excluye de `data` y de `counts`.
 
-## PDFs con el estilo de la web (plan, noviembre 2026) — Informativo
+## PDFs con el estilo de la web (implementado, noviembre 2026) — Informativo
 
 Plan en `docs/pdf-estilo-trazo.md`. No cambia ningún endpoint ni nombre de archivo: solo el diseño de los PDFs (layout común, Geist, estados legibles, número de página; el historial de préstamos pasa a A4 horizontal).

@@ -142,17 +142,18 @@ class EquipmentPdfService
     }
 
     /**
-     * Historial de préstamos en PDF (A4), con el rango de fechas filtrado.
+     * Historial de préstamos en PDF (A4 horizontal), con el rango de fechas filtrado.
      *
      * @param  Collection<int, Loan>  $loans
      */
     public function loansReport(Collection $loans, ?string $from, ?string $to): string
     {
+        // A4 horizontal: diez columnas sin cortar códigos ni fechas.
         return $this->render(view('loans.report', [
             'loans' => $loans,
             'from' => $from,
             'to' => $to,
-        ]));
+        ]), 'A4', 'landscape');
     }
 
     /**
@@ -165,7 +166,7 @@ class EquipmentPdfService
             'portrait' => $portrait,
             // SVG en base64: DomPDF no lee el data URI sin base64 que usa el fallback sin GD.
             'barcodeUri' => 'data:image/svg+xml;base64,'.base64_encode($barcodes->generateSvg($code)),
-        ]), $portrait ? [0, 0, 85.04, 141.73] : [0, 0, 141.73, 85.04]);
+        ]), $portrait ? [0, 0, 85.04, 141.73] : [0, 0, 141.73, 85.04], 'portrait', false);
     }
 
     /**
@@ -183,19 +184,50 @@ class EquipmentPdfService
         ]);
     }
 
+    /** Gris secundario de la web (#5F5B53) para el número de página. */
+    private const MUTED_RGB = [0.373, 0.357, 0.325];
+
     /**
-     * Renderiza una vista HTML a PDF (A4, portrait).
+     * Renderiza una vista HTML a PDF con las fuentes de la web (docs/pdf-estilo-trazo.md): Geist desde
+     * `resources/fonts` (solo esa carpeta es legible), métricas en caché en `storage/fonts` y subconjunto de
+     * glifos para que el archivo pese poco. Con `$pageNumbers`, «Página N de M» abajo a la derecha de cada hoja.
      */
-    private function render(View $view, array|string $paper = 'A4'): string
+    private function render(View $view, array|string $paper = 'A4', string $orientation = 'portrait', bool $pageNumbers = true): string
     {
+        $fontCache = storage_path('fonts');
+        if (! is_dir($fontCache)) {
+            mkdir($fontCache, 0775, true);
+        }
+
         $options = new Options;
         $options->set('isRemoteEnabled', false);
         $options->set('isHtml5ParserEnabled', true);
+        $options->set('isFontSubsettingEnabled', true);
+        // Geist declara 1.35 em de alto y DomPDF lo multiplica por 1.1 (y no baja de eso con line-height): con 0.9
+        // las líneas quedan a ~1.2, como en la web.
+        $options->set('fontHeightRatio', 0.9);
+        $options->setChroot([resource_path('fonts')]);
+        $options->setFontDir($fontCache);
+        $options->setFontCache($fontCache);
 
         $dompdf = new Dompdf($options);
         $dompdf->loadHtml($view->render());
-        $dompdf->setPaper($paper, 'portrait');
+        $dompdf->setPaper($paper, $orientation);
         $dompdf->render();
+
+        if ($pageNumbers) {
+            $canvas = $dompdf->getCanvas();
+            $metrics = $dompdf->getFontMetrics();
+            $font = $metrics->getFont('Geist') ?? $metrics->getFont('DejaVu Sans');
+            $width = $canvas->get_width();
+            $height = $canvas->get_height();
+            // Misma línea que el pie de la vista (.doc-foot): margen derecho de 15 mm, a la altura de su texto.
+            $canvas->page_script(function (int $page, int $pages, $canvas, $fontMetrics) use ($font, $width, $height) {
+                $text = "Página {$page} de {$pages}";
+                $textWidth = $fontMetrics->getTextWidth($text, $font, 7);
+                $canvas->text($width - 42.52 - $textWidth, $height - 42.2, $text, $font, 7, self::MUTED_RGB);
+            });
+        }
 
         return $dompdf->output();
     }

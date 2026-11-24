@@ -161,7 +161,7 @@ class MaintenanceDocumentTest extends TestCase
 
         $html = app(EquipmentPdfService::class)->unitTechnicalSheetView($unit)->render();
 
-        $this->assertStringContainsString('Documentos vigentes (1)', $html);
+        $this->assertMatchesRegularExpression('/Documentos vigentes <span class="count">· 1<\/span>/u', $html);
         $this->assertStringContainsString('Garantía vigente', $html);
         $this->assertStringNotContainsString('Certificado vencido', $html);
     }

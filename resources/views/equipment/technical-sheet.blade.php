@@ -1,198 +1,115 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Ficha técnica — {{ $product->name }}</title>
-    <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #222; margin: 0; }
-        .header { background: #1f2937; color: #fff; padding: 14px 18px; }
-        .header h1 { margin: 0; font-size: 17px; }
-        .header p { margin: 4px 0 0; font-size: 10px; color: #cbd5e1; }
-        .section { margin: 16px 18px 0; }
-        .section h2 { font-size: 12px; text-transform: uppercase; color: #1f2937;
-                      border-bottom: 1px solid #94a3b8; padding-bottom: 4px; margin: 0 0 8px; }
-        table.data { width: 100%; border-collapse: collapse; }
-        table.data td { padding: 5px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
-        table.data td.label { width: 32%; background: #f1f5f9; font-weight: bold; color: #334155; }
-        table.list { width: 100%; border-collapse: collapse; }
-        table.list th { background: #e2e8f0; text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 10px; }
-        table.list td { padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 10px; vertical-align: top; }
-        .badge { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: bold; color: #fff; }
-        .sev-leve { background: #16a34a; }
-        .sev-media { background: #d97706; }
-        .sev-critica { background: #dc2626; }
-        .muted { color: #64748b; }
-        .footer { margin: 18px; font-size: 9px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px; }
-        .empty { color: #64748b; font-style: italic; padding: 6px 0; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Ficha Técnica de Equipo</h1>
-        <p>SGIA — Sistema de Gestión de Inventario de Aula · {{ config('app.name') }}</p>
-    </div>
+@extends('pdf.layout')
 
-    <div class="section">
-        <h2>Datos del equipo</h2>
-        <table class="data">
-            <tr>
-                <td class="label">Código de barras</td>
-                <td>{{ $product->barcode ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Nombre</td>
-                <td>{{ $product->name }}</td>
-            </tr>
-            <tr>
-                <td class="label">Descripción</td>
-                <td>{{ $product->description ?? 'Sin descripción registrada.' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Área / carrera</td>
-                <td>{{ $product->area ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Stock actual / mínimo</td>
-                <td>{{ $product->quantity }} / {{ $product->stock_minimo }}</td>
-            </tr>
-            <tr>
-                <td class="label">Estado</td>
-                <td>{{ $product->is_active ? 'Activo' : 'Inactivo' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Registrado el</td>
-                <td>{{ $product->created_at?->format('d-m-Y H:i') ?? '—' }}</td>
-            </tr>
-            <tr>
-                <td class="label">Última actualización</td>
-                <td>{{ $product->updated_at?->format('d-m-Y H:i') ?? '—' }}</td>
-            </tr>
-        </table>
-    </div>
+@section('title', 'Ficha técnica del equipo')
+@section('subtitle', $product->name)
+@section('meta')
+    @include('pdf.partials.code', ['code' => $product->barcode])
+@endsection
+@section('foot', 'Equipo #'.$product->id.' · Uso interno de las carreras técnicas')
 
-    <div class="section">
-        <h2>Proveedor</h2>
-        @if ($product->supplier)
-            <table class="data">
-                <tr>
-                    <td class="label">Proveedor</td>
-                    <td>{{ $product->supplier->name }}</td>
-                </tr>
-                <tr>
-                    <td class="label">Contacto</td>
-                    <td>
-                        {{ $product->supplier->contact_name ?? '—' }}
-                        @if ($product->supplier->email) · {{ $product->supplier->email }} @endif
-                        @if ($product->supplier->phone) · {{ $product->supplier->phone }} @endif
-                    </td>
-                </tr>
-                <tr>
-                    <td class="label">Categoría</td>
-                    <td>{{ $product->supplier->category ?? '—' }}</td>
-                </tr>
-            </table>
-        @else
-            <p class="muted">Sin proveedor asociado.</p>
-        @endif
-    </div>
+@php
+    $location = $product->cajon?->location ?? $product->location;
+    $place = $location
+        ? ($location->sala ?? $location->nombre).(($location->descripcion ?? null) ? ' · '.$location->descripcion : '')
+        : 'Sin ubicación asignada';
+    $cajon = $product->cajon?->codigo ?? $product->location?->cajon;
+@endphp
 
-    <div class="section">
-        <h2>Ubicación física</h2>
-        <table class="data">
-            <tr>
-                <td class="label">Sala / ubicación</td>
-                <td>
-                    @if ($product->cajon?->location)
-                        {{ $product->cajon->location->sala ?? $product->cajon->location->nombre }}
-                        ({{ $product->cajon->location->descripcion ?? 'sin descripción' }})
-                    @elseif ($product->location)
-                        {{ $product->location->sala ?? $product->location->nombre }}
-                        ({{ $product->location->cajon ?? $product->location->descripcion ?? 'sin descripción' }})
-                    @else
-                        Sin ubicación asignada
-                    @endif
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Cajón</td>
-                <td>
-                    @if ($product->cajon)
-                        {{ $product->cajon->codigo }}
-                        @if ($product->cajon->descripcion) · {{ $product->cajon->descripcion }} @endif
-                    @elseif ($product->location?->cajon)
-                        {{ $product->location->cajon }}
-                    @else
-                        Sin cajón asignado
-                    @endif
-                </td>
-            </tr>
-        </table>
-    </div>
+@section('content')
+    <h2>Datos del equipo</h2>
+    <table class="kv">
+        <tr>
+            <td class="k">Nombre</td><td class="v">{{ $product->name }}</td>
+            <td class="k">Código de barras</td><td class="v">@include('pdf.partials.code', ['code' => $product->barcode])</td>
+        </tr>
+        <tr>
+            <td class="k">Área o carrera</td><td class="v">{{ $product->area ?? '—' }}</td>
+            <td class="k">Estado</td><td class="v">@include('pdf.partials.status', ['label' => $product->is_active ? 'Activo' : 'Inactivo', 'tone' => $product->is_active ? 'ok' : 'neutral'])</td>
+        </tr>
+        <tr>
+            <td class="k">Stock actual / mínimo</td><td class="v">{{ $product->quantity }} / {{ $product->stock_minimo }}</td>
+            <td class="k">Registrado</td><td class="v">{{ $product->created_at?->format('d-m-Y H:i') ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td class="k">Descripción</td><td class="v" colspan="3">{{ $product->description ?? 'Sin descripción registrada.' }}</td>
+        </tr>
+    </table>
 
-    <div class="section">
-        <h2>Unidades ({{ $unitsTotal }})</h2>
-        @if ($units->isEmpty())
-            <p class="empty">Este producto no tiene unidades registradas.</p>
-        @else
-            <table class="list">
-                <thead>
-                    <tr><th>Código</th><th>Serie</th><th>Estado</th><th>Ubicación</th><th>Próx. mantención</th></tr>
-                </thead>
-                <tbody>
-                    @foreach ($units as $unit)
-                        <tr>
-                            <td>{{ $unit->code }}</td>
-                            <td>{{ $unit->serial_number ?? '—' }}</td>
-                            <td>{{ str_replace('_', ' ', $unit->status) }}</td>
-                            <td>{{ $unit->cajon?->location?->nombre ?? '—' }} / {{ $unit->cajon?->codigo ?? '—' }}</td>
-                            <td>{{ $unit->next_maintenance_at?->format('d-m-Y') ?? '—' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
+    <h2>Proveedor y ubicación</h2>
+    <table class="kv">
+        <tr>
+            <td class="k">Proveedor</td><td class="v">{{ $product->supplier?->name ?? 'Sin proveedor asociado' }}</td>
+            <td class="k">Sala</td><td class="v">{{ $place }}</td>
+        </tr>
+        <tr>
+            <td class="k">Contacto</td>
+            <td class="v">
+                @if ($product->supplier)
+                    {{ collect([$product->supplier->contact_name, $product->supplier->email, $product->supplier->phone])->filter()->implode(' · ') ?: '—' }}
+                @else
+                    —
+                @endif
+            </td>
+            <td class="k">Cajón</td>
+            <td class="v">
+                @if ($product->cajon)
+                    @include('pdf.partials.code', ['code' => $product->cajon->barcode ?? $product->cajon->codigo])
+                    @if ($product->cajon->descripcion)<span class="muted"> {{ $product->cajon->descripcion }}</span>@endif
+                @else
+                    {{ $cajon ?? 'Sin cajón asignado' }}
+                @endif
+            </td>
+        </tr>
+        <tr>
+            <td class="k">Categoría</td><td class="v">{{ $product->supplier?->category ?? '—' }}</td>
+            <td class="k">Actualizado</td><td class="v">{{ $product->updated_at?->format('d-m-Y H:i') ?? '—' }}</td>
+        </tr>
+    </table>
 
-    <div class="section">
-        <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Historial de novedades' }} ({{ $reportsTotal }} en total · últimos {{ $reports->count() }})</h2>
-        @if ($reports->isEmpty())
-            <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en este equipo.' : 'Este equipo no tiene informes de novedades registrados.' }}</p>
-        @else
-            <table class="list">
-                <thead>
+    <h2>Unidades <span class="count">· {{ $unitsTotal }}</span></h2>
+    @if ($units->isEmpty())
+        <p class="empty">Este producto no tiene unidades registradas.</p>
+    @else
+        <table class="list">
+            <thead>
+                <tr><th style="width: 19%">Código</th><th style="width: 19%">Serie</th><th style="width: 15%">Estado</th><th>Ubicación</th><th style="width: 15%">Próx. mantención</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($units as $unit)
                     <tr>
-                        <th>Código</th>
-                        <th>Fecha</th>
-                        <th>Título / descripción</th>
-                        <th>Severidad</th>
-                        <th>Estado</th>
+                        <td>@include('pdf.partials.code', ['code' => $unit->code])</td>
+                        <td class="nowrap">{{ $unit->serial_number ?? '—' }}</td>
+                        <td>@include('pdf.partials.status', ['value' => $unit->status])</td>
+                        <td>{{ $unit->cajon?->location?->nombre ?? '—' }}@if ($unit->cajon)<span class="sub">Cajón {{ $unit->cajon->codigo }}</span>@endif</td>
+                        <td class="nowrap">{{ $unit->next_maintenance_at?->format('d-m-Y') ?? '—' }}</td>
                     </tr>
-                </thead>
-                <tbody>
-                    @foreach ($reports as $report)
-                        <tr>
-                            <td>{{ $report->code }}</td>
-                            <td>{{ $report->created_at?->format('d-m-Y') }}</td>
-                            <td>
-                                @if ($report->title)<strong>{{ $report->title }}</strong><br>@endif
-                                {{ \Illuminate\Support\Str::limit($report->description, 140) }}
-                            </td>
-                            <td>
-                                <span class="badge sev-{{ $report->severity }}">
-                                    {{ $report->severityLabel() }}
-                                </span>
-                            </td>
-                            <td>{{ str_replace('_', ' ', $report->status) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
-    <div class="footer">
-        Documento generado el {{ now()->format('d-m-Y H:i') }} por SGIA ·
-        Equipo #{{ $product->id }} · Uso interno de carreras técnicas.
-    </div>
-</body>
-</html>
+    <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Historial de novedades' }} <span class="count">· {{ $reportsTotal }} en total, últimos {{ $reports->count() }}</span></h2>
+    @if ($reports->isEmpty())
+        <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en este equipo.' : 'Este equipo no tiene informes de novedades registrados.' }}</p>
+    @else
+        <table class="list">
+            <thead>
+                <tr><th style="width: 19%">Código</th><th style="width: 11%">Fecha</th><th>Título y descripción</th><th style="width: 10%">Severidad</th><th style="width: 13%">Estado</th></tr>
+            </thead>
+            <tbody>
+                @foreach ($reports as $report)
+                    <tr>
+                        <td>@include('pdf.partials.code', ['code' => $report->code])</td>
+                        <td class="nowrap">{{ $report->created_at?->format('d-m-Y') }}</td>
+                        <td>
+                            @if ($report->title)<strong>{{ $report->title }}</strong>@endif
+                            <span class="sub">{{ \Illuminate\Support\Str::limit($report->description, 160) }}</span>
+                        </td>
+                        <td>@include('pdf.partials.status', ['value' => $report->severity, 'label' => $report->severityLabel()])</td>
+                        <td>@include('pdf.partials.status', ['value' => $report->status])</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+@endsection

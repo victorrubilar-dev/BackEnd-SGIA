@@ -9,6 +9,7 @@ use App\Support\XlsxWriter;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ExtractsPdfText;
 use Tests\TestCase;
 use Tests\Unit\XlsxWriterTest;
 
@@ -18,6 +19,7 @@ use Tests\Unit\XlsxWriterTest;
 class LoanExportTest extends TestCase
 {
     use DatabaseTransactions;
+    use ExtractsPdfText;
 
     protected function setUp(): void
     {
@@ -59,5 +61,26 @@ class LoanExportTest extends TestCase
 
         $this->get("/api/loans/export?format=pdf&storeroom_id={$storeroom->id}")->assertOk()->assertHeader('Content-Type', 'application/pdf');
         $this->getJson('/api/loans/export?format=docx')->assertStatus(422)->assertJsonValidationErrors(['format']);
+    }
+
+    public function test_pdf_uses_the_web_style_landscape_readable_states_and_page_numbers(): void
+    {
+        $storeroom = Storeroom::factory()->create();
+        $loan = Loan::factory()->create(['storeroom_id' => $storeroom->id, 'status' => 'procesado', 'type' => 'presencial', 'loan_date' => '2026-03-10']);
+
+        $pdf = (string) $this->get("/api/loans/export?format=pdf&storeroom_id={$storeroom->id}&from=2026-03-01&to=2026-03-31")->assertOk()->getContent();
+        $text = $this->pdfText($pdf);
+
+        $this->assertStringContainsString('Historial de préstamos', $text);
+        $this->assertStringContainsString('Del 01-03-2026 al 31-03-2026', $text);
+        $this->assertStringContainsString($loan->code, $text);
+        $this->assertStringContainsString('Procesado', $text);
+        $this->assertStringContainsString('Presencial', $text);
+        $this->assertStringNotContainsString('procesado', $text, 'sin estados crudos');
+        $this->assertStringContainsString('Página 1 de 1', $text);
+        $this->assertStringContainsString('Sistema de Gestión de Inventario y Activos', $text);
+        // A4 horizontal y Geist embebido.
+        $this->assertMatchesRegularExpression('/\/MediaBox \[0\.0+ 0\.0+ 841\.89\d* 595\.28\d*\]/', $pdf);
+        $this->assertStringContainsString('Geist-Regular', $pdf);
     }
 }
