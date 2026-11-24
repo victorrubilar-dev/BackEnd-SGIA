@@ -41,9 +41,9 @@
 - [x] Llamado desde `DatabaseSeeder` fuera de producción (`DatabaseSeederTest`) y corrido en la base de desarrollo.
 
 #### Cajones llenos (plan en `docs/cajones-llenos.md`)
-- [ ] Migración `cajones.lleno` (boolean, `false` por defecto) y `lleno` en `Cajon::$fillable`/casts.
-- [ ] `POST`/`PATCH /api/cajones` aceptan `lleno` (`DIR-01`, `PAN-01`; `422` si no es booleano) (`LocationAndCajonCrudTest`).
-- [ ] `lleno` en `CajonResource`, en `estante.cajones[]` de `/map` y `/api/estantes`, y en `/api/estantes/{id}/contents` (`RoomMapTest`, `EstanteCrudTest`, `ResourceContractTest`).
+- [x] Migración `cajones.lleno` (boolean, `false` por defecto) y `lleno` en `Cajon::$fillable`/casts.
+- [x] `POST`/`PATCH /api/cajones` aceptan `lleno` (`DIR-01`, `PAN-01`; `422` si no es booleano) (`LocationAndCajonCrudTest`).
+- [x] `lleno` en `CajonResource`, en `estante.cajones[]` de `/map` y `/api/estantes`, y en `/api/estantes/{id}/contents` (`RoomMapTest`, `EstanteCrudTest`, `ResourceContractTest`).
 
 ### REQ-06 — Alertas de stock crítico (FU-02)
 - [x] Campo `stock_minimo` por producto.

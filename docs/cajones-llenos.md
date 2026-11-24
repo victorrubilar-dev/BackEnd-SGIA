@@ -1,6 +1,6 @@
 # Cajones llenos
 
-**Estado: plan, sin implementar (noviembre 2026).** Plan y contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05/REQ-22) y cambios de contrato en `TASKS/front-end.md`. Relacionado: `docs/mapa-salas.md` (estantes y celdas de cajón), `docs/codigos-ubicacion.md` (códigos de cajón).
+**Estado: backend implementado (noviembre 2026), rama `feat/cajones-llenos`; frontend en curso.** Plan y contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05/REQ-22) y cambios de contrato en `TASKS/front-end.md`. Relacionado: `docs/mapa-salas.md` (estantes y celdas de cajón), `docs/codigos-ubicacion.md` (códigos de cajón).
 
 ## Problema
 
@@ -46,8 +46,8 @@ Ejemplo de `estante.cajones[]`:
 
 ### Tests (backend)
 
-- `LocationAndCajonCrudTest`: `PATCH lleno` por `PAN-01` y `DIR-01` (200, persiste, `updated_by`), `AD-01`/`PRO-01` → `403`, `lleno: "x"` → `422`, `POST` sin `lleno` → `false`.
-- `RoomMapTest` / `EstanteCrudTest`: `lleno` en `/map` y en `/contents`.
+- `LocationAndCajonCrudTest`: `PATCH lleno` por `PAN-01` y `DIR-01` (200, persiste, `updated_by`), sin tocar código, `barcode` ni estante; `AD-01`/`PRO-01` → `403`, `lleno: "quizas"` → `422`, `POST` sin `lleno` → `false`.
+- `RoomMapTest`: `lleno` en `/map` y en `/contents`.
 - `ResourceContractTest`: `lleno` en `CajonResource`.
 
 ## Frontend (`FrondEnd-SGIA`)
@@ -61,8 +61,8 @@ Ejemplo de `estante.cajones[]`:
 
 ## Fases
 
-1. [ ] Plan y documentos (este archivo, `CLAUDE.md`, `TASKS/*`, `ENDPOINTS.md` en ambos repos).
-2. [ ] Backend: migración, modelo, requests, `CajonResource`, `EstanteResource`, `/contents` y tests.
+1. [x] Plan y documentos (este archivo, `CLAUDE.md`, `TASKS/*`, `ENDPOINTS.md` en ambos repos).
+2. [x] Backend: migración, modelo, requests, `CajonResource`, `EstanteResource`, `/contents` y tests.
 3. [ ] Frontend: tipos, hook, mapa, pop-up y lista de Ubicaciones con tests.
 4. [ ] Prueba contra la API real (Chromium por CDP): marcar desde la lista y desde el mapa, celda azul, desmarcar.
 

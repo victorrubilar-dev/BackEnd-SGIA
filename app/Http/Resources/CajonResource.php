@@ -28,6 +28,8 @@ class CajonResource extends JsonResource
             // REQ-22: estante del plano donde está el cajón.
             'estante_id' => $this->estante_id,
             'estante' => $this->whenLoaded('estante', fn () => $this->estante ? ['id' => $this->estante->id, 'codigo' => $this->estante->codigo] : null),
+            // Cajón marcado como lleno (docs/cajones-llenos.md).
+            'lleno' => (bool) $this->lleno,
             'products_count' => $this->whenCounted('products'),
             'created_by' => $this->created_by,
             'updated_by' => $this->updated_by,

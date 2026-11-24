@@ -131,6 +131,7 @@ class EstanteController extends Controller
                 'codigo' => $cajon->codigo,
                 'barcode' => $cajon->barcode,
                 'descripcion' => $cajon->descripcion,
+                'lleno' => (bool) $cajon->lleno,
                 'productos' => $cajon->products->map(fn (Product $product) => [
                     'id' => $product->id,
                     'name' => $product->name,

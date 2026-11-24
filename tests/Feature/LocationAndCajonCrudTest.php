@@ -289,4 +289,60 @@ class LocationAndCajonCrudTest extends TestCase
         $this->getJson("/api/cajones?location_id={$location->id}&sin_estante=1")
             ->assertOk()->assertJsonCount(1, 'data')->assertJsonPath('data.0.codigo', 'SUELTO');
     }
+
+    public function test_warehouse_and_director_can_mark_a_cajon_as_full_and_back(): void
+    {
+        $cajon = Cajon::factory()->create();
+        $this->assertFalse($cajon->fresh()->lleno);
+
+        foreach ([$this->warehouse, $this->admin] as $user) {
+            Sanctum::actingAs($user);
+            $this->patchJson("/api/cajones/{$cajon->id}", ['lleno' => true])
+                ->assertOk()->assertJsonPath('data.lleno', true);
+            $this->assertTrue($cajon->fresh()->lleno);
+            $this->assertEquals($user->id, $cajon->fresh()->updated_by);
+
+            $this->patchJson("/api/cajones/{$cajon->id}", ['lleno' => false])
+                ->assertOk()->assertJsonPath('data.lleno', false);
+            $this->assertFalse($cajon->fresh()->lleno);
+        }
+    }
+
+    public function test_marking_full_keeps_code_barcode_and_estante(): void
+    {
+        Sanctum::actingAs($this->warehouse);
+        $location = Location::factory()->create();
+        $estante = Estante::factory()->create(['location_id' => $location->id]);
+        $cajon = Cajon::factory()->create(['location_id' => $location->id, 'estante_id' => $estante->id, 'codigo' => 'R1']);
+        $barcode = $cajon->fresh()->barcode;
+
+        $this->patchJson("/api/cajones/{$cajon->id}", ['lleno' => true])->assertOk();
+
+        $fresh = $cajon->fresh();
+        $this->assertSame('R1', $fresh->codigo);
+        $this->assertSame($barcode, $fresh->barcode);
+        $this->assertSame($estante->id, $fresh->estante_id);
+    }
+
+    public function test_full_state_validation_roles_and_default(): void
+    {
+        $cajon = Cajon::factory()->create();
+
+        Sanctum::actingAs($this->warehouse);
+        $this->patchJson("/api/cajones/{$cajon->id}", ['lleno' => 'quizas'])
+            ->assertStatus(422)->assertJsonValidationErrors(['lleno']);
+
+        $created = $this->postJson('/api/cajones', ['location_id' => $cajon->location_id, 'codigo' => 'NUEVO-1'])
+            ->assertCreated()->assertJsonPath('data.lleno', false);
+        $this->postJson('/api/cajones', ['location_id' => $cajon->location_id, 'codigo' => 'NUEVO-2', 'lleno' => true])
+            ->assertCreated()->assertJsonPath('data.lleno', true);
+        $this->getJson("/api/cajones/{$created->json('data.id')}")->assertOk()->assertJsonPath('data.lleno', false);
+
+        $adminUser = User::factory()->create(['role' => User::ROLE_ADMIN, 'is_active' => true]);
+        foreach ([$this->teacher, $adminUser] as $user) {
+            Sanctum::actingAs($user);
+            $this->patchJson("/api/cajones/{$cajon->id}", ['lleno' => true])->assertForbidden();
+        }
+        $this->assertFalse($cajon->fresh()->lleno);
+    }
 }

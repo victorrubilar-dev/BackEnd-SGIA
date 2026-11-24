@@ -244,6 +244,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `DELETE` | `/api/zonas/{id}` | `DIR-01`, `PAN-01` | `204`; sus estantes quedan con `zona_id: null`. | ✅ Implementado |
 | `POST` / `PATCH` | `/api/cajones` | `DIR-01`, `PAN-01` | Aceptan `estante_id` (nullable, de la misma sala: `422` «El estante no pertenece a la sala del cajón.»). El `barcode` no cambia. Si el cajón cambia de sala sin `estante_id`, queda sin estante. `CajonResource` suma `estante_id` y `estante: {id, codigo}` (en listado, detalle, alta y edición). | ✅ Implementado |
 | `GET` | `/api/cajones` | Todos (`auth`) | Filtros nuevos `estante_id` y `sin_estante=1`. | ✅ Implementado |
+| `POST` / `PATCH` | `/api/cajones` | `DIR-01`, `PAN-01` | Aceptan `lleno` (`boolean`, opcional; `false` por defecto, `422` si no es booleano). Es informativo: no bloquea asignar productos ni unidades. `CajonResource`, `estante.cajones[]` (en `/api/locations/{id}/map` y `/api/estantes`) y `cajones[]` de `/api/estantes/{id}/contents` suman `lleno` (`docs/cajones-llenos.md`). | ✅ Implementado |
 
 ---
 
@@ -532,7 +533,6 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
-| `PATCH` | `/api/cajones/{id}` (campo `lleno`) | `DIR-01`, `PAN-01` | Marca o desmarca el cajón como lleno (`lleno: boolean`). `CajonResource`, `estante.cajones[]` del mapa y `/api/estantes/{id}/contents` suman `lleno`. | `docs/cajones-llenos.md` |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
 
 ---

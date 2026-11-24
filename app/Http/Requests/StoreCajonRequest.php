@@ -24,6 +24,7 @@ class StoreCajonRequest extends FormRequest
             ],
             'descripcion' => ['nullable', 'string', 'max:500'],
             'estante_id' => ['nullable', 'integer', 'exists:estantes,id'],
+            'lleno' => ['sometimes', 'boolean'],
         ];
     }
 

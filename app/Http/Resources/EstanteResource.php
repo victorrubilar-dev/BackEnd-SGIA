@@ -39,6 +39,7 @@ class EstanteResource extends JsonResource
                 'barcode' => $cajon->barcode,
                 'products_count' => (int) ($cajon->products_count ?? 0),
                 'units_count' => (int) ($cajon->units_count ?? 0),
+                'lleno' => (bool) $cajon->lleno,
             ])->values()->all(),
             'items_count' => (int) $cajones->sum(fn (Cajon $cajon) => (int) ($cajon->products_count ?? 0) + (int) ($cajon->units_count ?? 0)),
             'has_critical_stock' => (bool) ($this->has_critical_stock ?? false),

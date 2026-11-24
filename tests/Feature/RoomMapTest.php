@@ -94,6 +94,26 @@ class RoomMapTest extends TestCase
             ->assertJsonPath('data.estantes.0.has_critical_stock', true);
     }
 
+    public function test_map_and_contents_report_full_cajones(): void
+    {
+        Sanctum::actingAs($this->user(User::ROLE_ADMIN));
+        $location = Location::factory()->create();
+        $estante = Estante::factory()->create(['location_id' => $location->id]);
+        Cajon::factory()->create(['location_id' => $location->id, 'estante_id' => $estante->id, 'codigo' => 'A', 'lleno' => true]);
+        Cajon::factory()->create(['location_id' => $location->id, 'estante_id' => $estante->id, 'codigo' => 'B']);
+
+        $this->getJson("/api/locations/{$location->id}/map")
+            ->assertOk()
+            ->assertJsonPath('data.estantes.0.cajones.0.lleno', true)
+            ->assertJsonPath('data.estantes.0.cajones.1.lleno', false);
+
+        $this->getJson("/api/estantes/{$estante->id}/contents")
+            ->assertOk()
+            ->assertJsonPath('data.cajones.0.lleno', true)
+            ->assertJsonPath('data.cajones.1.lleno', false)
+            ->assertJsonPath('data.estante.cajones.0.lleno', true);
+    }
+
     public function test_map_query_count_does_not_grow_with_estantes(): void
     {
         Sanctum::actingAs($this->user(User::ROLE_DIRECTOR));
