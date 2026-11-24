@@ -1,6 +1,6 @@
 # Cajones llenos
 
-**Estado: backend implementado (noviembre 2026), rama `feat/cajones-llenos`; frontend en curso.** Plan y contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05/REQ-22) y cambios de contrato en `TASKS/front-end.md`. Relacionado: `docs/mapa-salas.md` (estantes y celdas de cajón), `docs/codigos-ubicacion.md` (códigos de cajón).
+**Estado: implementado (noviembre 2026) en backend y frontend, rama `feat/cajones-llenos`.** Plan y contrato común entre backend y frontend. Seguimiento en `TASKS/Productos.md` (REQ-05/REQ-22) y cambios de contrato en `TASKS/front-end.md`. Relacionado: `docs/mapa-salas.md` (estantes y celdas de cajón), `docs/codigos-ubicacion.md` (códigos de cajón).
 
 ## Problema
 
@@ -56,15 +56,16 @@ Ejemplo de `estante.cajones[]`:
 - `packages/api-client`: `useUpdateCajon` invalida también el contenido de estantes (`['estantes']`) para que el pop-up se refresque; el mapa ya cuelga de `['locations']`.
 - **Mapa** (`estante-shape.tsx`): celda del cajón lleno con `fill-info-bg` y borde `stroke-info`; el `aria-label` del estante suma «N cajones llenos». Leyenda corta bajo el mapa si hay alguno.
 - **Pop-up del estante** (`estante-contenido-dialog.tsx`): badge «Lleno» (tono `loaned`, azul) por cajón y, para editores, botón «Marcar lleno» / «Quitar lleno».
-- **Ubicaciones** (`ubicaciones-page.tsx`): badge «Lleno» y botón para alternar en cada cajón de la lista.
+- **Ubicaciones** (`ubicaciones-page.tsx`): badge «Lleno» y botón de ícono (junto a imprimir y eliminar) para alternar en cada cajón de la lista.
+- El botón es `CajonLlenoButton` (`features/mapa-salas/components/`), con permiso `markCajonFull` (`DIR-01`, `PAN-01`) en `features/auth/types/roles.ts`.
 - Errores con `apiErrorToMessage`; aviso con el toast existente.
 
 ## Fases
 
 1. [x] Plan y documentos (este archivo, `CLAUDE.md`, `TASKS/*`, `ENDPOINTS.md` en ambos repos).
 2. [x] Backend: migración, modelo, requests, `CajonResource`, `EstanteResource`, `/contents` y tests.
-3. [ ] Frontend: tipos, hook, mapa, pop-up y lista de Ubicaciones con tests.
-4. [ ] Prueba contra la API real (Chromium por CDP): marcar desde la lista y desde el mapa, celda azul, desmarcar.
+3. [x] Frontend: tipos, hook, mapa, pop-up y lista de Ubicaciones con tests.
+4. [x] Prueba contra la API real (Chromium por CDP): marcar desde la lista y desde el mapa, celda azul, desmarcar.
 
 ## Fuera de alcance
 
