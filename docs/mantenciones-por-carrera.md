@@ -41,7 +41,7 @@
 
 ## Revisión compacta (2026-11-24)
 
-**Estado: plan, sin implementar.** Rama `feat/mantenciones-compacto` (frontend). El usuario no quedó conforme con las tarjetas por carrera: pidió «algo más compacto y que siga la paleta de colores actual», sin el verde y el amarillo de las barras y cifras.
+**Estado: implementado.** Rama `feat/mantenciones-compacto` (frontend). El usuario no quedó conforme con las tarjetas por carrera: pidió «algo más compacto y que siga la paleta de colores actual», sin el verde y el amarillo de las barras y cifras.
 
 | # | Decisión (reemplaza la 2, la 3 y la 5; el contrato no cambia) |
 |---|---|
@@ -49,6 +49,8 @@
 | 9 | **Maestro-detalle:** desde 1024 px, columna «Por carrera» (≈ 320 px, fija al desplazar) a la izquierda y la bandeja a la derecha; bajo 1024 px, la lista arriba de la bandeja. |
 | 10 | **Una fila por carrera** (dos líneas, ~52 px): código, nombre y total; debajo, la barra delgada y «N en curso» en burdeo. Primera fila «Todas las carreras». Las carreras sin mantenciones también figuran, atenuadas. La fila elegida lleva fondo burdeo suave y barra lateral, como el menú. La lista reemplaza al selector de carrera de la bandeja. |
 | 11 | **Cifras** en una franja de 4 `Metric` sin pistas ni color (2 × 2 en el teléfono). **Vencidas** en una franja neutra de una línea (ícono, texto y chips), sin fondo amarillo. |
+
+Implementación de la revisión: `maintenance-career-list.tsx` reemplaza a `maintenance-career-grid.tsx`; la bandeja pierde el selector de carrera y junta «Tipo y ejecución» en una columna (tipo arriba; modalidad y responsable o proveedor debajo) para caber junto a la lista a 1280 × 720 con el menú abierto. Prueba real 32/32 (PAN-01 y DIR-01): filas iguales a Postgres, filtros por carrera, sin `bg-/text-warn|ok` en la lista ni en las cifras, tabla sin desplazamiento lateral a 1280 px, 390 px en oscuro y teclado.
 
 ## Fuera de alcance
 
