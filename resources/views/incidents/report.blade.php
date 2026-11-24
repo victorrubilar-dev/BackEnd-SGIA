@@ -1,92 +1,80 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Informe de novedades {{ $report->code }}</title>
-    <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #222; margin: 0; }
-        .header { background: #1f2937; color: #fff; padding: 14px 18px; }
-        .header h1 { margin: 0; font-size: 17px; }
-        .header p { margin: 4px 0 0; font-size: 10px; color: #cbd5e1; }
-        .section { margin: 16px 18px 0; }
-        .section h2 { font-size: 12px; text-transform: uppercase; color: #1f2937;
-                      border-bottom: 1px solid #94a3b8; padding-bottom: 4px; margin: 0 0 8px; }
-        table.data { width: 100%; border-collapse: collapse; }
-        table.data td { padding: 4px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
-        table.data td.label { background: #e2e8f0; width: 24%; font-weight: bold; }
-        .box { display: inline-block; width: 12px; height: 12px; border: 1px solid #1f2937; text-align: center;
-               line-height: 12px; font-weight: bold; margin-right: 6px; }
-        .problem { margin-bottom: 8px; }
-        .problem .desc { margin: 2px 0 0 20px; color: #334155; }
-        .muted { color: #64748b; }
-        .signature { margin-top: 10px; }
-        .signature img { max-height: 90px; max-width: 260px; border-bottom: 1px solid #222; }
-        .photo img { max-width: 360px; max-height: 260px; }
-        .footer { margin: 18px; font-size: 9px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Informe de novedades</h1>
-        <p>{{ $report->code }} · Estado: {{ $report->status }}</p>
-    </div>
+@extends('pdf.layout')
 
-    <div class="section">
-        <h2>Datos generales</h2>
-        <table class="data">
-            <tr><td class="label">Reportado por</td><td>{{ $report->teacher_name ?? $report->reporter?->name ?? '—' }}</td></tr>
-            <tr><td class="label">Asignatura o actividad</td><td>{{ $report->subject ?? '—' }}</td></tr>
-            <tr><td class="label">Fecha</td><td>{{ $report->report_date?->format('d-m-Y') ?? '—' }}</td></tr>
-            <tr><td class="label">Laboratorio o pañol</td><td>{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td></tr>
-            @if ($report->product)
-                <tr>
-                    <td class="label">Equipo</td>
-                    <td>{{ $report->product->name }}
-                        @if ($report->equipmentUnit) · Unidad {{ $report->equipmentUnit->code }}
-                        @elseif ($report->product->barcode) · {{ $report->product->barcode }} @endif
-                    </td>
-                </tr>
-            @endif
-        </table>
-    </div>
+@section('title', 'Informe de novedades')
+@section('subtitle')
+    {{ $report->subject ?? 'Sin asignatura' }}@if ($report->location) · {{ $report->location->nombre ?? $report->location->sala }}@endif
+@endsection
+@section('meta')
+    @include('pdf.partials.code', ['code' => $report->code])
+    <div style="margin-top: 4pt">@include('pdf.partials.status', ['value' => $report->status])</div>
+@endsection
 
-    <div class="section">
-        <h2>Problema</h2>
-        @php($marked = collect($report->problems ?? [])->keyBy('type'))
+@section('styles')
+    .check { width: 100%; border-collapse: collapse; }
+    .check td { padding: 3.5pt 0; vertical-align: top; border-bottom: 1px solid #EFEDE8; }
+    .check td.box { width: 16pt; }
+    .box span { display: inline-block; width: 9pt; height: 9pt; border: 1px solid #CBC7BE; border-radius: 2pt; text-align: center; font-size: 7pt; line-height: 9pt; color: #FFFFFF; }
+    .box span.on { background: #6B1729; border-color: #6B1729; }
+    .check .desc { display: block; margin-top: 1pt; color: #5F5B53; font-size: 8pt; }
+    .photo img { max-width: 300pt; max-height: 210pt; border: 1px solid #E2DFD8; border-radius: 4pt; }
+    .signature img { max-height: 70pt; max-width: 220pt; }
+    .sign-line { width: 220pt; border-top: 1px solid #1B1A17; padding-top: 3pt; }
+@endsection
+
+@section('content')
+    <h2>Datos generales</h2>
+    <table class="kv">
+        <tr>
+            <td class="k">Reportado por</td><td class="v">{{ $report->teacher_name ?? $report->reporter?->name ?? '—' }}</td>
+            <td class="k">Fecha</td><td class="v">{{ $report->report_date?->format('d-m-Y') ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td class="k">Asignatura o actividad</td><td class="v">{{ $report->subject ?? '—' }}</td>
+            <td class="k">Laboratorio o pañol</td><td class="v">{{ $report->location?->nombre ?? $report->location?->sala ?? '—' }}</td>
+        </tr>
+        @if ($report->product)
+            <tr>
+                <td class="k">Equipo</td><td class="v">{{ $report->product->name }}</td>
+                <td class="k">{{ $report->equipmentUnit ? 'Unidad' : 'Código' }}</td>
+                <td class="v">@include('pdf.partials.code', ['code' => $report->equipmentUnit?->code ?? $report->product->barcode])</td>
+            </tr>
+        @endif
+    </table>
+
+    <h2>Problema</h2>
+    @php($marked = collect($report->problems ?? [])->keyBy('type'))
+    <table class="check">
         @foreach (\App\Models\IncidentReport::PROBLEM_LABELS as $type => $label)
-            <div class="problem">
-                <span class="box">{{ $marked->has($type) ? 'X' : '' }}</span>{{ $label }}
-                @if ($marked->has($type))
-                    <div class="desc">{{ $marked[$type]['description'] }}</div>
-                @endif
-            </div>
+            <tr>
+                <td class="box"><span class="{{ $marked->has($type) ? 'on' : '' }}">{{ $marked->has($type) ? '✓' : '' }}</span></td>
+                <td>
+                    <span class="{{ $marked->has($type) ? '' : 'muted' }}">{{ $label }}</span>
+                    @if ($marked->has($type) && filled($marked[$type]['description'] ?? null))
+                        <span class="desc">{{ $marked[$type]['description'] }}</span>
+                    @endif
+                </td>
+            </tr>
         @endforeach
-    </div>
+    </table>
 
-    <div class="section">
-        <h2>Descripción o sugerencia</h2>
-        <p>{{ $report->suggestion ?: '—' }}</p>
-    </div>
+    <h2>Descripción o sugerencia</h2>
+    <p class="{{ $report->suggestion ? '' : 'muted' }}">{{ $report->suggestion ?: 'Sin descripción.' }}</p>
 
     @if ($photo)
-        <div class="section photo">
-            <h2>Foto</h2>
-            <img src="{{ $photo }}" alt="Foto del informe">
-        </div>
+        <h2>Foto</h2>
+        <div class="photo"><img src="{{ $photo }}" alt="Foto del informe"></div>
     @endif
 
-    <div class="section signature">
-        <h2>Firma</h2>
+    <h2>Firma</h2>
+    <div class="signature">
         @if ($signature)
             <img src="{{ $signature }}" alt="Firma">
         @else
             <p class="muted">{{ $report->signature_path ? 'Firma registrada (no se puede incrustar: falta la extensión GD en el servidor).' : 'Sin firma.' }}</p>
         @endif
-        <div>{{ $report->teacher_name ?? $report->reporter?->name }}
-            @if ($report->signed_at)<span class="muted"> · firmado el {{ $report->signed_at->format('d-m-Y H:i') }}</span>@endif
+        <div class="sign-line">
+            {{ $report->teacher_name ?? $report->reporter?->name }}
+            @if ($report->signed_at)<span class="muted small"> · firmado el {{ $report->signed_at->format('d-m-Y H:i') }}</span>@endif
         </div>
     </div>
-
-    <div class="footer">SGIA · INACAP Sede Temuco · Generado el {{ now()->format('d-m-Y H:i') }}</div>
-</body>
-</html>
+@endsection

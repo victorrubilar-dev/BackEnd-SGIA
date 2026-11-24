@@ -27,6 +27,7 @@
 - [x] Campos `due_date`, `returned_at`, `is_returned` e `is_overdue` en el préstamo y filtros `atrasado` / `devuelto` en `GET /api/loans`.
 - [x] `DELETE /api/loans/requests/{id}`: el docente cancela su solicitud mientras está pendiente.
 - [x] `GET /api/loans/export`: historial en CSV (Excel) o PDF por rango de fechas.
+- [x] PDF del historial con el estilo de la web, A4 horizontal y resumen (`LoanExportTest`).
 - [x] `format=excel`/`xlsx` devuelve un `.xlsx` real (`XlsxWriter`, sin extensión `zip`); `csv` sin cambios (`LoanExportTest`, `XlsxWriterTest`; abierto en LibreOffice).
 - [x] Notificar al docente cuando su préstamo vence (el mismo día) o queda atrasado (una vez): `sgia:send-reminders`, diario 08:00 Chile, broadcast + correo + push (`ReminderTest`). Los préstamos presenciales sin docente con usuario no se avisan.
 

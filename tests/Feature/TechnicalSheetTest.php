@@ -8,11 +8,13 @@ use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ExtractsPdfText;
 use Tests\TestCase;
 
 class TechnicalSheetTest extends TestCase
 {
     use DatabaseTransactions;
+    use ExtractsPdfText;
 
     protected User $teacher;
 
@@ -46,22 +48,6 @@ class TechnicalSheetTest extends TestCase
      * Extrae el contenido de texto de los streams de un PDF (por si vienen
      * comprimidos con deflate), para poder asertar el contenido real.
      */
-    private function pdfText(string $pdf): string
-    {
-        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdf, $matches);
-
-        $text = '';
-
-        foreach ($matches[1] ?? [] as $raw) {
-            // La regex puede comerse un 0x0D final que es parte de los datos comprimidos
-            // (1 de cada 256 PDFs): se reintenta con ese byte repuesto.
-            $decoded = @gzuncompress($raw) ?: @gzuncompress($raw."\r");
-            $text .= $decoded === false ? $raw : $decoded;
-        }
-
-        return $text;
-    }
-
     public function test_guest_cannot_download_technical_sheet(): void
     {
         $response = $this->getJson("/api/equipment/{$this->product->id}/technical-sheet");
@@ -100,7 +86,7 @@ class TechnicalSheetTest extends TestCase
 
         $text = $this->pdfText((string) $response->getContent());
 
-        $this->assertStringContainsString('Ficha T', $text);
+        $this->assertStringContainsString('Ficha técnica del equipo', $text);
         $this->assertStringContainsString('Multimetro Digital Fluke', $text);
         $this->assertStringContainsString('SGIA-7777000111', $text);
         $this->assertStringContainsString('Falla en pantalla', $text);
@@ -127,7 +113,7 @@ class TechnicalSheetTest extends TestCase
             $this->assertStringContainsString('Novedad propia', $text);
             $this->assertStringNotContainsString('Novedad ajena', $text);
             // El CSS del PDF deja los títulos en mayúsculas.
-            $this->assertStringContainsString('MIS INFORMES', $text);
+            $this->assertStringContainsString('Mis informes', $text);
         }
     }
 

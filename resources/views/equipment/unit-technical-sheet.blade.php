@@ -1,155 +1,134 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Hoja de vida — {{ $unit->code }}</title>
-    <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #222; margin: 0; }
-        .header { background: #1f2937; color: #fff; padding: 14px 18px; }
-        .header h1 { margin: 0; font-size: 17px; }
-        .header p { margin: 4px 0 0; font-size: 10px; color: #cbd5e1; }
-        .section { margin: 16px 18px 0; }
-        .section h2 { font-size: 12px; text-transform: uppercase; color: #1f2937;
-                      border-bottom: 1px solid #94a3b8; padding-bottom: 4px; margin: 0 0 8px; }
-        table.data { width: 100%; border-collapse: collapse; }
-        table.data td { padding: 5px 8px; border: 1px solid #cbd5e1; vertical-align: top; }
-        table.data td.label { width: 32%; background: #f1f5f9; font-weight: bold; color: #334155; }
-        table.list { width: 100%; border-collapse: collapse; }
-        table.list th { background: #e2e8f0; text-align: left; padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 10px; }
-        table.list td { padding: 5px 8px; border: 1px solid #cbd5e1; font-size: 10px; vertical-align: top; }
-        .muted { color: #64748b; }
-        .footer { margin: 18px; font-size: 9px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px; }
-        .empty { color: #64748b; font-style: italic; padding: 6px 0; }
-    </style>
-</head>
-<body>
-    @php
-        $product = $unit->product;
-        $cajon = $unit->cajon;
-        $location = $cajon?->location;
-    @endphp
-    <div class="header">
-        <h1>Hoja de vida de la unidad {{ $unit->code }}</h1>
-        <p>SGIA — Sistema de Gestión de Inventario de Aula · {{ config('app.name') }}</p>
-    </div>
+@extends('pdf.layout')
 
-    <div class="section">
-        <h2>Producto</h2>
-        <table class="data">
-            <tr><td class="label">Nombre</td><td>{{ $product->name }}</td></tr>
-            <tr><td class="label">Tipo</td><td>{{ $product->type }}</td></tr>
-            <tr><td class="label">Categoría</td><td>{{ $product->category?->name ?? '—' }}</td></tr>
-            <tr><td class="label">Prioridad de mantención</td><td>{{ $product->maintenance_priority }}</td></tr>
-            <tr><td class="label">Requiere calibración</td><td>{{ $product->requires_calibration ? 'Sí' : 'No' }}</td></tr>
-            <tr><td class="label">Frecuencia de mantención</td><td>{{ $product->maintenance_frequency_months ? $product->maintenance_frequency_months.' mes(es)' : '—' }}</td></tr>
+@php
+    $product = $unit->product;
+    $cajon = $unit->cajon;
+    $location = $cajon?->location;
+@endphp
+
+@section('title', 'Hoja de vida de la unidad')
+@section('subtitle', $product->name)
+@section('meta')
+    @include('pdf.partials.code', ['code' => $unit->code])
+@endsection
+@section('foot', 'Unidad #'.$unit->id.' · Uso interno de las carreras técnicas')
+
+@section('content')
+    <h2>Unidad</h2>
+    <table class="kv">
+        <tr>
+            <td class="k">Código</td><td class="v">@include('pdf.partials.code', ['code' => $unit->code])</td>
+            <td class="k">Estado</td><td class="v">@include('pdf.partials.status', ['value' => $unit->status])</td>
+        </tr>
+        <tr>
+            <td class="k">Número de serie</td><td class="v">{{ $unit->serial_number ?? '—' }}</td>
+            <td class="k">Pañol</td><td class="v">{{ $location?->storeroom?->name ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td class="k">Sala</td>
+            <td class="v">{{ $location?->nombre ?? '—' }}@if ($location?->building)<span class="muted"> · Edificio {{ $location->building }}</span>@endif @if ($location?->floor !== null)<span class="muted"> · Piso {{ $location->floor }}</span>@endif</td>
+            <td class="k">Cajón</td><td class="v">@include('pdf.partials.code', ['code' => $cajon?->barcode ?? $cajon?->codigo])</td>
+        </tr>
+        <tr>
+            <td class="k">Última mantención</td><td class="v">{{ $unit->last_maintenance_at?->format('d-m-Y') ?? '—' }}</td>
+            <td class="k">Próxima mantención</td><td class="v">{{ $unit->next_maintenance_at?->format('d-m-Y') ?? '—' }}</td>
+        </tr>
+    </table>
+
+    <h2>Producto</h2>
+    <table class="kv">
+        <tr>
+            <td class="k">Nombre</td><td class="v">{{ $product->name }}</td>
+            <td class="k">Tipo</td><td class="v">{{ \App\Support\PdfLabels::label($product->type) }}</td>
+        </tr>
+        <tr>
+            <td class="k">Categoría</td><td class="v">{{ $product->category?->name ?? '—' }}</td>
+            <td class="k">Prioridad de mantención</td><td class="v">{{ $product->maintenance_priority ?? '—' }}</td>
+        </tr>
+        <tr>
+            <td class="k">Requiere calibración</td><td class="v">{{ $product->requires_calibration ? 'Sí' : 'No' }}</td>
+            <td class="k">Frecuencia de mantención</td><td class="v">{{ $product->maintenance_frequency_months ? $product->maintenance_frequency_months.' '.($product->maintenance_frequency_months == 1 ? 'mes' : 'meses') : '—' }}</td>
+        </tr>
+    </table>
+
+    <h2>Historial de préstamos <span class="count">· {{ $unit->loanItems->count() }}</span></h2>
+    @if ($unit->loanItems->isEmpty())
+        <p class="empty">La unidad no registra préstamos.</p>
+    @else
+        <table class="list">
+            <thead><tr><th style="width: 22%">Préstamo</th><th>Solicitante</th><th style="width: 14%">Fecha</th><th style="width: 14%">Devuelto</th><th style="width: 14%">Condición</th></tr></thead>
+            <tbody>
+                @foreach ($unit->loanItems as $item)
+                    <tr>
+                        <td>@include('pdf.partials.code', ['code' => $item->loan->code])</td>
+                        <td>{{ $item->loan->borrower_name ?? '—' }}</td>
+                        <td class="nowrap">{{ $item->loan->loan_date?->format('d-m-Y') }}</td>
+                        <td class="nowrap">{{ $item->pivot->returned_at ? \Illuminate\Support\Carbon::parse($item->pivot->returned_at)->format('d-m-Y') : '—' }}</td>
+                        <td>@if ($item->pivot->return_condition)@include('pdf.partials.status', ['value' => $item->pivot->return_condition])@else<span class="muted">—</span>@endif</td>
+                    </tr>
+                @endforeach
+            </tbody>
         </table>
-    </div>
+    @endif
 
-    <div class="section">
-        <h2>Unidad</h2>
-        <table class="data">
-            <tr><td class="label">Código</td><td>{{ $unit->code }}</td></tr>
-            <tr><td class="label">Número de serie</td><td>{{ $unit->serial_number ?? '—' }}</td></tr>
-            <tr><td class="label">Estado</td><td>{{ str_replace('_', ' ', $unit->status) }}</td></tr>
-            <tr><td class="label">Pañol</td><td>{{ $location?->storeroom?->name ?? '—' }}</td></tr>
-            <tr><td class="label">Sala</td><td>{{ $location?->nombre ?? '—' }}@if ($location?->building) · Edificio {{ $location->building }}@endif @if ($location?->floor !== null) · Piso {{ $location->floor }}@endif</td></tr>
-            <tr><td class="label">Estante (cajón)</td><td>{{ $cajon?->codigo ?? '—' }}</td></tr>
-            <tr><td class="label">Última mantención</td><td>{{ $unit->last_maintenance_at?->format('d-m-Y') ?? '—' }}</td></tr>
-            <tr><td class="label">Próxima mantención</td><td>{{ $unit->next_maintenance_at?->format('d-m-Y') ?? '—' }}</td></tr>
+    <h2>Mantenciones <span class="count">· {{ $unit->maintenanceRecords->count() }}</span></h2>
+    @if ($unit->maintenanceRecords->isEmpty())
+        <p class="empty">La unidad no registra mantenciones.</p>
+    @else
+        <table class="list">
+            <thead><tr><th style="width: 13%">Tipo</th><th style="width: 15%">Modalidad</th><th>Responsable</th><th style="width: 11%">Inicio</th><th style="width: 11%">Término</th><th style="width: 15%">Estado</th><th style="width: 11%" class="num">Costo</th></tr></thead>
+            <tbody>
+                @foreach ($unit->maintenanceRecords as $record)
+                    <tr>
+                        <td>{{ \App\Support\PdfLabels::label($record->maintenance_type) }}</td>
+                        <td>{{ \App\Support\PdfLabels::label($record->execution_mode) }}</td>
+                        <td>{{ $record->responsible?->name ?? '—' }}</td>
+                        <td class="nowrap">{{ $record->started_at?->format('d-m-Y') }}</td>
+                        <td class="nowrap">{{ $record->finished_at?->format('d-m-Y') ?? '—' }}</td>
+                        <td>@include('pdf.partials.status', ['value' => $record->status])@if ($record->result)<span class="sub">{{ \App\Support\PdfLabels::label($record->result) }}</span>@endif</td>
+                        <td class="num">${{ number_format((float) $record->repair_cost, 0, ',', '.') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
         </table>
-    </div>
+    @endif
 
-    <div class="section">
-        <h2>Historial de préstamos ({{ $unit->loanItems->count() }})</h2>
-        @if ($unit->loanItems->isEmpty())
-            <p class="empty">La unidad no registra préstamos.</p>
-        @else
-            <table class="list">
-                <thead><tr><th>Préstamo</th><th>Solicitante</th><th>Fecha</th><th>Devuelto</th><th>Condición</th></tr></thead>
-                <tbody>
-                    @foreach ($unit->loanItems as $item)
-                        <tr>
-                            <td>{{ $item->loan->code }}</td>
-                            <td>{{ $item->loan->borrower_name ?? '—' }}</td>
-                            <td>{{ $item->loan->loan_date?->format('d-m-Y') }}</td>
-                            <td>{{ $item->pivot->returned_at ? \Illuminate\Support\Carbon::parse($item->pivot->returned_at)->format('d-m-Y') : '—' }}</td>
-                            <td>{{ $item->pivot->return_condition ?? '—' }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
+    <h2>Documentos vigentes <span class="count">· {{ $unit->maintenanceDocuments->count() }}</span></h2>
+    @if ($unit->maintenanceDocuments->isEmpty())
+        <p class="empty">La unidad no tiene documentos de mantenimiento vigentes.</p>
+    @else
+        <table class="list">
+            <thead><tr><th style="width: 26%">Tipo</th><th>Título</th><th style="width: 15%">Vigente hasta</th><th style="width: 13%">Subido</th></tr></thead>
+            <tbody>
+                @foreach ($unit->maintenanceDocuments as $document)
+                    <tr>
+                        <td>{{ \App\Support\PdfLabels::label($document->document_type) }}</td>
+                        <td>{{ $document->title }}</td>
+                        <td class="nowrap">{{ $document->valid_until?->format('d-m-Y') ?? 'Sin vencimiento' }}</td>
+                        <td class="nowrap">{{ $document->created_at?->format('d-m-Y') }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
 
-    <div class="section">
-        <h2>Mantenciones ({{ $unit->maintenanceRecords->count() }})</h2>
-        @if ($unit->maintenanceRecords->isEmpty())
-            <p class="empty">La unidad no registra mantenciones.</p>
-        @else
-            <table class="list">
-                <thead><tr><th>Tipo</th><th>Modalidad</th><th>Responsable</th><th>Inicio</th><th>Término</th><th>Estado</th><th>Costo</th></tr></thead>
-                <tbody>
-                    @foreach ($unit->maintenanceRecords as $record)
-                        <tr>
-                            <td>{{ $record->maintenance_type }}</td>
-                            <td>{{ str_replace('_', ' ', $record->execution_mode) }}</td>
-                            <td>{{ $record->responsible?->name ?? '—' }}</td>
-                            <td>{{ $record->started_at?->format('d-m-Y') }}</td>
-                            <td>{{ $record->finished_at?->format('d-m-Y') ?? '—' }}</td>
-                            <td>{{ str_replace('_', ' ', $record->status) }}{{ $record->result ? ' ('.$record->result.')' : '' }}</td>
-                            <td>{{ number_format((float) $record->repair_cost, 0, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
-
-    <div class="section">
-        <h2>Documentos vigentes ({{ $unit->maintenanceDocuments->count() }})</h2>
-        @if ($unit->maintenanceDocuments->isEmpty())
-            <p class="empty">La unidad no tiene documentos de mantenimiento vigentes.</p>
-        @else
-            <table class="list">
-                <thead><tr><th>Tipo</th><th>Título</th><th>Vigente hasta</th><th>Subido</th></tr></thead>
-                <tbody>
-                    @foreach ($unit->maintenanceDocuments as $document)
-                        <tr>
-                            <td>{{ str_replace('_', ' ', $document->document_type) }}</td>
-                            <td>{{ $document->title }}</td>
-                            <td>{{ $document->valid_until?->format('d-m-Y') ?? 'Sin vencimiento' }}</td>
-                            <td>{{ $document->created_at?->format('d-m-Y') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
-
-    <div class="section">
-        <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Informes de novedades' }} ({{ $unit->incidentReports->count() }})</h2>
-        @if ($unit->incidentReports->isEmpty())
-            <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en esta unidad.' : 'La unidad no tiene informes de novedades.' }}</p>
-        @else
-            <table class="list">
-                <thead><tr><th>Código</th><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead>
-                <tbody>
-                    @foreach ($unit->incidentReports as $report)
-                        <tr>
-                            <td>{{ $report->code }}</td>
-                            <td>{{ $report->created_at?->format('d-m-Y') }}</td>
-                            <td>{{ $report->request_type }}</td>
-                            <td>{{ \Illuminate\Support\Str::limit($report->title ?? $report->description, 120) }}</td>
-                            <td>{{ str_replace('_', ' ', $report->status) }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        @endif
-    </div>
-
-    <div class="footer">
-        Documento generado el {{ now()->format('d-m-Y H:i') }} por SGIA · Unidad #{{ $unit->id }} · Uso interno de carreras técnicas.
-    </div>
-</body>
-</html>
+    <h2>{{ $ownReportsOnly ? 'Mis informes de novedades' : 'Informes de novedades' }} <span class="count">· {{ $unit->incidentReports->count() }}</span></h2>
+    @if ($unit->incidentReports->isEmpty())
+        <p class="empty">{{ $ownReportsOnly ? 'No has reportado novedades en esta unidad.' : 'La unidad no tiene informes de novedades.' }}</p>
+    @else
+        <table class="list">
+            <thead><tr><th style="width: 20%">Código</th><th style="width: 11%">Fecha</th><th style="width: 13%">Tipo</th><th>Descripción</th><th style="width: 14%">Estado</th></tr></thead>
+            <tbody>
+                @foreach ($unit->incidentReports as $report)
+                    <tr>
+                        <td>@include('pdf.partials.code', ['code' => $report->code])</td>
+                        <td class="nowrap">{{ $report->created_at?->format('d-m-Y') }}</td>
+                        <td>{{ \App\Support\PdfLabels::label($report->request_type) }}</td>
+                        <td>{{ \Illuminate\Support\Str::limit($report->title ?? $report->description, 120) }}</td>
+                        <td>@include('pdf.partials.status', ['value' => $report->status])</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+@endsection

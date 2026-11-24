@@ -14,6 +14,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
+use Tests\Concerns\ExtractsPdfText;
 use Tests\TestCase;
 
 /**
@@ -22,6 +23,7 @@ use Tests\TestCase;
 class UnitLifeSheetTest extends TestCase
 {
     use DatabaseTransactions;
+    use ExtractsPdfText;
 
     private User $teacher;
 
@@ -37,18 +39,6 @@ class UnitLifeSheetTest extends TestCase
         $this->teacher = User::factory()->create(['role' => User::ROLE_TEACHER, 'is_active' => true]);
         $this->warehouse = User::factory()->create(['role' => User::ROLE_WAREHOUSE, 'is_active' => true]);
         $this->director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
-    }
-
-    private function pdfText(string $pdf): string
-    {
-        preg_match_all('/stream\r?\n(.*?)\r?\nendstream/s', $pdf, $matches);
-        $text = '';
-        foreach ($matches[1] ?? [] as $raw) {
-            $decoded = @gzuncompress($raw) ?: @gzuncompress($raw."\r");
-            $text .= $decoded === false ? $raw : $decoded;
-        }
-
-        return $text;
     }
 
     public function test_evidence_photo_is_private_and_downloadable_by_staff_and_owner(): void

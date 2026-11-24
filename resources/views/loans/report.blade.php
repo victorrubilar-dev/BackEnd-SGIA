@@ -1,55 +1,71 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <title>Historial de préstamos</title>
-    <style>
-        body { font-family: Helvetica, Arial, sans-serif; font-size: 10px; color: #222; margin: 0; }
-        .header { background: #1f2937; color: #fff; padding: 14px 18px; }
-        .header h1 { margin: 0; font-size: 16px; }
-        .header p { margin: 4px 0 0; font-size: 10px; color: #cbd5e1; }
-        table { width: 100%; border-collapse: collapse; margin: 14px 0; }
-        th { background: #e2e8f0; text-align: left; padding: 4px 6px; border: 1px solid #cbd5e1; }
-        td { padding: 4px 6px; border: 1px solid #cbd5e1; vertical-align: top; }
-        .late { color: #dc2626; font-weight: bold; }
-        .empty { color: #64748b; font-style: italic; padding: 10px 18px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Historial de préstamos</h1>
-        <p>{{ $loans->count() }} préstamo(s)
-            @if ($from || $to) · {{ $from ?? '…' }} a {{ $to ?? '…' }} @endif
-            · Generado {{ now()->format('d-m-Y H:i') }}</p>
-    </div>
+@extends('pdf.layout')
 
+@php
+    $overdue = $loans->filter(fn ($loan) => $loan->isOverdue())->count();
+    $byStatus = $loans->countBy('status');
+    $range = ($from || $to)
+        ? 'Del '.($from ? \Illuminate\Support\Carbon::parse($from)->format('d-m-Y') : '…').' al '.($to ? \Illuminate\Support\Carbon::parse($to)->format('d-m-Y') : '…')
+        : 'Todas las fechas';
+@endphp
+
+@section('title', 'Historial de préstamos')
+@section('subtitle', $range)
+@section('meta')
+    {{ $loans->count() }} {{ $loans->count() === 1 ? 'préstamo' : 'préstamos' }}
+@endsection
+
+@section('styles')
+    .summary { width: 100%; border-collapse: collapse; margin: 10pt 0 2pt; border: 1px solid #E2DFD8; }
+    .summary td { width: 20%; padding: 6pt 9pt; border-right: 1px solid #E2DFD8; }
+    .summary .n { display: block; font-size: 14pt; line-height: 17pt; font-weight: 500; }
+    .summary .l { color: #5F5B53; font-size: 8pt; }
+    .late { color: #A3202E; font-weight: 500; }
+    table.list td { font-size: 8pt; padding: 3pt 5pt; }
+    table.list th { padding: 3pt 5pt; }
+@endsection
+
+@section('content')
+    <table class="summary">
+        <tr>
+            <td><span class="n">{{ $loans->count() }}</span><span class="l">Préstamos</span></td>
+            <td><span class="n">{{ $byStatus->get('procesado', 0) }}</span><span class="l">Procesados</span></td>
+            <td><span class="n">{{ $byStatus->get('pendiente', 0) + $byStatus->get('en_proceso', 0) }}</span><span class="l">Pendientes o en proceso</span></td>
+            <td><span class="n">{{ $byStatus->get('rechazado', 0) }}</span><span class="l">Rechazados</span></td>
+            <td style="border-right: 0"><span class="n {{ $overdue ? 'late' : '' }}">{{ $overdue }}</span><span class="l">Atrasados</span></td>
+        </tr>
+    </table>
+
+    <h2>Detalle</h2>
     @if ($loans->isEmpty())
         <p class="empty">No hay préstamos para el filtro indicado.</p>
     @else
-        <table>
+        <table class="list">
             <thead>
                 <tr>
-                    <th>Código</th><th>Estado</th><th>Solicitante</th><th>Asignatura</th><th>Carrera</th><th>Sala</th>
-                    <th>Fecha</th><th>Vence</th><th>Devuelto</th><th>Ítems</th>
+                    <th style="width: 11%">Código</th>
+                    <th style="width: 8%">Estado</th>
+                    <th style="width: 15%">Solicitante y carrera</th>
+                    <th style="width: 15%">Asignatura y sala</th>
+                    <th style="width: 6%">Fecha</th>
+                    <th style="width: 6%">Vence</th>
+                    <th style="width: 6%">Devuelto</th>
+                    <th>Ítems</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($loans as $loan)
                     <tr>
-                        <td>{{ $loan->code }}</td>
-                        <td>{{ $loan->status }}</td>
-                        <td>{{ $loan->borrower_name ?? $loan->requester?->name }}</td>
-                        <td>{{ $loan->subject ?? '—' }}</td>
-                        <td>{{ $loan->career?->name ?? '—' }}</td>
-                        <td>{{ $loan->room }}</td>
-                        <td>{{ $loan->loan_date?->format('d-m-Y') }}</td>
-                        <td class="{{ $loan->isOverdue() ? 'late' : '' }}">{{ ($loan->due_date ?? $loan->loan_date)?->format('d-m-Y') }}</td>
-                        <td>{{ $loan->returned_at?->format('d-m-Y H:i') ?? '—' }}</td>
-                        <td>{{ $loan->items->map(fn ($i) => $i->name.' x'.$i->quantity.($i->relationLoaded('units') && $i->units->isNotEmpty() ? ' ['.$i->units->pluck('code')->implode(', ').']' : ''))->implode(', ') }}</td>
+                        <td>@include('pdf.partials.code', ['code' => $loan->code])<span class="sub">{{ \App\Support\PdfLabels::label($loan->type) }}</span></td>
+                        <td>@include('pdf.partials.status', ['value' => $loan->status])</td>
+                        <td>{{ $loan->borrower_name ?? $loan->requester?->name ?? '—' }}<span class="sub">{{ $loan->career?->name ?? 'Sin carrera' }}</span></td>
+                        <td>{{ $loan->subject ?? '—' }}<span class="sub">{{ $loan->room ?? 'Sin sala' }}</span></td>
+                        <td class="nowrap">{{ $loan->loan_date?->format('d-m-y') }}</td>
+                        <td class="nowrap {{ $loan->isOverdue() ? 'late' : '' }}">{{ ($loan->due_date ?? $loan->loan_date)?->format('d-m-y') }}</td>
+                        <td class="nowrap">{{ $loan->returned_at?->format('d-m-y') ?? '—' }}@if ($loan->returned_at)<span class="sub">{{ $loan->returned_at->format('H:i') }}</span>@endif</td>
+                        <td class="small">{{ $loan->items->map(fn ($i) => $i->name.' ×'.$i->quantity.($i->relationLoaded('units') && $i->units->isNotEmpty() ? ' ('.$i->units->pluck('code')->implode(', ').')' : ''))->implode(' · ') }}</td>
                     </tr>
                 @endforeach
             </tbody>
         </table>
     @endif
-</body>
-</html>
+@endsection

@@ -1,5 +1,6 @@
 ### REQ-12 — Fichas técnicas de equipos (FU-05, todos los autenticados)
 - [x] Endpoint `GET /api/equipment/{id}/technical-sheet` que genere/devuelva PDF de la ficha técnica.
+- [x] Fichas, hojas de vida, informes de novedades y etiqueta con el estilo de la web (layout común, Geist, estados legibles, número de página; plan en `docs/pdf-estilo-trazo.md`).
 - [x] Endpoint `GET /api/equipment/{id}/reports` para listar informes de novedades asociados (también descargables en PDF).
 
 ### REQ-18 — Registro de mantenciones (FU-05, PAN-01 y AD-01; DIR-01 lectura)
