@@ -51,6 +51,7 @@
 - [x] Destinatarios: usuarios activos `AD-01`, `DIR-01` y `PAN-01`.
 - [x] Registro de la alerta en BD y `GET /api/alerts/critical-stock` para el panel.
 - [x] Envío por correo y push móvil (Expo): ver `rework.md`, fase 5.
+- [ ] Ocultar una alerta solo para el usuario (`stock_alert_dismissals`, `POST /api/alerts/{id}/dismiss`) y `exclude_dismissed=1` en el listado y los totales (plan en `docs/exportaciones-y-campana.md`).
 
 ### Estado operativo del stock (FU-05)
 - [x] Contadores `quantity_in_repair` y `quantity_written_off` por producto, y `estado` resumido (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`).

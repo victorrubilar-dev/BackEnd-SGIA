@@ -533,6 +533,8 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | Método | Endpoint Planificado | Roles Previstos | Descripción | Ver |
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
+| `GET` | `/api/loans/export?format=excel` | `DIR-01`, `PAN-01` | Devuelve un `.xlsx` real (hoy entrega CSV con `excel`); `csv` sin cambios. | `docs/exportaciones-y-campana.md` |
+| `POST` | `/api/alerts/{id}/dismiss` | `DIR-01`, `PAN-01` | Oculta la alerta de stock solo para el usuario (`204`, idempotente); `GET /api/alerts/critical-stock?exclude_dismissed=1` la excluye de la lista y de los totales. | `docs/exportaciones-y-campana.md` |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
 
 ---
