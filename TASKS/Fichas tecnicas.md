@@ -18,7 +18,7 @@ Decisiones: se puede abrir sobre una unidad `disponible` o ya `en_reparacion` (p
 - [x] Notificar las mantenciones próximas (`next_maintenance_at` vencida o en 7 días, sin mantención en curso ni de baja) a `PAN-01`: resumen diario de `sgia:send-reminders`, una vez por fecha (`ReminderTest`). El listado sigue en `GET /api/equipment-units?maintenance_due=1`.
 
 Mantenciones por carrera (plan `docs/mantenciones-por-carrera.md`):
-- [ ] `GET /api/maintenance-records` filtra por `career_id` y `sin_carrera=1` (`422` si `career_id` no es entero); test en `MaintenanceRecordTest`.
+- [x] `GET /api/maintenance-records` filtra por `career_id` y `sin_carrera=1` (`422` si `career_id` no es entero); test en `MaintenanceRecordTest`.
 
 ### REQ-19 — Documentos de mantenimiento (FU-05, PAN-01 y AD-01; DIR-01 lectura)
 Modelo `MaintenanceDocument` (`TASKS/Equipos.md`, fase 5). Decisión: los documentos van por unidad (no por producto); suben y borran `PAN-01` y `AD-01`, descargan además `DIR-01`; `PRO-01` no tiene acceso.

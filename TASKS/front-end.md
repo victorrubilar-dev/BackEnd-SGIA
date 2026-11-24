@@ -515,6 +515,6 @@ Plan y contrato en `docs/exportaciones-y-campana.md`. No rompe contrato.
 
 Plan en `docs/pdf-estilo-trazo.md`. No cambia ningún endpoint ni nombre de archivo: solo el diseño de los PDFs (layout común, Geist, estados legibles, número de página; el historial de préstamos pasa a A4 horizontal).
 
-## Mantenciones filtrables por carrera (plan, noviembre 2026) — Informativo
+## Mantenciones filtrables por carrera (implementado en backend y frontend, noviembre 2026) — Informativo
 
 Plan en `docs/mantenciones-por-carrera.md`. No rompe contrato: `GET /api/maintenance-records` suma los parámetros `career_id` (carrera del producto de la unidad) y `sin_carrera=1`; `422` si `career_id` no es entero.

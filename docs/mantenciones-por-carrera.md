@@ -1,6 +1,6 @@
 # Mantenciones: carreras de un vistazo y bandeja filtrable por carrera
 
-**Estado: plan, sin implementar.** Rama `feat/mantenciones-por-carrera` en ambos repos. Pantalla `/mantenciones` (`PAN-01`, `DIR-01`). REQ-18.
+**Estado: implementado (noviembre 2026).** Rama `feat/mantenciones-por-carrera` en ambos repos. Pantalla `/mantenciones` (`PAN-01`, `DIR-01`). REQ-18.
 
 ## Problema
 
@@ -28,10 +28,16 @@
 
 ## Fases
 
-1. [ ] Plan y documentos (este archivo, `CLAUDE.md`, `TASKS/Fichas tecnicas.md`, `TASKS/front-end.md`, `ENDPOINTS.md` en ambos repos, `TASKS/REQ-12` del frontend).
-2. [ ] Backend: filtro `career_id` / `sin_carrera` con test en `MaintenanceRecordTest`.
-3. [ ] Frontend: tipos y cliente (`career_id`, `sin_carrera`), página rediseñada, tests.
-4. [ ] Prueba en Chromium contra la API de desarrollo como `PAN-01` y `DIR-01` (1440 y 390 px, claro y oscuro): cifras contra la base, filtro por carrera, sin desplazamiento lateral.
+1. [x] Plan y documentos (este archivo, `CLAUDE.md`, `TASKS/Fichas tecnicas.md`, `TASKS/front-end.md`, `ENDPOINTS.md` en ambos repos, `TASKS/REQ-12` del frontend).
+2. [x] Backend: filtro `career_id` / `sin_carrera` con test en `MaintenanceRecordTest`.
+3. [x] Frontend: tipos y cliente (`career_id`, `sin_carrera`), página rediseñada, tests.
+4. [x] Prueba en Chromium contra la API de desarrollo como `PAN-01` y `DIR-01` (1440 y 390 px, claro y oscuro): cifras contra la base, filtro por carrera, sin desplazamiento lateral.
+
+## Notas de implementación
+
+- Backend: `MaintenanceRecordService::listQuery` filtra por `products.career_id` (ya estaba unido) y `sin_carrera` (`whereNull`); validación en el controlador (`career_id` entero, `sin_carrera` booleano). Test `test_listing_filters_by_career_of_the_product`.
+- Frontend: `features/mantenciones/components/maintenance-metrics.tsx`, `maintenance-due-notice.tsx`, `maintenance-career-grid.tsx`, `maintenance-inbox.tsx` y `lib/career-filter.ts`; se quitó `maintenance-career-summary.tsx`. En teléfonos las cifras van en 2 × 2, la bandeja usa `MobileRow` y tocar una carrera lleva la bandeja a la vista.
+- Prueba real (28/28, PAN-01 y DIR-01): las cuatro celdas coinciden con Postgres (AP 4 = 1 en curso + 3 finalizadas, IC 3, II 2, ISD 5 = 1 + 4; unidades iguales); ISD en curso → solo `EQP-ISD-000004`, ISD «Todas» → sus 5, IC → sus 3, volver a tocar quita el filtro (14); 1440 claro y oscuro, 390 px sin desplazamiento lateral; teclado: Enter en una carrera filtra y en una fila abre el checklist. Sin errores en la consola.
 
 ## Fuera de alcance
 

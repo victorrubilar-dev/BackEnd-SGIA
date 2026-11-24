@@ -463,7 +463,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
-| `GET` | `/api/maintenance-records` | `DIR-01`, `PAN-01` | Listado paginado, ordenado por prioridad de mantención del producto (`A` primero) y fecha de inicio (reciente primero). Incluye `equipment_unit.product`, `responsible`, `external_supplier`.<br>**Query Params:** `equipment_unit_id`, `product_id`, `status`, `maintenance_type`, `execution_mode`, `from`, `to` (fecha de inicio), `per_page`. | ✅ Implementado |
+| `GET` | `/api/maintenance-records` | `DIR-01`, `PAN-01` | Listado paginado, ordenado por prioridad de mantención del producto (`A` primero) y fecha de inicio (reciente primero). Incluye `equipment_unit.product`, `responsible`, `external_supplier`.<br>**Query Params:** `equipment_unit_id`, `product_id`, `career_id` (carrera del producto; `422` si no es entero), `sin_carrera=1` (productos sin carrera), `status`, `maintenance_type`, `execution_mode`, `from`, `to` (fecha de inicio), `per_page`. | ✅ Implementado |
 | `GET` | `/api/maintenance-records/summary` | `DIR-01`, `PAN-01` | Mantenciones por carrera del producto. `data` = `{careers: [{career_id, name, code, total, by_status: {en_curso, finalizada, anulada}, units}], total: {total, by_status, units}}`. Incluye todas las carreras (en cero si no hay) y `Sin carrera` (`career_id` null) solo si hay registros. `units` = unidades distintas con mantención.<br>**Query Params:** `year`, `from`, `to` (fecha de inicio; `to` ≥ `from`, si no `422`). | ✅ Implementado |
 | `GET` | `/api/maintenance-records/{id}` | `DIR-01`, `PAN-01` | Detalle con unidad (cajón, sala, pañol), responsable, proveedor, informe asociado y `documents`. | ✅ Implementado |
 | `GET` | `/api/equipment-units/{id}/maintenance-records` | `DIR-01`, `PAN-01` | Historial de la unidad (más reciente primero), con `documents`. | ✅ Implementado |
@@ -535,7 +535,6 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
-| `GET` | `/api/maintenance-records?career_id={id}` | `DIR-01`, `PAN-01` | Parámetros nuevos del listado de mantenciones: `career_id` (carrera del producto de la unidad) y `sin_carrera=1`. Combinables con los demás filtros; sin ellos la respuesta no cambia. `422` si `career_id` no es entero. | `docs/mantenciones-por-carrera.md` |
 
 ---
 
