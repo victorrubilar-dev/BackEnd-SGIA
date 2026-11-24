@@ -13,10 +13,12 @@ use App\Http\Requests\StoreLoanRequest;
 use App\Http\Resources\LoanResource;
 use App\Http\Resources\LoanReviewResource;
 use App\Models\Loan;
+use App\Models\LoanItem;
 use App\Models\User;
 use App\Services\EquipmentPdfService;
 use App\Services\LoanService;
 use App\Services\LoanStateMachine;
+use App\Support\XlsxWriter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -292,7 +294,7 @@ class LoanController extends Controller
     /**
      * Exporta el historial de préstamos en CSV (abre en Excel) o PDF.
      *
-     * GET /api/loans/export?format=csv|pdf&from=YYYY-MM-DD&to=YYYY-MM-DD
+     * GET /api/loans/export?format=csv|excel|xlsx|pdf&from=YYYY-MM-DD&to=YYYY-MM-DD (`excel` y `xlsx`: .xlsx real)
      * más los mismos filtros de GET /api/loans.
      */
     public function export(Request $request, LoanService $loanService, EquipmentPdfService $pdfService): SymfonyResponse
@@ -300,7 +302,7 @@ class LoanController extends Controller
         Gate::authorize('viewAny', Loan::class);
 
         $validated = $request->validate([
-            'format' => ['nullable', 'in:csv,pdf,excel'],
+            'format' => ['nullable', 'in:csv,pdf,excel,xlsx'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
@@ -327,29 +329,51 @@ class LoanController extends Controller
             );
         }
 
-        return response()->streamDownload(function () use ($loans) {
+        $headers = ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Carrera', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems'];
+        $rows = $loans->map(fn (Loan $loan): array => $this->exportRow($loan))->all();
+
+        // Excel real (.xlsx), docs/exportaciones-y-campana.md. `csv` (por defecto) queda igual para no romper clientes.
+        if (in_array($validated['format'] ?? 'csv', ['excel', 'xlsx'], true)) {
+            $xlsx = XlsxWriter::build('Préstamos', $headers, $rows, [16, 11, 12, 28, 26, 30, 16, 12, 12, 20, 9, 60]);
+
+            return response($xlsx, 200, [
+                'Content-Type' => XlsxWriter::MIME,
+                'Content-Disposition' => 'attachment; filename="prestamos-'.$stamp.'.xlsx"',
+                'Content-Length' => (string) strlen($xlsx),
+            ]);
+        }
+
+        return response()->streamDownload(function () use ($headers, $rows) {
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // BOM para que Excel lea UTF-8
-            fputcsv($out, ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Carrera', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems']);
-
-            foreach ($loans as $loan) {
-                fputcsv($out, [
-                    $loan->code,
-                    $loan->type,
-                    $loan->status,
-                    $loan->borrower_name ?? $loan->requester?->name,
-                    $loan->subject,
-                    $loan->career?->name,
-                    $loan->room,
-                    $loan->loan_date?->toDateString(),
-                    ($loan->due_date ?? $loan->loan_date)?->toDateString(),
-                    $loan->returned_at?->toDateTimeString(),
-                    $loan->isOverdue() ? 'sí' : 'no',
-                    $loan->items->map(fn ($i) => "{$i->name} x{$i->quantity}".($i->units->isNotEmpty() ? ' ['.$i->units->pluck('code')->implode(', ').']' : ''))->implode('; '),
-                ]);
+            fputcsv($out, $headers);
+            foreach ($rows as $row) {
+                fputcsv($out, $row);
             }
-
             fclose($out);
         }, "prestamos-{$stamp}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Fila del historial para CSV y Excel (mismas columnas en ambos).
+     *
+     * @return list<string|null>
+     */
+    private function exportRow(Loan $loan): array
+    {
+        return [
+            $loan->code,
+            $loan->type,
+            $loan->status,
+            $loan->borrower_name ?? $loan->requester?->name,
+            $loan->subject,
+            $loan->career?->name,
+            $loan->room,
+            $loan->loan_date?->toDateString(),
+            ($loan->due_date ?? $loan->loan_date)?->toDateString(),
+            $loan->returned_at?->toDateTimeString(),
+            $loan->isOverdue() ? 'sí' : 'no',
+            $loan->items->map(fn (LoanItem $i) => "{$i->name} x{$i->quantity}".($i->units->isNotEmpty() ? ' ['.$i->units->pluck('code')->implode(', ').']' : ''))->implode('; '),
+        ];
     }
 }

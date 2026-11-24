@@ -504,3 +504,9 @@ Plan y contrato en `docs/cajones-llenos.md`. No rompe contrato: todo es aditivo.
 - `CajonResource` suma `lleno: boolean`; `POST`/`PATCH /api/cajones` aceptan `lleno` (`DIR-01`, `PAN-01`).
 - `estante.cajones[]` (en `/api/locations/{id}/map` y `/api/estantes`) y `cajones[]` de `/api/estantes/{id}/contents` suman `lleno`.
 - Es informativo: no bloquea asignar productos ni unidades al cajón.
+
+## Exportación Excel real y notificaciones ocultables (implementado en backend y frontend, noviembre 2026) — Informativo
+
+Plan y contrato en `docs/exportaciones-y-campana.md`. No rompe contrato.
+- `GET /api/loans/export?format=excel` (o `xlsx`) pasa a devolver un `.xlsx` real; `csv` sigue igual. El export filtra fechas con `from`/`to` (no `from_date`/`to_date`).
+- Nuevo `POST /api/alerts/{id}/dismiss` (`DIR-01`, `PAN-01`, `204`): oculta la alerta solo para el usuario. `GET /api/alerts/critical-stock?exclude_dismissed=1` la excluye de `data` y de `counts`.
