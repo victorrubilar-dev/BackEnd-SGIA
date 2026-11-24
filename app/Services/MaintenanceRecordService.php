@@ -23,7 +23,7 @@ class MaintenanceRecordService
     public function __construct(private readonly EquipmentUnitService $units) {}
 
     /**
-     * Filtros del listado: unidad, producto, estado, tipo, modalidad y rango de inicio.
+     * Filtros del listado: unidad, producto, carrera (`career_id` o `sin_carrera`), estado, tipo, modalidad y rango de inicio.
      * Orden: prioridad de mantención del producto (`A` primero) y fecha de inicio (reciente primero).
      */
     public function listQuery(Request $request): Builder
@@ -41,6 +41,15 @@ class MaintenanceRecordService
 
         if ($request->filled('product_id')) {
             $query->where('equipment_units.product_id', $request->integer('product_id'));
+        }
+
+        // Carrera del producto de la unidad (docs/mantenciones-por-carrera.md).
+        if ($request->filled('career_id')) {
+            $query->where('products.career_id', $request->integer('career_id'));
+        }
+
+        if ($request->boolean('sin_carrera')) {
+            $query->whereNull('products.career_id');
         }
 
         if ($request->filled('from')) {

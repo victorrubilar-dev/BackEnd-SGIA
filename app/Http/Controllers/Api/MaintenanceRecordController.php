@@ -36,7 +36,14 @@ class MaintenanceRecordController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-        ], ['from.date' => 'La fecha inicial no es válida.', 'to.date' => 'La fecha final no es válida.']);
+            'career_id' => ['nullable', 'integer'],
+            'sin_carrera' => ['nullable', 'boolean'],
+        ], [
+            'from.date' => 'La fecha inicial no es válida.',
+            'to.date' => 'La fecha final no es válida.',
+            'career_id.integer' => 'La carrera no es válida.',
+            'sin_carrera.boolean' => 'El filtro «sin carrera» no es válido.',
+        ]);
 
         return MaintenanceRecordResource::collection(
             $maintenance->listQuery($request)->with(self::LIST_RELATIONS)->paginate($this->perPage($request))
