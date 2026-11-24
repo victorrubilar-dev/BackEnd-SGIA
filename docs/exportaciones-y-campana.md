@@ -1,6 +1,6 @@
 # Exportaciones (PDF y Excel) y campana de notificaciones
 
-**Estado: backend implementado (noviembre 2026); frontend en curso.** Rama `feat/exportaciones-y-campana` en ambos repos. Seguimiento en `TASKS/Prestamos.md` (REQ-11), `TASKS/Productos.md` (REQ-06) y cambios de contrato en `TASKS/front-end.md`.
+**Estado: implementado (noviembre 2026) en backend y frontend, rama `feat/exportaciones-y-campana`.** Rama `feat/exportaciones-y-campana` en ambos repos. Seguimiento en `TASKS/Prestamos.md` (REQ-11), `TASKS/Productos.md` (REQ-06) y cambios de contrato en `TASKS/front-end.md`.
 
 ## Auditoría (2026-11-23, contra la API de desarrollo y en Chromium)
 
@@ -78,9 +78,16 @@ unique (user_id, stock_alert_id)
 
 1. [x] Plan y documentos.
 2. [x] Backend: `XlsxWriter`, export `.xlsx`, tabla y endpoint de ocultar, `exclude_dismissed`, tests.
-3. [ ] Frontend: exportación y descargas.
-4. [ ] Frontend: campana (sonido, hover y quitar).
-5. [ ] Prueba contra la API real: descargar PDF y Excel del historial (abrir el `.xlsx`), ocultar notificaciones y sonido.
+3. [x] Frontend: exportación y descargas.
+4. [x] Frontend: campana (sonido, hover y quitar).
+5. [x] Prueba contra la API real: descargar PDF y Excel del historial (abrir el `.xlsx`), ocultar notificaciones y sonido.
+
+## Notas de implementación
+
+- `cn` no fusiona clases de Tailwind: el rojo del hover usa el modificador `!` para ganarle al `hover:bg-zinc-100` de `DropdownMenuItem`.
+- El sonido compara el mayor `id` visto (los ids crecen): quitar una alerta o ver una más antigua que asoma en las 5 no suena.
+- El nombre del archivo exportado usa la fecha local (`toISOString` daba la de UTC).
+- Prueba real: el `.xlsx` de DIR-01 (165 préstamos), PAN-01 (83, su pañol) y el rango de marzo (19) se abrieron en LibreOffice; la campana se probó con clics de mouse reales y contando los osciladores de Web Audio. Los datos de prueba (alerta temporal, ocultamientos y el stock del insumo 18) se restauraron.
 
 ## Fuera de alcance
 

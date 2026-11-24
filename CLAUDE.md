@@ -65,7 +65,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `docs/codigos-ubicacion.md`: códigos de sala y cajón (`L206-RACK-R1`), etiqueta del cajón y devolución con escaneo de producto y cajón (implementado).
 - `docs/mapa-salas.md`: plan y contrato (implementado en backend y frontend, rama `mapa-salas`) del plano por sala con zonas y estantes (`/api/locations/{id}/map`, `/api/estantes`, `/api/zonas`, REQ-22).
 - `docs/cajones-llenos.md`: plan y contrato (implementado en backend y frontend) del estado «lleno» de los cajones (`PATCH /api/cajones/{id}` con `lleno`, celda azul en el mapa).
-- `docs/exportaciones-y-campana.md`: plan y contrato (backend implementado) de la exportación Excel real (`.xlsx`) del historial de préstamos, el arreglo de descargas en la web y las notificaciones de la campana que cada usuario puede ocultar (`POST /api/alerts/{id}/dismiss`).
+- `docs/exportaciones-y-campana.md`: plan y contrato (implementado en backend y frontend) de la exportación Excel real (`.xlsx`) del historial de préstamos, el arreglo de descargas en la web y las notificaciones de la campana que cada usuario puede ocultar (`POST /api/alerts/{id}/dismiss`).
 - `docs/auditoria-seguridad.md`: plan y hallazgos de la auditoría de seguridad de backend y frontend (nov 2026): errores sin SQL ni trazas, IDs de ruta numéricos, pendientes.
 - `NUEVO-FLUJO-COMPRAS.md`: plan, decisiones (§3) y fases del flujo de compras por solicitud.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
