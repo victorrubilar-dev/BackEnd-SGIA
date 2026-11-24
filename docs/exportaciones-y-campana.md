@@ -1,6 +1,6 @@
 # Exportaciones (PDF y Excel) y campana de notificaciones
 
-**Estado: plan, sin implementar (noviembre 2026).** Rama `feat/exportaciones-y-campana` en ambos repos. Seguimiento en `TASKS/Prestamos.md` (REQ-11), `TASKS/Productos.md` (REQ-06) y cambios de contrato en `TASKS/front-end.md`.
+**Estado: backend implementado (noviembre 2026); frontend en curso.** Rama `feat/exportaciones-y-campana` en ambos repos. Seguimiento en `TASKS/Prestamos.md` (REQ-11), `TASKS/Productos.md` (REQ-06) y cambios de contrato en `TASKS/front-end.md`.
 
 ## Auditoría (2026-11-23, contra la API de desarrollo y en Chromium)
 
@@ -62,8 +62,8 @@ unique (user_id, stock_alert_id)
 
 ### Tests (backend)
 
-- `LoanExportTest` (o el test de préstamos existente): `format=excel` devuelve un `.xlsx` válido (zip con `xl/workbook.xml` y la fila de un préstamo), `format=csv` sin cambios, `from`/`to` filtran.
-- `XlsxWriterTest` (unitario): el zip se abre con el lector de PHP (`PharData` o lectura manual) y el XML es válido; caracteres especiales (`&`, `<`, tildes) escapados.
+- `LoanExportTest`: `format=excel` y `xlsx` devuelven un `.xlsx` válido con la fila del préstamo y caracteres escapados; `csv` sin cambios; `from`/`to` filtran; `pdf` sigue; `format=docx` → `422`.
+- `XlsxWriterTest` (unitario): lee el zip a mano (sin la extensión `zip`), comprueba CRC y que cada XML sea válido; números como número, celdas vacías omitidas, caracteres de control quitados y nombre de hoja saneado. Además se abrió un archivo de prueba con LibreOffice.
 - `StockAlertDismissTest`: ocultar por `PAN-01`/`DIR-01` (`204`, idempotente), `PRO-01`/`AD-01` `403`; `exclude_dismissed=1` saca la alerta y baja los totales solo para ese usuario; otro usuario la sigue viendo.
 
 ## Frontend
@@ -76,8 +76,8 @@ unique (user_id, stock_alert_id)
 
 ## Fases
 
-1. [ ] Plan y documentos.
-2. [ ] Backend: `XlsxWriter`, export `.xlsx`, tabla y endpoint de ocultar, `exclude_dismissed`, tests.
+1. [x] Plan y documentos.
+2. [x] Backend: `XlsxWriter`, export `.xlsx`, tabla y endpoint de ocultar, `exclude_dismissed`, tests.
 3. [ ] Frontend: exportación y descargas.
 4. [ ] Frontend: campana (sonido, hover y quitar).
 5. [ ] Prueba contra la API real: descargar PDF y Excel del historial (abrir el `.xlsx`), ocultar notificaciones y sonido.

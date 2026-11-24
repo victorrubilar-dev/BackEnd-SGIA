@@ -7,10 +7,12 @@ use App\Http\Resources\StockAlertResource;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\StockAlert;
+use App\Models\StockAlertDismissal;
 use App\Services\StockAlertService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 
 class StockAlertController extends Controller
 {
@@ -23,6 +25,13 @@ class StockAlertController extends Controller
         $stockAlerts->reconcile();
 
         $query = StockAlert::with(['product', 'product.location', 'product.supplier']);
+
+        // La campana pide `exclude_dismissed=1`: sin las alertas que este usuario quitó (lista y totales).
+        $excludeDismissed = $request->boolean('exclude_dismissed');
+        $userId = (int) $request->user()?->id;
+        if ($excludeDismissed) {
+            $query->notDismissedBy($userId);
+        }
 
         if ($request->filled('alert_type')) {
             $query->where('alert_type', $request->string('alert_type'));
@@ -49,7 +58,8 @@ class StockAlertController extends Controller
         $alerts->each(fn (StockAlert $a) => $a->setRelation('openPurchaseRequest', $openRequests->get($a->product_id)?->purchaseRequest));
 
         // Totales reales, independientes de filtros y paginación (campana y cinta de la bandeja).
-        $open = StockAlert::where('is_resolved', false);
+        $open = StockAlert::where('is_resolved', false)
+            ->when($excludeDismissed, fn ($q) => $q->notDismissedBy($userId));
 
         return StockAlertResource::collection($alerts)->additional([
             'counts' => [
@@ -59,6 +69,19 @@ class StockAlertController extends Controller
                 'resolved' => StockAlert::where('is_resolved', true)->count(),
             ],
         ]);
+    }
+
+    /**
+     * Quita la alerta de la campana de este usuario, sin resolverla (docs/exportaciones-y-campana.md). Idempotente.
+     */
+    public function dismiss(Request $request, StockAlert $stockAlert): Response
+    {
+        StockAlertDismissal::firstOrCreate([
+            'user_id' => $request->user()->id,
+            'stock_alert_id' => $stockAlert->id,
+        ]);
+
+        return response()->noContent();
     }
 
     /**

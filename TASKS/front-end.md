@@ -505,7 +505,7 @@ Plan y contrato en `docs/cajones-llenos.md`. No rompe contrato: todo es aditivo.
 - `estante.cajones[]` (en `/api/locations/{id}/map` y `/api/estantes`) y `cajones[]` de `/api/estantes/{id}/contents` suman `lleno`.
 - Es informativo: no bloquea asignar productos ni unidades al cajón.
 
-## Exportación Excel real y notificaciones ocultables (plan, noviembre 2026) — Informativo
+## Exportación Excel real y notificaciones ocultables (implementado en backend, noviembre 2026) — Informativo
 
 Plan y contrato en `docs/exportaciones-y-campana.md`. No rompe contrato.
 - `GET /api/loans/export?format=excel` (o `xlsx`) pasa a devolver un `.xlsx` real; `csv` sigue igual. El export filtra fechas con `from`/`to` (no `from_date`/`to_date`).
