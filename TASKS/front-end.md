@@ -497,3 +497,10 @@ Plan y contrato en `docs/mapa-salas.md` (rama `mapa-salas`); la pantalla en `Fro
 - `LocationResource` suma `map_width_cm` y `map_height_cm` (`null` si no se definen); `PATCH /api/locations/{id}` los acepta, siempre juntos.
 - `CajonResource` suma `estante_id` y `estante: {id, codigo}`; `POST`/`PATCH /api/cajones` aceptan `estante_id`; `GET /api/cajones` filtra por `estante_id` y `sin_estante=1`.
 - **`/api/estantes` es una entidad nueva** (el mueble del plano), no el alias de cajones que se retiró en B3b.
+
+## Cajones llenos (implementado en backend y frontend, noviembre 2026) — Informativo
+
+Plan y contrato en `docs/cajones-llenos.md`. No rompe contrato: todo es aditivo.
+- `CajonResource` suma `lleno: boolean`; `POST`/`PATCH /api/cajones` aceptan `lleno` (`DIR-01`, `PAN-01`).
+- `estante.cajones[]` (en `/api/locations/{id}/map` y `/api/estantes`) y `cajones[]` de `/api/estantes/{id}/contents` suman `lleno`.
+- Es informativo: no bloquea asignar productos ni unidades al cajón.

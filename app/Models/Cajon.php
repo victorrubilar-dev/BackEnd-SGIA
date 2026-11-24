@@ -22,9 +22,19 @@ class Cajon extends Model
         'descripcion',
         'location_id',
         'estante_id',
+        'lleno',
         'created_by',
         'updated_by',
     ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            // Marcado a mano desde la lista o el mapa (`docs/cajones-llenos.md`).
+            'lleno' => 'boolean',
+        ];
+    }
 
     protected static function booted(): void
     {
