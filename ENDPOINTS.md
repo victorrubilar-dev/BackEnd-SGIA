@@ -535,6 +535,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
+| `GET` | `/api/maintenance-records?career_id={id}` | `DIR-01`, `PAN-01` | Parámetros nuevos del listado de mantenciones: `career_id` (carrera del producto de la unidad) y `sin_carrera=1`. Combinables con los demás filtros; sin ellos la respuesta no cambia. `422` si `career_id` no es entero. | `docs/mantenciones-por-carrera.md` |
 
 ---
 

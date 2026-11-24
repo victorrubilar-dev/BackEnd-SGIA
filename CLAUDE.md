@@ -67,6 +67,7 @@ Los permisos se aplican en dos capas: middleware `role:...` en `routes/api.php` 
 - `docs/cajones-llenos.md`: plan y contrato (implementado en backend y frontend) del estado «lleno» de los cajones (`PATCH /api/cajones/{id}` con `lleno`, celda azul en el mapa).
 - `docs/exportaciones-y-campana.md`: plan y contrato (implementado en backend y frontend) de la exportación Excel real (`.xlsx`) del historial de préstamos, el arreglo de descargas en la web y las notificaciones de la campana que cada usuario puede ocultar (`POST /api/alerts/{id}/dismiss`).
 - `docs/pdf-estilo-trazo.md`: implementado: los PDFs (fichas, hojas de vida, informes, historial de préstamos, etiqueta) usen el estilo «Trazo» de la web: layout común, Geist, colores, estados legibles y número de página.
+- `docs/mantenciones-por-carrera.md`: plan (en curso) de la pantalla de mantenciones por carrera y del filtro `career_id` / `sin_carrera` en `GET /api/maintenance-records`.
 - `docs/auditoria-seguridad.md`: plan y hallazgos de la auditoría de seguridad de backend y frontend (nov 2026): errores sin SQL ni trazas, IDs de ruta numéricos, pendientes.
 - `NUEVO-FLUJO-COMPRAS.md`: plan, decisiones (§3) y fases del flujo de compras por solicitud.
 - `TASKS/rework.md`: plan de correcciones por fases tras el trabajo previo con opencode. Consultarlo antes de empezar trabajo estructural.
