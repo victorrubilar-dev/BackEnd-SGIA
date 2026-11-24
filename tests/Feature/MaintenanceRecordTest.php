@@ -217,6 +217,33 @@ class MaintenanceRecordTest extends TestCase
         $this->getJson("/api/maintenance-records/{$lowRecord->id}")->assertOk()->assertJsonPath('data.equipment_unit.id', $low->id);
     }
 
+    public function test_listing_filters_by_career_of_the_product(): void
+    {
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        $ap = Career::firstOrCreate(['code' => 'AP'], ['name' => 'Analista Programador', 'level' => 'tecnico']);
+        $ic = Career::firstOrCreate(['code' => 'IC'], ['name' => 'Ingeniería en Ciberseguridad', 'level' => 'profesional']);
+        $apRecord = MaintenanceRecord::factory()->create(['equipment_unit_id' => $this->unit(['career_id' => $ap->id])->id]);
+        $icRecord = MaintenanceRecord::factory()->create(['equipment_unit_id' => $this->unit(['career_id' => $ic->id])->id, 'status' => 'finalizada']);
+        $noneRecord = MaintenanceRecord::factory()->create(['equipment_unit_id' => $this->unit(['career_id' => null])->id]);
+
+        $ids = fn (string $qs) => collect($this->getJson("/api/maintenance-records?per_page=100&{$qs}")->assertOk()->json('data'))->pluck('id');
+
+        $this->assertTrue($ids("career_id={$ap->id}")->contains($apRecord->id));
+        $this->assertFalse($ids("career_id={$ap->id}")->contains($icRecord->id));
+        $this->assertFalse($ids("career_id={$ap->id}")->contains($noneRecord->id));
+        // Combinable con el estado.
+        $this->assertTrue($ids("career_id={$ic->id}&status=finalizada")->contains($icRecord->id));
+        $this->assertFalse($ids("career_id={$ic->id}&status=en_curso")->contains($icRecord->id));
+
+        $sin = $ids('sin_carrera=1');
+        $this->assertTrue($sin->contains($noneRecord->id));
+        $this->assertFalse($sin->contains($apRecord->id));
+        $this->assertFalse($sin->contains($icRecord->id));
+
+        $this->getJson('/api/maintenance-records?career_id=abc')->assertStatus(422)->assertJsonValidationErrors('career_id');
+        $this->getJson('/api/maintenance-records?sin_carrera=quizas')->assertStatus(422)->assertJsonValidationErrors('sin_carrera');
+    }
+
     public function test_role_permissions(): void
     {
         $unit = $this->unit();
