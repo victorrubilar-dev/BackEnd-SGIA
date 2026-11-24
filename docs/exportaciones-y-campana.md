@@ -71,7 +71,7 @@ unique (user_id, stock_alert_id)
 - `packages/api-client`: `exportLoans` con `getBlob` y `from`/`to`; `dismissStockAlert(id)` + `useDismissStockAlert` (optimista sobre la campana); `exclude_dismissed` en `CriticalStockAlertQueryParams`.
 - `features/equipos/utils/download.ts`: `downloadBlob` revoca la URL después.
 - Historial de préstamos: el archivo Excel se guarda `.xlsx` (ahora sí lo es).
-- `NotificationBell`: `refetchInterval` de 60 s, sonido con `lib/notification-sound.ts` ante alertas nuevas, hover rojo gradual con basurero y clic para quitar.
+- `NotificationBell`: `refetchInterval` de 60 s, sonido con `lib/notification-sound.ts` ante alertas nuevas, hover rojo gradual con basurero y clic para quitar. (Nota 2026-11-24: el sonido es ahora el mp3 `assets/sounds/notificacion.mp3` del frontend, FIX-064; el hover rojo y el clic para quitar pasaron a los avisos emergentes, FIX-059.)
 - Tests: exportación (cliente pide `getBlob` y `from`/`to`), campana (hover/clic llama a ocultar y la quita de la lista; sonido solo con alerta nueva).
 
 ## Fases
