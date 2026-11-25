@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\ReadsXlsx;
 use Tests\TestCase;
+use Tests\Unit\XlsxWriterTest;
 
 /**
  * Hoja «Info», tope de filas, hojas expandidas y auditoría de las exportaciones (docs/reportes-excel.md).
@@ -99,5 +100,58 @@ class ReportExporterTest extends TestCase
         $this->assertSame('0', $response->headers->get(ReportExporter::TRUNCATED_HEADER));
         $this->assertSame('Ninguno: reporte completo', $this->xlsxInfo((string) $response->getContent())['Filtros']);
         $this->assertFalse(AuditLog::where('user_id', $user->id)->exists());
+    }
+
+    public function test_year_column_after_the_operation_date_and_years_without_thousands_separator(): void
+    {
+        $user = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        $request = Request::create('/api/x/export');
+        $request->setUserResolver(fn () => $user);
+        $report = new class implements Report
+        {
+            public function title(): string
+            {
+                return 'Años';
+            }
+
+            public function filename(): string
+            {
+                return 'anios';
+            }
+
+            public function audited(): bool
+            {
+                return false;
+            }
+
+            public function filters(): array
+            {
+                return [];
+            }
+
+            public function sheets(): array
+            {
+                return [new ReportSheet('Datos', ['ID', 'Fecha', 'Año presupuesto', 'Monto'], [
+                    [1500, new \DateTimeImmutable('2025-12-31 23:30:00', new \DateTimeZone('America/Santiago')), 2026, 1990000],
+                    [7, '2024-01-01 02:00:00', '2026', 5],
+                    [8, null, null, 1],
+                ], fn (array $r) => $r, [0 => XlsxWriter::INTEGER, 1 => XlsxWriter::DATETIME, 2 => XlsxWriter::INTEGER, 3 => XlsxWriter::MONEY], yearOf: 1)];
+            }
+        };
+
+        $xlsx = (string) (new ReportExporter)->download($report, $request)->getContent();
+        $rows = $this->xlsxRecords($xlsx, 'Datos');
+        $this->assertSame(['ID', 'Fecha', 'Año', 'Año presupuesto', 'Monto'], array_keys($rows[0]), '«Año» justo después de la fecha');
+        $this->assertSame(2025, $rows[0]['Año'], 'año local de Chile');
+        $this->assertSame(2024, $rows[1]['Año'], 'también desde texto');
+        $this->assertArrayNotHasKey('Año', $rows[2], 'sin fecha, sin año');
+
+        $sheet = XlsxWriterTest::unzip($xlsx)['xl/worksheets/sheet1.xml'];
+        // Años e ID como número General (sin estilo `#,##0`, que Excel muestra como «2.026»); el monto sigue en pesos.
+        $this->assertStringContainsString('<c r="A2"><v>1500</v></c>', $sheet);
+        $this->assertStringContainsString('<c r="C2"><v>2025</v></c>', $sheet);
+        $this->assertStringContainsString('<c r="D2"><v>2026</v></c>', $sheet);
+        $this->assertStringContainsString('<c r="D3"><v>2026</v></c>', $sheet, 'año desde texto numérico');
+        $this->assertStringContainsString('<c r="E2" s="4"><v>1990000</v></c>', $sheet);
     }
 }

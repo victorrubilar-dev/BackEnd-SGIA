@@ -72,7 +72,8 @@ class BudgetExportTest extends TestCase
         $this->assertCount(3, $movements);
         $consume = $movements->firstWhere('Tipo', 'Consumo');
         $this->assertSame(300000, $consume['Monto']);
-        $this->assertSame(2091, $consume['Año']);
+        $this->assertSame(2091, $consume['Año presupuesto']);
+        $this->assertSame((int) now()->year, $consume['Año'], 'año del movimiento');
         $this->assertSame($director->name, $consume['Usuario']);
         $this->assertNotNull($movements->firstWhere('Tipo', 'Liberación de reserva'));
         $this->assertSame("Carrera: {$career->name}", $this->xlsxInfo($response)['Filtros']);

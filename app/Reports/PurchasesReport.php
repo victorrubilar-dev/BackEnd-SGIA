@@ -87,6 +87,7 @@ final class PurchasesReport implements Report
                 ],
                 [6 => XlsxWriter::INTEGER, 8 => XlsxWriter::MONEY, 9 => XlsxWriter::MONEY, 10 => XlsxWriter::INTEGER, 11 => XlsxWriter::DATETIME, 12 => XlsxWriter::DATE, 13 => XlsxWriter::DATETIME],
                 [18, 16, 30, 14, 15, 30, 10, 12, 14, 14, 8, 17, 15, 17, 14, 14, 24, 40],
+                yearOf: 11,
             ),
             new ReportSheet(
                 'Ítems',

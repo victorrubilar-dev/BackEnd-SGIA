@@ -79,7 +79,7 @@ final class BudgetsReport implements Report
             ),
             new ReportSheet(
                 'Movimientos',
-                ['Fecha', 'Carrera', 'Año', 'Tipo', 'Monto', 'OC', 'Factura', 'Usuario', 'Notas'],
+                ['Fecha', 'Carrera', 'Año presupuesto', 'Tipo', 'Monto', 'OC', 'Factura', 'Usuario', 'Notas'],
                 BudgetMovement::query()
                     ->whereIn('annual_budget_id', (clone $this->query)->select('annual_budgets.id'))
                     ->with(['annualBudget.career', 'purchase', 'invoiceIntake', 'user'])
@@ -97,6 +97,7 @@ final class BudgetsReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME, 2 => XlsxWriter::INTEGER, 4 => XlsxWriter::MONEY],
                 [17, 32, 8, 20, 15, 18, 16, 24, 40],
+                yearOf: 0,
             ),
         ];
     }

@@ -76,6 +76,7 @@ final class AuditLogsReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME, 6 => XlsxWriter::INTEGER],
                 [17, 24, 28, 9, 26, 18, 8, 70, 15, 40],
+                yearOf: 0,
             ),
         ];
     }

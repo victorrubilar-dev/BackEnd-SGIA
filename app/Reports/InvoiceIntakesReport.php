@@ -70,6 +70,7 @@ final class InvoiceIntakesReport implements Report
                 ],
                 [6 => XlsxWriter::INTEGER, 7 => XlsxWriter::MONEY, 9 => XlsxWriter::DATETIME],
                 [16, 30, 14, 18, 15, 30, 10, 14, 12, 17, 24],
+                yearOf: 9,
             ),
             new ReportSheet(
                 'Ítems',

@@ -82,6 +82,7 @@ final class MaintenanceRecordsReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME, 1 => XlsxWriter::DATETIME, 15 => XlsxWriter::MONEY, 18 => XlsxWriter::DATE],
                 [17, 17, 18, 34, 28, 12, 15, 11, 24, 24, 7, 7, 9, 6, 13, 13, 30, 60, 18],
+                yearOf: 0,
             ),
         ];
     }

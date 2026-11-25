@@ -29,6 +29,9 @@ final class XlsxWriter
 
     public const INTEGER = 'integer';
 
+    /** Año (o ID): número sin separador de miles. Con `INTEGER` Excel mostraría «2.026». */
+    public const YEAR = 'year';
+
     /** Índices de `cellXfs` en `styles.xml`. */
     private const STYLE_HEADER = 1;
 
@@ -223,7 +226,7 @@ final class XlsxWriter
                 continue;
             }
 
-            if ((is_int($value) || is_float($value) || ($type === self::MONEY || $type === self::INTEGER) && is_numeric($value)) && is_finite((float) $value)) {
+            if ((is_int($value) || is_float($value) || in_array($type, [self::MONEY, self::INTEGER, self::YEAR], true) && is_numeric($value)) && is_finite((float) $value)) {
                 $style = match ($type) {
                     self::MONEY => self::STYLE_MONEY,
                     self::INTEGER => self::STYLE_INTEGER,

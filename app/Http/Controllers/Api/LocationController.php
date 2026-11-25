@@ -3,10 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportLocationsRequest;
 use App\Http\Requests\StoreLocationRequest;
 use App\Http\Requests\UpdateLocationEntityRequest;
 use App\Http\Resources\LocationResource;
 use App\Models\Location;
+use App\Reports\LocationsReport;
+use App\Reports\ReportExporter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -21,8 +25,35 @@ class LocationController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Location::with(['cajones', 'creator', 'updater'])->withCount('cajones');
+        $query = $this->filtered(Location::with(['cajones', 'creator', 'updater'])->withCount('cajones'), $request);
 
+        $perPage = $this->perPage($request);
+        $locations = $query->orderBy('nombre')->paginate($perPage);
+
+        return LocationResource::collection($locations);
+    }
+
+    /**
+     * GET /api/locations/export: dónde está cada cosa, cajones y salas en Excel (docs/reportes-excel.md, ampliación A1).
+     */
+    public function export(ExportLocationsRequest $request, ReportExporter $exporter): Response
+    {
+        $query = $this->filtered(Location::query(), $request);
+        if ($request->filled('location_id')) {
+            $query->whereKey($request->integer('location_id'));
+        }
+
+        return $exporter->download(new LocationsReport($request, $query), $request);
+    }
+
+    /**
+     * Filtros comunes del listado y del reporte: tipo, pañol y búsqueda.
+     *
+     * @param  Builder<Location>  $query
+     * @return Builder<Location>
+     */
+    private function filtered(Builder $query, Request $request): Builder
+    {
         if ($request->filled('tipo')) {
             $query->where('tipo', $request->string('tipo'));
         }
@@ -40,10 +71,7 @@ class LocationController extends Controller
             });
         }
 
-        $perPage = $this->perPage($request);
-        $locations = $query->orderBy('nombre')->paginate($perPage);
-
-        return LocationResource::collection($locations);
+        return $query;
     }
 
     /**

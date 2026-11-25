@@ -6,6 +6,9 @@ use App\Models\AuditLog;
 use App\Models\User;
 use App\Support\XlsxSheet;
 use App\Support\XlsxWriter;
+use DateTimeImmutable;
+use DateTimeInterface;
+use DateTimeZone;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -66,11 +69,12 @@ class ReportExporter
                         $cut = true;
                         break 2;
                     }
-                    $rows[] = array_values($row);
+                    $rows[] = $this->withYear(array_values($row), $sheet->yearOf);
                 }
             }
 
-            $sheets[] = new XlsxSheet($sheet->name, $sheet->headers, $rows, $sheet->types, $sheet->widths);
+            [$headers, $types, $widths] = $this->columns($sheet);
+            $sheets[] = new XlsxSheet($sheet->name, $headers, $rows, $types, $widths);
             $counts[$sheet->name] = count($rows);
             if ($cut) {
                 $truncated[] = $sheet->name;
@@ -78,6 +82,63 @@ class ReportExporter
         }
 
         return [$sheets, $counts, $truncated];
+    }
+
+    /**
+     * Cabeceras, tipos y anchos de la hoja con la columna «Año» insertada tras `yearOf`; toda cabecera
+     * «Año…» o «ID» va como `YEAR` (sin separador de miles: con `INTEGER` Excel muestra «2.026»).
+     *
+     * @return array{0: list<string>, 1: array<int, string>, 2: array<int, float|int>}
+     */
+    private function columns(ReportSheet $sheet): array
+    {
+        $headers = $sheet->headers;
+        $types = $sheet->types;
+        $widths = $sheet->widths;
+
+        if ($sheet->yearOf !== null) {
+            $at = $sheet->yearOf + 1;
+            array_splice($headers, $at, 0, ['Año']);
+            $shift = fn (array $byIndex): array => collect($byIndex)->mapWithKeys(fn ($v, $i) => [$i >= $at ? $i + 1 : $i => $v])->all();
+            $types = $shift($types);
+            $widths = $shift($widths) + [$at => 7];
+        }
+
+        foreach ($headers as $i => $header) {
+            if ($header === 'ID' || preg_match('/^Año\b/u', $header)) {
+                $types[$i] = XlsxWriter::YEAR;
+            }
+        }
+
+        return [$headers, $types, $widths];
+    }
+
+    /**
+     * Inserta el año local (Chile) de la fecha de la columna `$yearOf` justo después de ella.
+     *
+     * @param  list<mixed>  $row
+     * @return list<mixed>
+     */
+    private function withYear(array $row, ?int $yearOf): array
+    {
+        if ($yearOf === null) {
+            return $row;
+        }
+
+        $date = $row[$yearOf] ?? null;
+        if (is_string($date) && $date !== '') {
+            try {
+                $date = new DateTimeImmutable($date);
+            } catch (\Exception) {
+                $date = null;
+            }
+        }
+        $year = $date instanceof DateTimeInterface
+            ? (int) DateTimeImmutable::createFromInterface($date)->setTimezone(new DateTimeZone(date_default_timezone_get()))->format('Y')
+            : null;
+        array_splice($row, $yearOf + 1, 0, [$year]);
+
+        return $row;
     }
 
     /**

@@ -17,6 +17,7 @@ final class ReportSheet
      * @param  Closure(mixed): array<int, mixed>  $map  Registro → fila; con `$expand`, registro → lista de filas.
      * @param  array<int, string>  $types
      * @param  array<int, float|int>  $widths
+     * @param  int|null  $yearOf  Índice de la columna de fecha de la operación: `ReportExporter` agrega «Año» justo después.
      */
     public function __construct(
         public readonly string $name,
@@ -26,6 +27,7 @@ final class ReportSheet
         public readonly array $types = [],
         public readonly array $widths = [],
         public readonly bool $expand = false,
+        public readonly ?int $yearOf = null,
     ) {}
 
     /**
@@ -37,8 +39,8 @@ final class ReportSheet
      * @param  array<int, string>  $types
      * @param  array<int, float|int>  $widths
      */
-    public static function expanded(string $name, array $headers, Builder|iterable $source, Closure $map, array $types = [], array $widths = []): self
+    public static function expanded(string $name, array $headers, Builder|iterable $source, Closure $map, array $types = [], array $widths = [], ?int $yearOf = null): self
     {
-        return new self($name, $headers, $source, $map, $types, $widths, true);
+        return new self($name, $headers, $source, $map, $types, $widths, true, $yearOf);
     }
 }

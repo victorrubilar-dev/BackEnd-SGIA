@@ -242,6 +242,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // REQ-05: Ubicaciones (Salas, Pañoles) y Cajones (FU-02)
     Route::get('/locations', [LocationController::class, 'index']);
+    // Reporte Excel de ubicaciones (docs/reportes-excel.md, ampliación A1): antes de /locations/{location}.
+    Route::middleware('role:DIR-01,PAN-01,AD-01')->get('/locations/export', [LocationController::class, 'export']);
     Route::get('/locations/{location}', [LocationController::class, 'show']);
     // REQ-22: plano de la sala (zonas y estantes), docs/mapa-salas.md
     Route::get('/locations/{location}/map', [RoomMapController::class, 'show']);

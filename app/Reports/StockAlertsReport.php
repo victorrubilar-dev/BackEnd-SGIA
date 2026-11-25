@@ -84,6 +84,7 @@ final class StockAlertsReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME, 7 => XlsxWriter::INTEGER, 8 => XlsxWriter::INTEGER, 9 => XlsxWriter::INTEGER],
                 [17, 12, 18, 36, 28, 26, 16, 15, 12, 12, 10, 24, 60],
+                yearOf: 0,
             ),
         ];
     }

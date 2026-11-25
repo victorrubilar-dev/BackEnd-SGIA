@@ -78,6 +78,7 @@ final class IncidentReportsReport implements Report
                 ],
                 [1 => XlsxWriter::DATE, 16 => XlsxWriter::DATETIME, 17 => XlsxWriter::DATETIME],
                 [20, 12, 13, 10, 13, 34, 32, 18, 28, 26, 24, 24, 26, 40, 60, 40, 17, 17],
+                yearOf: 1,
             ),
         ];
     }

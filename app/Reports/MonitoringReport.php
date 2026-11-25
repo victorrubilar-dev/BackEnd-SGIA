@@ -77,6 +77,7 @@ final class MonitoringReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME],
                 [17, 26, 30, 9, 14, 15, 50],
+                yearOf: 0,
             ),
             new ReportSheet(
                 'Fallidos',
@@ -92,6 +93,7 @@ final class MonitoringReport implements Report
                 ],
                 [0 => XlsxWriter::DATETIME],
                 [17, 30, 26, 22, 15, 50],
+                yearOf: 0,
             ),
             new ReportSheet(
                 'Sesiones activas',

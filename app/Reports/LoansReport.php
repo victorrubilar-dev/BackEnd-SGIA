@@ -89,6 +89,7 @@ final class LoansReport implements Report
                 ],
                 [7 => XlsxWriter::DATE, 8 => XlsxWriter::DATE, 9 => XlsxWriter::DATETIME],
                 [16, 11, 12, 28, 26, 30, 16, 12, 12, 17, 9, 60],
+                yearOf: 7,
             ),
             ReportSheet::expanded(
                 'Detalle',
@@ -113,6 +114,7 @@ final class LoansReport implements Report
                 },
                 [1 => XlsxWriter::DATE, 7 => XlsxWriter::INTEGER, 8 => XlsxWriter::INTEGER, 9 => XlsxWriter::INTEGER, 10 => XlsxWriter::DATETIME],
                 [16, 12, 12, 28, 34, 18, 18, 10, 10, 9, 17, 12],
+                yearOf: 1,
             ),
         ];
     }

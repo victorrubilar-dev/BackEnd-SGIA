@@ -48,7 +48,7 @@ class LoanExportTest extends TestCase
             $this->assertStringContainsString('<t xml:space="preserve">Código</t>', $sheet);
             $this->assertStringContainsString('<t xml:space="preserve">'.$loan->code.'</t>', $sheet);
             $this->assertStringContainsString('Redes &amp; &lt;Sistemas&gt;', $sheet);
-            $this->assertStringContainsString('<dimension ref="A1:L2"/>', $sheet, 'cabecera + 1 préstamo');
+            $this->assertStringContainsString('<dimension ref="A1:M2"/>', $sheet, 'cabecera + 1 préstamo (12 columnas + Año)');
         }
     }
 
@@ -106,6 +106,8 @@ class LoanExportTest extends TestCase
         $loans = $this->xlsxRecords($response, 'Préstamos');
         $this->assertSame([$loan->code], array_column($loans, 'Código'), 'el estado filtra');
         $this->assertSame(46091, $loans[0]['Fecha'], 'fecha real de Excel (2026-03-10)');
+        $this->assertSame(2026, $loans[0]['Año'], 'año de la operación junto a la fecha');
+        $this->assertSame(2026, $this->xlsxRecords($response, 'Detalle')[0]['Año']);
         $this->assertSame('En proceso', $loans[0]['Estado']);
 
         $detail = $this->xlsxRecords($response, 'Detalle');
