@@ -26,3 +26,13 @@
 ### Exportar Excel: ubicaciones y año (`docs/reportes-excel.md`, ampliación)
 - [x] Columna «Año» junto a la fecha de cada operación (`ReportSheet::$yearOf`) en préstamos, detalle, alertas, mantenciones, novedades, solicitudes, órdenes, facturas, movimientos, auditoría, inicios de sesión y fallidos (`ReportExporterTest` y tests de cada reporte).
 - [x] El año sale como número sin separador de miles (`XlsxWriter::YEAR`); `ReportExporter` lo fuerza en las cabeceras «Año…» e «ID» (`XlsxWriterTest`, `ReportExporterTest`).
+
+
+### Centro de reportes y vista previa (`docs/centro-reportes.md`)
+- [ ] `preview=1` en cada `/export` y en `/reports/period`: JSON con las mismas hojas (cabeceras, tipos, 20 filas, total, totales, Info), sin auditar (`ReportPreviewTest`).
+- [ ] Fila «Alcance» en la hoja «Info» (`ScopedReport`; préstamos de PAN-01 con su pañol) (`ReportPreviewTest`, `LoanExportTest`).
+- [ ] Todas las descargas quedan en `audit_logs` (`report.export`) con `path`, `query` y `personal` (`ReportExporterTest`).
+- [ ] `from`/`to` en alertas, novedades, órdenes, movimientos de presupuesto y monitoreo (export y listado) (tests de cada export).
+- [ ] Hoja «Resumen» (`Agrupado por`, `Valor`, `Cantidad`, `Monto`) desde las filas filtradas y fila de totales con `SUBTOTAL` fuera del autofiltro (`ReportSummaryTest`, `XlsxWriterTest`).
+- [ ] `GET /api/reports/period` (`DIR-01`, `PAN-01`): «Resumen general» + préstamos, mantenciones, novedades y alertas del período; `422` sin `from`/`to` (`PeriodReportTest`).
+- [ ] `GET /api/me/report-downloads` (`DIR-01`, `PAN-01`, `AD-01`): últimas 20 descargas propias (`ReportDownloadsTest`).

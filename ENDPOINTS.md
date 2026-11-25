@@ -557,6 +557,10 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
+| `GET` | `/api/<recurso>/export?preview=1` | Los de cada export | Vista previa en JSON de las mismas hojas (cabeceras, tipos, 20 filas, total, totales, Info). No se audita. | `docs/centro-reportes.md` |
+| `GET` | `/api/reports/period` | `DIR-01`, `PAN-01` | Informe del período: «Resumen general» + préstamos, mantenciones, novedades y alertas (`from`, `to` obligatorios; `career_id`, `storeroom_id`). | `docs/centro-reportes.md` |
+| `GET` | `/api/me/report-downloads` | `DIR-01`, `PAN-01`, `AD-01` | Últimas 20 descargas de reportes del usuario (para «Repetir»). | `docs/centro-reportes.md` |
+| `GET` | `from`/`to` en `/alerts`, `/incident-reports`, `/purchases`, `/budgets/export`, `/monitoring/export`; `estado`, `oracle_category_id` en `/products`; `search` en `/alerts/critical-stock` | — | Parámetros nuevos (aditivos) en listados y exports. | `docs/centro-reportes.md` |
 
 ---
 

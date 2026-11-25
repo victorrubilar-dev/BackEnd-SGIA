@@ -72,3 +72,8 @@
 
 ### Exportar Excel: ubicaciones y año (`docs/reportes-excel.md`, ampliación)
 - [x] `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`): hojas «Dónde está cada cosa», «Cajones» y «Salas»; filtros `search`, `tipo`, `storeroom_id`, `location_id`; sin sala, incluye lo que no tiene ubicación (`LocationExportTest`).
+
+
+### Centro de reportes y vista previa (`docs/centro-reportes.md`)
+- [ ] `GET /api/products` y `/products/export`: filtros `estado` (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`, regla de `Product::operationalStatus`) y `oracle_category_id` (`ProductExportTest`).
+- [ ] `GET /api/alerts/critical-stock` y `/alerts/export`: filtro `search` (nombre o código del producto) (`StockAlertExportTest`).

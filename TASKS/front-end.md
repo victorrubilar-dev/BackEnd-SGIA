@@ -529,3 +529,10 @@ Plan y contrato en `docs/reportes-excel.md`. No rompe contrato: todo es aditivo.
 - `audit_logs` acepta `auditable_type=report` (exportaciones con datos personales, acción `report.export`).
 
 - Ampliación (2026-11-25, implementada): nuevo `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`; `search`, `tipo`, `storeroom_id`, `location_id`); todas las hojas de operaciones suman la columna «Año» junto a su fecha, y los años salen sin separador de miles.
+
+## Centro de reportes con vista previa (plan, noviembre 2026) — Informativo
+
+Plan y contrato en `docs/centro-reportes.md`. No rompe contrato: todo es aditivo.
+- `preview=1` en cada `/export`: JSON con hojas, tipos, 20 filas, total, totales e Info.
+- `from`/`to` nuevos en alertas, novedades, órdenes, movimientos y monitoreo; `estado` y `oracle_category_id` en productos; `search` en alertas.
+- Nuevos `GET /api/reports/period` y `GET /api/me/report-downloads`. Hoja «Resumen», fila de totales y fila «Alcance» en los `.xlsx`.
