@@ -52,7 +52,8 @@ class RealisticDemoSeederTest extends TestCase
             PurchaseRequest::distinct()->pluck('status')->all()
         );
         // Préstamos en cola, en proceso y atrasados; la cuenta de presentación tiene los suyos.
-        $this->assertGreaterThan(0, Loan::where('status', Loan::STATUS_PENDING)->count());
+        $this->assertGreaterThanOrEqual(5, Loan::where('status', Loan::STATUS_PENDING)->where('type', Loan::TYPE_REMOTE)->count());
+        $this->assertSame(0, Loan::where('type', Loan::TYPE_DIRECT)->whereNot('status', Loan::STATUS_PROCESSED)->count());
         $this->assertGreaterThanOrEqual(3, Loan::where('status', Loan::STATUS_PROCESSED)->whereNull('returned_at')->where('due_date', '<', today())->count());
         $this->assertGreaterThanOrEqual(4, Loan::whereHas('requester', fn ($q) => $q->where('email', 'docente@sgia.cl'))->count());
         $this->assertGreaterThanOrEqual(4, IncidentReport::whereHas('reporter', fn ($q) => $q->where('email', 'docente@sgia.cl'))->count());

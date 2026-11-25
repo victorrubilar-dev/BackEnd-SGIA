@@ -569,15 +569,18 @@ class RealisticDemoSeeder extends Seeder
         $demoTeacher = $teachers->firstWhere('email', 'docente@sgia.cl');
 
         for ($i = 1; $i <= 220; $i++) {
-            // Las 4 primeras, de la cuenta de presentación; ~20 más en los últimos 5 días (cola y préstamos abiertos).
+            // Las 4 primeras, de la cuenta de presentación; 5 solicitudes fijas en la cola (hoy y ayer); ~15 más en los
+            // últimos 5 días (préstamos abiertos y en proceso).
             $day = match (true) {
                 $i <= 4 => now()->subDays($i - 1),
+                $i <= 9 => now()->subDays(($i - 5) % 2),
                 $i <= 24 => now()->subDays(mt_rand(0, 5)),
                 // 3 atrasados fijos (hace 7, 9 y 11 días), para que Inicio y Analítica siempre los muestren.
                 $i <= 27 => now()->subDays(7 + ($i - 25) * 2),
                 default => now()->subDays(mt_rand(0, 180)),
             };
             $forcedLate = $i >= 25 && $i <= 27;
+            $forcedPending = $i >= 5 && $i <= 9;
             if ($day->isWeekend()) {
                 $day = $day->previousWeekday();
             }
@@ -588,9 +591,9 @@ class RealisticDemoSeeder extends Seeder
             $roll = mt_rand(1, 100);
             $status = $i <= 4
                 ? [Loan::STATUS_PENDING, Loan::STATUS_IN_PROGRESS, Loan::STATUS_PROCESSED, Loan::STATUS_REJECTED][$i - 1]
-                : ($recent
+                : ($forcedPending ? Loan::STATUS_PENDING : ($recent
                     ? [Loan::STATUS_PENDING, Loan::STATUS_IN_PROGRESS, Loan::STATUS_PROCESSED][$roll % 3]
-                    : ($roll <= 90 || $forcedLate ? Loan::STATUS_PROCESSED : Loan::STATUS_REJECTED));
+                    : ($roll <= 90 || $forcedLate ? Loan::STATUS_PROCESSED : Loan::STATUS_REJECTED)));
             // Abiertos: los recientes (vencen desde hoy) y los 3 atrasados fijos.
             $late = $forcedLate;
             $open = $status === Loan::STATUS_PROCESSED && ($recent || $late);
@@ -599,7 +602,8 @@ class RealisticDemoSeeder extends Seeder
             $due = $open && $recent ? now()->startOfDay()->addDays(mt_rand(0, 3)) : $day->copy()->addDays(mt_rand(0, 3));
             $returned = $status === Loan::STATUS_PROCESSED && ! $open ? $due->copy()->setTime(mt_rand(15, 18), mt_rand(0, 59)) : null;
             [$start, $end, $block] = $blocks[array_rand($blocks)];
-            $direct = mt_rand(1, 100) <= 40;
+            // En el mostrador se entrega en el acto: solo los préstamos procesados pueden ser presenciales.
+            $direct = $status === Loan::STATUS_PROCESSED && mt_rand(1, 100) <= 45;
             $student = $direct && mt_rand(0, 1) ? $students->random() : null;
             $room = $rooms->random();
 
