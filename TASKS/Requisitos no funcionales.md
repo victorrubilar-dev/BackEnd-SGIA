@@ -22,3 +22,7 @@
 - [x] `GET /api/audit-logs/export` (`AD-01`): mismos filtros que el listado; hoja «Eventos» (`AuditLogExportTest`).
 - [x] `GET /api/monitoring/export` (`AD-01`): hojas «Inicios de sesión», «Fallidos» y «Sesiones activas» (`MonitoringExportTest`).
 - [x] Las exportaciones de auditoría, usuarios, estudiantes y monitoreo quedan en `audit_logs` (acción `export`).
+
+### Exportar Excel: ubicaciones y año (`docs/reportes-excel.md`, ampliación)
+- [ ] Columna «Año» junto a la fecha de cada operación (`ReportSheet::$yearOf`) en préstamos, detalle, alertas, mantenciones, novedades, solicitudes, órdenes, facturas, movimientos, auditoría, inicios de sesión y fallidos (`ReportExporterTest` y tests de cada reporte).
+- [ ] El año sale como número sin separador de miles (`XlsxWriter::YEAR`); `ReportExporter` lo fuerza en las cabeceras «Año…» e «ID» (`XlsxWriterTest`, `ReportExporterTest`).

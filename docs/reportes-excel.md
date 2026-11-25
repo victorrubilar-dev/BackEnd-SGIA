@@ -49,6 +49,7 @@ Hoy solo el historial de préstamos exporta a Excel (`GET /api/loans/export?form
 
 | Pantalla | Ruta nueva | Filtros | Hojas |
 |---|---|---|---|
+| Ubicaciones `/ubicaciones`, `/mapa-salas/:id` | `GET /api/locations/export` (ampliación A1) | búsqueda, tipo, pañol, sala del plano | **Dónde está cada cosa**, **Cajones**, **Salas** |
 | Auditoría `/auditoria` | `GET /api/audit-logs/export` | acción, tipo de entidad, usuario, desde/hasta | **Eventos**: fecha, usuario, rol, acción, entidad, ID, cambios (antes → después en texto) |
 | Usuarios `/usuarios` | `GET /api/users/export` | rol, área, carrera, pañol, estado, búsqueda | **Usuarios**: RUN, nombre, correo, rol, área, carrera, pañol, activo, último acceso |
 | Monitoreo `/monitoreo` | `GET /api/monitoring/export` | horas, correo, IP | **Inicios de sesión** + **Fallidos** + **Sesiones activas** |
@@ -87,6 +88,16 @@ Una pantalla por rol que lista los reportes disponibles con un formulario de fil
 6. [x] Frontend: `exportReport` + `ExportExcelButton` y botón en cada pantalla.
 7. [ ] (Después) Frontend: centro de reportes `/reportes`, según cómo queden los botones.
 8. [x] Prueba contra la API real con cada rol: abrir cada `.xlsx` en LibreOffice, con y sin filtros.
+
+## Ampliación 2026-11-25: ubicaciones, año de cada operación y formato del año
+
+**Estado: en implementación.** Pedido: «añade exportar a Excel las ubicaciones para saber dónde está cada cosa; agrega a las otras el año en que se hizo cada operación; el año en algunas aparece como 2,026».
+
+| # | Decisión |
+|---|---|
+| A1 | **`GET /api/locations/export`** (`DIR-01`, `PAN-01`, `AD-01`: los roles de `/ubicaciones` y `/mapa-salas`). Filtros de `GET /api/locations` (`search`, `tipo`, `storeroom_id`) más `location_id` (una sala: la del plano abierto). Hojas: **«Dónde está cada cosa»** (una fila por unidad de equipo/maqueta y por insumo: pañol, sala, zona, estante, cajón con su código completo, lleno, tipo, código, producto, serie, estado, cantidad), **«Cajones»** (sala, estante, zona, código, descripción, lleno, insumos y unidades que guarda) y **«Salas»** (código, nombre, tipo, pañol, edificio, piso, estantes, cajones, insumos, unidades). Sin filtro de sala, «Dónde está cada cosa» suma al final lo que no tiene ubicación («Sin ubicación»), para encontrarlo. |
+| A2 | **Columna «Año»** junto a la fecha de cada operación: préstamos y su detalle, alertas, mantenciones, novedades, solicitudes de compra, órdenes, facturas, movimientos de presupuesto, auditoría, inicios de sesión y fallidos. La agrega `ReportSheet::$yearOf` (índice de la columna de fecha) en `ReportExporter`, para que todas usen la misma regla (año local de Chile). |
+| A3 | **El año va como número sin separador de miles** (`XlsxWriter::YEAR`, formato General). Causa: las columnas «Año»/«Año presupuesto» se marcaron como entero `#,##0` y Excel muestra 2.026 o 2,026. `ReportExporter` fuerza `YEAR` en toda cabecera que empiece por «Año» y en la columna «ID», así un reporte nuevo no repite el error. |
 
 ## Notas de implementación
 
