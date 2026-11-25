@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportProductsRequest;
 use App\Http\Requests\ListProductsRequest;
 use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateLocationRequest;
@@ -14,6 +15,8 @@ use App\Http\Resources\LocationResource;
 use App\Http\Resources\ProductResource;
 use App\Models\Cajon;
 use App\Models\Product;
+use App\Reports\ProductsReport;
+use App\Reports\ReportExporter;
 use App\Services\BarcodeService;
 use App\Services\CodeSequenceService;
 use App\Services\EquipmentPdfService;
@@ -48,6 +51,14 @@ class ProductController extends Controller
         $perPage = $this->perPage($request);
 
         return ProductResource::collection($query->orderByDesc('created_at')->paginate($perPage));
+    }
+
+    /**
+     * Reporte Excel del inventario con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportProductsRequest $request, ProductService $products, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new ProductsReport($request, $products), $request);
     }
 
     /**

@@ -4,11 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\SupplierArea;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportSuppliersRequest;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
 use App\Http\Requests\UpdateSupplierStatusRequest;
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
+use App\Reports\ReportExporter;
+use App\Reports\SuppliersReport;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -33,8 +37,30 @@ class SupplierController extends Controller
             ['area.enum' => 'El área debe ser: '.implode(', ', SupplierArea::values()).'.'],
         );
 
-        $query = Supplier::withCount('products');
+        $query = $this->filter(Supplier::withCount('products'), $request);
 
+        $perPage = $this->perPage($request);
+        $suppliers = $query->orderBy('name')->paginate($perPage);
+
+        return SupplierResource::collection($suppliers);
+    }
+
+    /**
+     * Reporte Excel de los proveedores con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportSuppliersRequest $request, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new SuppliersReport($request, $this->filter(Supplier::query(), $request)), $request);
+    }
+
+    /**
+     * Filtros del listado (`category`, `area`, `is_active`, `search`), compartidos con el reporte Excel.
+     *
+     * @param  Builder<Supplier>  $query
+     * @return Builder<Supplier>
+     */
+    private function filter(Builder $query, Request $request): Builder
+    {
         if ($request->filled('category')) {
             $query->where('category', 'ilike', '%'.$request->string('category').'%');
         }
@@ -56,10 +82,7 @@ class SupplierController extends Controller
             });
         }
 
-        $perPage = $this->perPage($request);
-        $suppliers = $query->orderBy('name')->paginate($perPage);
-
-        return SupplierResource::collection($suppliers);
+        return $query;
     }
 
     /**

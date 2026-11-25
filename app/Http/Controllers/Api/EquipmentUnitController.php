@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportEquipmentUnitsRequest;
 use App\Http\Requests\StoreEquipmentUnitRequest;
 use App\Http\Requests\UpdateEquipmentUnitRequest;
 use App\Http\Requests\UpdateEquipmentUnitStatusRequest;
 use App\Http\Resources\EquipmentUnitResource;
 use App\Models\EquipmentUnit;
 use App\Models\Product;
+use App\Reports\EquipmentUnitsReport;
+use App\Reports\ReportExporter;
 use App\Services\BarcodeService;
 use App\Services\EquipmentPdfService;
 use App\Services\EquipmentUnitService;
@@ -57,6 +60,14 @@ class EquipmentUnitController extends Controller
         }
 
         return EquipmentUnitResource::collection($created)->response()->setStatusCode(201);
+    }
+
+    /**
+     * GET /api/equipment-units/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportEquipmentUnitsRequest $request, EquipmentUnitService $units, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new EquipmentUnitsReport($request, $units), $request);
     }
 
     /**

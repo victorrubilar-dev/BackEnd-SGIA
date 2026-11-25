@@ -46,7 +46,11 @@ class LoanItem extends Model
         return $this->belongsTo(Loan::class);
     }
 
-    /** Unidades físicas entregadas (productos `equipo` / `maqueta`). */
+    /**
+     * Unidades físicas entregadas (productos `equipo` / `maqueta`).
+     *
+     * @return BelongsToMany<EquipmentUnit, $this>
+     */
     public function units(): BelongsToMany
     {
         return $this->belongsToMany(EquipmentUnit::class, 'loan_item_units')

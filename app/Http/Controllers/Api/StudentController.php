@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportStudentsRequest;
 use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use App\Http\Requests\UpdateStudentStatusRequest;
@@ -10,10 +11,14 @@ use App\Http\Resources\LoanResource;
 use App\Http\Resources\StudentResource;
 use App\Models\Loan;
 use App\Models\Student;
+use App\Reports\ReportExporter;
+use App\Reports\StudentsReport;
 use App\Rules\ChileanRut;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -28,8 +33,34 @@ class StudentController extends Controller
     {
         Gate::authorize('viewAny', Student::class);
 
-        $query = Student::with('career')->withCount('loans');
+        $query = $this->filtered(Student::with('career')->withCount('loans'), $request);
 
+        return StudentResource::collection(
+            $query->orderBy('full_name')->orderBy('id')->paginate($this->perPage($request))
+        );
+    }
+
+    /**
+     * GET /api/students/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportStudentsRequest $request, ReportExporter $exporter): Response
+    {
+        $query = $this->filtered(
+            Student::with('career')->withCount(['loans', 'loans as active_loans_count' => fn ($q) => $q->where('status', Loan::STATUS_IN_PROGRESS)]),
+            $request
+        );
+
+        return $exporter->download(new StudentsReport($request, $query), $request);
+    }
+
+    /**
+     * Filtros comunes del listado y del reporte: búsqueda (nombre o RUT con o sin puntos), carrera y activo.
+     *
+     * @param  Builder<Student>  $query
+     * @return Builder<Student>
+     */
+    private function filtered(Builder $query, Request $request): Builder
+    {
         if ($request->filled('search')) {
             $search = trim((string) $request->string('search'));
             // El RUT se guarda sin puntos: se busca también la forma limpia.
@@ -47,9 +78,7 @@ class StudentController extends Controller
             $query->where('is_active', $request->boolean('is_active'));
         }
 
-        return StudentResource::collection(
-            $query->orderBy('full_name')->orderBy('id')->paginate($this->perPage($request))
-        );
+        return $query;
     }
 
     /**

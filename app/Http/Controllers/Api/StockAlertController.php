@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportStockAlertsRequest;
 use App\Http\Resources\StockAlertResource;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestItem;
 use App\Models\StockAlert;
 use App\Models\StockAlertDismissal;
+use App\Reports\ReportExporter;
+use App\Reports\StockAlertsReport;
 use App\Services\StockAlertService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -24,25 +28,9 @@ class StockAlertController extends Controller
         // Las alertas abiertas se igualan al stock real del inventario antes de listarlas.
         $stockAlerts->reconcile();
 
-        $query = StockAlert::with(['product', 'product.location', 'product.supplier']);
-
-        // La campana pide `exclude_dismissed=1`: sin las alertas que este usuario quitó (lista y totales).
+        $query = $this->filtered(StockAlert::with(['product', 'product.location', 'product.supplier']), $request);
         $excludeDismissed = $request->boolean('exclude_dismissed');
         $userId = (int) $request->user()?->id;
-        if ($excludeDismissed) {
-            $query->notDismissedBy($userId);
-        }
-
-        if ($request->filled('alert_type')) {
-            $query->where('alert_type', $request->string('alert_type'));
-        }
-
-        // Por defecto mostrar solo no resueltas salvo que se indique lo contrario
-        if ($request->has('is_resolved')) {
-            $query->where('is_resolved', $request->boolean('is_resolved'));
-        } else {
-            $query->where('is_resolved', false);
-        }
 
         $perPage = $this->perPage($request);
         $alerts = $query->orderByDesc('created_at')->orderByDesc('id')->paginate($perPage);
@@ -69,6 +57,45 @@ class StockAlertController extends Controller
                 'resolved' => StockAlert::where('is_resolved', true)->count(),
             ],
         ]);
+    }
+
+    /**
+     * GET /api/alerts/export: reporte Excel con los filtros de la bandeja (docs/reportes-excel.md).
+     */
+    public function export(ExportStockAlertsRequest $request, StockAlertService $stockAlerts, ReportExporter $exporter): Response
+    {
+        $stockAlerts->reconcile();
+        $query = $this->filtered(StockAlert::with(['product.career', 'product.cajon.location', 'product.location']), $request);
+
+        return $exporter->download(new StockAlertsReport($request, $query), $request);
+    }
+
+    /**
+     * Filtros comunes del listado y del reporte: `exclude_dismissed`, `alert_type` e `is_resolved`
+     * (sin `is_resolved`, solo las abiertas).
+     *
+     * @param  Builder<StockAlert>  $query
+     * @return Builder<StockAlert>
+     */
+    private function filtered(Builder $query, Request $request): Builder
+    {
+        // La campana pide `exclude_dismissed=1`: sin las alertas que este usuario quitó (lista y totales).
+        if ($request->boolean('exclude_dismissed')) {
+            $query->notDismissedBy((int) $request->user()?->id);
+        }
+
+        if ($request->filled('alert_type')) {
+            $query->where('alert_type', $request->string('alert_type'));
+        }
+
+        // Por defecto mostrar solo no resueltas salvo que se indique lo contrario
+        if ($request->has('is_resolved')) {
+            $query->where('is_resolved', $request->boolean('is_resolved'));
+        } else {
+            $query->where('is_resolved', false);
+        }
+
+        return $query;
     }
 
     /**

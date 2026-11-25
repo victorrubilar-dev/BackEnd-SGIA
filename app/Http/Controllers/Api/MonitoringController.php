@@ -3,13 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportMonitoringRequest;
 use App\Http\Requests\LoginActivityRequest;
 use App\Http\Resources\FailedLoginResource;
 use App\Http\Resources\SessionResource;
 use App\Models\FailedLogin;
+use App\Models\LoginRecord;
 use App\Models\User;
+use App\Reports\MonitoringReport;
+use App\Reports\ReportExporter;
 use App\Services\AuditLogger;
 use App\Services\SecurityMonitorService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -36,10 +41,7 @@ class MonitoringController extends Controller
      */
     public function failedLogins(Request $request): AnonymousResourceCollection
     {
-        $query = FailedLogin::query()
-            ->when($request->filled('email'), fn ($q) => $q->where('email', 'ilike', '%'.$request->string('email').'%'))
-            ->when($request->filled('ip_address'), fn ($q) => $q->where('ip_address', $request->string('ip_address')))
-            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->string('reason')));
+        $query = $this->failedLoginsQuery($request);
 
         return FailedLoginResource::collection($query->orderByDesc('attempted_at')->orderByDesc('id')->paginate($this->perPage($request)));
     }
@@ -49,15 +51,55 @@ class MonitoringController extends Controller
      */
     public function sessions(Request $request): AnonymousResourceCollection
     {
-        $tokens = PersonalAccessToken::query()
-            ->where('tokenable_type', User::class)
-            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()))
+        $tokens = $this->sessionsQuery()
             ->with('tokenable')
             ->orderByRaw('last_used_at desc nulls last')
             ->orderByDesc('id')
             ->paginate($this->perPage($request));
 
         return SessionResource::collection($tokens);
+    }
+
+    /**
+     * GET /api/monitoring/export — reporte Excel: inicios de sesión de la ventana `hours`, intentos fallidos con
+     * los filtros de `failed-logins` y sesiones activas. Tiene correos e IP: queda en auditoría (docs/reportes-excel.md).
+     */
+    public function export(ExportMonitoringRequest $request, ReportExporter $exporter): Response
+    {
+        $hours = $request->integer('hours', 24);
+
+        return $exporter->download(new MonitoringReport(
+            $request,
+            $hours,
+            LoginRecord::query()->where('logged_in_at', '>=', $this->monitor->windowStart($hours))->where('logged_in_at', '<=', now()),
+            $this->failedLoginsQuery($request),
+            $this->sessionsQuery(),
+        ), $request);
+    }
+
+    /**
+     * Intentos rechazados con los filtros `email` (parcial), `ip_address` y `reason`.
+     *
+     * @return Builder<FailedLogin>
+     */
+    private function failedLoginsQuery(Request $request): Builder
+    {
+        return FailedLogin::query()
+            ->when($request->filled('email'), fn ($q) => $q->where('email', 'ilike', '%'.$request->string('email').'%'))
+            ->when($request->filled('ip_address'), fn ($q) => $q->where('ip_address', $request->string('ip_address')))
+            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->string('reason')));
+    }
+
+    /**
+     * Tokens de usuarios no vencidos.
+     *
+     * @return Builder<PersonalAccessToken>
+     */
+    private function sessionsQuery(): Builder
+    {
+        return PersonalAccessToken::query()
+            ->where('tokenable_type', User::class)
+            ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', now()));
     }
 
     /**

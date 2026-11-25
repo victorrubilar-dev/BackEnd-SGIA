@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CancelMaintenanceRecordRequest;
+use App\Http\Requests\Export\ExportMaintenanceRecordsRequest;
 use App\Http\Requests\FinishMaintenanceRecordRequest;
 use App\Http\Requests\MaintenanceSummaryRequest;
 use App\Http\Requests\StoreMaintenanceRecordRequest;
@@ -12,10 +13,13 @@ use App\Http\Resources\MaintenanceRecordResource;
 use App\Http\Resources\MaintenanceSummaryResource;
 use App\Models\EquipmentUnit;
 use App\Models\MaintenanceRecord;
+use App\Reports\MaintenanceRecordsReport;
+use App\Reports\ReportExporter;
 use App\Services\MaintenanceRecordService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -48,6 +52,14 @@ class MaintenanceRecordController extends Controller
         return MaintenanceRecordResource::collection(
             $maintenance->listQuery($request)->with(self::LIST_RELATIONS)->paginate($this->perPage($request))
         );
+    }
+
+    /**
+     * GET /api/maintenance-records/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportMaintenanceRecordsRequest $request, MaintenanceRecordService $maintenance, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new MaintenanceRecordsReport($request, $maintenance), $request);
     }
 
     /**

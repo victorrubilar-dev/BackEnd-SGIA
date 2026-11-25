@@ -20,6 +20,15 @@ class SecurityMonitorService
     public const FLAG_THRESHOLD = 5;
 
     /**
+     * Inicio de la ventana de las últimas `$hours` horas: el comienzo de la hora `$hours - 1` antes de `$to`
+     * (la ventana de `loginActivity` y del reporte Excel de monitoreo).
+     */
+    public function windowStart(int $hours, ?Carbon $to = null): Carbon
+    {
+        return ($to ?? now())->copy()->subHours($hours - 1)->startOfHour();
+    }
+
+    /**
      * Actividad de inicio de sesión de las últimas `$hours` horas, por hora.
      *
      * @return array<string, mixed>
@@ -27,7 +36,7 @@ class SecurityMonitorService
     public function loginActivity(int $hours): array
     {
         $to = now();
-        $from = $to->copy()->subHours($hours - 1)->startOfHour();
+        $from = $this->windowStart($hours, $to);
 
         // shortcut: agrupa por hora en PHP; con decenas de miles de intentos por semana, pasar a date_trunc en SQL.
         $successful = LoginRecord::whereBetween('logged_in_at', [$from, $to])->pluck('logged_in_at');

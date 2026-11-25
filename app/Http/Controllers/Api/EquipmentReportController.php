@@ -3,13 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportIncidentReportsRequest;
 use App\Http\Requests\UpdateIncidentReportStatusRequest;
 use App\Http\Resources\IncidentReportResource;
 use App\Models\EquipmentUnit;
 use App\Models\IncidentReport;
 use App\Models\Product;
+use App\Reports\IncidentReportsReport;
+use App\Reports\ReportExporter;
 use App\Services\EquipmentPdfService;
 use App\Services\IncidentReportService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -141,8 +145,29 @@ class EquipmentReportController extends Controller
     {
         Gate::authorize('viewAny', IncidentReport::class);
 
-        $query = IncidentReport::with(['reporter', 'product', 'equipmentUnit', 'location'])->latest();
+        $query = $this->filtered(IncidentReport::with(['reporter', 'product', 'equipmentUnit', 'location'])->latest(), $request);
 
+        return IncidentReportResource::collection($query->paginate($this->perPage($request)));
+    }
+
+    /**
+     * GET /api/incident-reports/export: reporte Excel con los filtros de la bandeja (docs/reportes-excel.md).
+     */
+    public function export(ExportIncidentReportsRequest $request, ReportExporter $exporter): Response
+    {
+        $query = $this->filtered(IncidentReport::with(['reporter', 'product.career', 'equipmentUnit', 'location']), $request);
+
+        return $exporter->download(new IncidentReportsReport($request, $query), $request);
+    }
+
+    /**
+     * Filtros comunes de la bandeja y del reporte: severidad, estado, tipo, unidad, producto y búsqueda.
+     *
+     * @param  Builder<IncidentReport>  $query
+     * @return Builder<IncidentReport>
+     */
+    private function filtered(Builder $query, Request $request): Builder
+    {
         foreach (['severity', 'status', 'request_type'] as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->string($field));
@@ -164,7 +189,7 @@ class EquipmentReportController extends Controller
                 ->orWhere('description', 'ilike', $like));
         }
 
-        return IncidentReportResource::collection($query->paginate($this->perPage($request)));
+        return $query;
     }
 
     /**

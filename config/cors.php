@@ -27,7 +27,8 @@ return [
 
     'allowed_headers' => ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With'],
 
-    'exposed_headers' => [],
+    // La web lee el nombre del archivo y el aviso de corte de los reportes Excel (docs/reportes-excel.md).
+    'exposed_headers' => ['Content-Disposition', 'X-Report-Truncated'],
 
     'max_age' => 0,
 

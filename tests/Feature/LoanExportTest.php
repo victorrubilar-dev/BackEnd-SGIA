@@ -2,7 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\EquipmentUnit;
 use App\Models\Loan;
+use App\Models\LoanItem;
+use App\Models\Product;
 use App\Models\Storeroom;
 use App\Models\User;
 use App\Support\XlsxWriter;
@@ -10,6 +13,7 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\Concerns\ExtractsPdfText;
+use Tests\Concerns\ReadsXlsx;
 use Tests\TestCase;
 use Tests\Unit\XlsxWriterTest;
 
@@ -20,6 +24,7 @@ class LoanExportTest extends TestCase
 {
     use DatabaseTransactions;
     use ExtractsPdfText;
+    use ReadsXlsx;
 
     protected function setUp(): void
     {
@@ -82,5 +87,35 @@ class LoanExportTest extends TestCase
         // A4 horizontal y Geist embebido.
         $this->assertMatchesRegularExpression('/\/MediaBox \[0\.0+ 0\.0+ 841\.89\d* 595\.28\d*\]/', $pdf);
         $this->assertStringContainsString('Geist-Regular', $pdf);
+    }
+
+    public function test_excel_has_detail_and_info_sheets_with_real_dates_and_status_filter(): void
+    {
+        $storeroom = Storeroom::factory()->create();
+        $loan = Loan::factory()->inProgress()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-10']);
+        Loan::factory()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-11']);
+        $product = Product::factory()->create(['type' => Product::TYPE_EQUIPMENT]);
+        $units = EquipmentUnit::factory()->count(2)->create(['product_id' => $product->id]);
+        $item = LoanItem::create(['loan_id' => $loan->id, 'product_id' => $product->id, 'name' => 'Notebook', 'quantity' => 2]);
+        $item->units()->attach($units->pluck('id'));
+        LoanItem::create(['loan_id' => $loan->id, 'name' => 'Cable HDMI', 'quantity' => 3]);
+
+        $response = $this->get("/api/loans/export?format=xlsx&storeroom_id={$storeroom->id}&estado=en_proceso&devuelto=0")->assertOk();
+        $this->assertSame(['Préstamos', 'Detalle', 'Info'], array_keys($this->readXlsx($response)));
+
+        $loans = $this->xlsxRecords($response, 'Préstamos');
+        $this->assertSame([$loan->code], array_column($loans, 'Código'), 'el estado filtra');
+        $this->assertSame(46091, $loans[0]['Fecha'], 'fecha real de Excel (2026-03-10)');
+        $this->assertSame('En proceso', $loans[0]['Estado']);
+
+        $detail = $this->xlsxRecords($response, 'Detalle');
+        $this->assertSame([...$units->pluck('code')->sort()->values()->all(), null], collect($detail)->map(fn ($r) => $r['Unidad'] ?? null)->sort(fn ($a, $b) => $a === null ? 1 : ($b === null ? -1 : strcmp($a, $b)))->values()->all(), 'una fila por unidad y una por insumo');
+        $this->assertSame(3, collect($detail)->firstWhere('Ítem', 'Cable HDMI')['Cantidad']);
+
+        $info = $this->xlsxInfo($response);
+        $this->assertSame('Historial de préstamos', $info['Reporte']);
+        $this->assertStringContainsString('Estado: En proceso', $info['Filtros']);
+        $this->assertStringContainsString("Pañol: {$storeroom->name}", $info['Filtros']);
+        $this->assertStringContainsString('Devuelto: no', $info['Filtros']);
     }
 }

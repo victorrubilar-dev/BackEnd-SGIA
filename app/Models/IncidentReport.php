@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property array<int, array{type: string, description: string}>|null $problems Problemas marcados en el formulario del docente (cast `array`).
+ */
 class IncidentReport extends Model
 {
     use HasFactory;

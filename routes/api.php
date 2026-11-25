@@ -56,6 +56,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Administración de usuarios (solo AD-01)
     Route::middleware('role:AD-01')->group(function () {
+        // Reportes Excel de administración (docs/reportes-excel.md): antes de /users/{user}.
+        Route::get('/users/export', [UserController::class, 'export']);
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export']);
+        Route::get('/monitoring/export', [MonitoringController::class, 'export']);
         Route::patch('/users/{user}/status', [UserController::class, 'updateStatus']);
         Route::apiResource('users', UserController::class);
         // Catálogo fijo de roles para el formulario de usuarios.
@@ -107,6 +111,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-16 / REQ-24: Presupuesto anual por carrera (DIR-01, director del área: todas las carreras) y reportes
     Route::middleware('role:DIR-01')->group(function () {
         Route::get('/budgets', [AnnualBudgetController::class, 'index']);
+        Route::get('/budgets/export', [BudgetReportController::class, 'export']);
         Route::get('/budgets/summary', [BudgetReportController::class, 'summary']);
         Route::get('/budgets/{annualBudget}', [AnnualBudgetController::class, 'show']);
         Route::get('/budgets/{annualBudget}/movements', [BudgetReportController::class, 'movements']);
@@ -121,6 +126,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:DIR-01')->group(function () {
         Route::post('/invoice-intakes', [InvoiceIntakeController::class, 'store'])->middleware('throttle:sensitive');
         Route::get('/invoice-intakes', [InvoiceIntakeController::class, 'index']);
+        Route::get('/invoice-intakes/export', [InvoiceIntakeController::class, 'export']);
         Route::get('/invoice-intakes/{invoiceIntake}', [InvoiceIntakeController::class, 'show']);
         Route::get('/invoice-intakes/{invoiceIntake}/file', [InvoiceIntakeController::class, 'file']);
         Route::post('/invoice-intakes/{invoiceIntake}/confirm', [InvoiceIntakeController::class, 'confirm']);
@@ -129,11 +135,13 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // REQ-06: Alertas de stock crítico
     Route::middleware('role:DIR-01,PAN-01')->get('/alerts/critical-stock', [StockAlertController::class, 'index']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/alerts/export', [StockAlertController::class, 'export']);
     Route::middleware('role:DIR-01,PAN-01')->patch('/alerts/{stockAlert}/resolve', [StockAlertController::class, 'resolve']);
     // Quitar la alerta solo de la campana del usuario (docs/exportaciones-y-campana.md).
     Route::middleware('role:DIR-01,PAN-01')->post('/alerts/{stockAlert}/dismiss', [StockAlertController::class, 'dismiss']);
 
     // REQ-08: Compras y órdenes de compra (FU-03)
+    Route::middleware('role:DIR-01')->get('/purchases/export', [PurchaseController::class, 'export']);
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/purchases', [PurchaseController::class, 'index']);
         Route::get('/purchases/{purchase}', [PurchaseController::class, 'show']);
@@ -147,6 +155,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Nuevo flujo de compras: solicitud de compra (NUEVO-FLUJO-COMPRAS.md). Lectura DIR-01, PAN-01; escritura solo DIR-01.
     // `/purchase-requests/areas` va antes de `{purchaseRequest}`.
+    Route::middleware('role:DIR-01')->get('/purchase-requests/export', [PurchaseRequestController::class, 'export']);
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/purchase-requests', [PurchaseRequestController::class, 'index']);
         Route::get('/purchase-requests/areas', [PurchaseRequestController::class, 'areas']);
@@ -168,6 +177,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     });
 
     // REQ-07: Proveedores (FU-03)
+    Route::middleware('role:DIR-01')->get('/suppliers/export', [SupplierController::class, 'export']);
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/suppliers', [SupplierController::class, 'index']);
         Route::get('/suppliers/{supplier}', [SupplierController::class, 'show']);
@@ -221,6 +231,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-20: Registro de estudiantes (FU-04, PAN-01). No se borran: se desactivan (auditoría).
     Route::middleware('role:PAN-01')->group(function () {
         Route::get('/students', [StudentController::class, 'index']);
+        Route::get('/students/export', [StudentController::class, 'export']);
         Route::get('/students/by-rut/{rut}', [StudentController::class, 'byRut']);
         Route::post('/students', [StudentController::class, 'store']);
         Route::get('/students/{student}', [StudentController::class, 'show']);
@@ -309,6 +320,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware(['role:PRO-01,PAN-01', 'throttle:sensitive'])->post('/incident-reports', [IncidentReportController::class, 'store']);
     // Estática: antes de /incident-reports/{incidentReport}
     Route::middleware('role:PRO-01')->get('/incident-reports/mine', [IncidentReportController::class, 'mine']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/incident-reports/export', [EquipmentReportController::class, 'export']);
     Route::get('/incident-reports', [EquipmentReportController::class, 'all']);
     Route::get('/incident-reports/{incidentReport}', [IncidentReportController::class, 'show']);
     Route::get('/incident-reports/{incidentReport}/pdf', [IncidentReportController::class, 'pdf']);
@@ -319,6 +331,8 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/incident-reports/{incidentReport}/evidence-photo', [EquipmentReportController::class, 'evidencePhoto']);
 
     // REQ-03, REQ-04, REQ-05: Productos
+    // Reporte Excel del inventario (docs/reportes-excel.md): antes de /products/{product}.
+    Route::middleware('role:DIR-01,PAN-01')->get('/products/export', [ProductController::class, 'export']);
     Route::get('/products/{product}/location', [ProductController::class, 'location']);
     Route::patch('/products/{product}/location', [ProductController::class, 'updateLocation']);
     Route::get('/products/{product}/barcode', [ProductController::class, 'barcode']);
@@ -332,6 +346,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::get('/products/{product}/units', [EquipmentUnitController::class, 'indexForProduct']);
     Route::middleware('role:DIR-01,PAN-01')->post('/products/{product}/units', [EquipmentUnitController::class, 'storeForProduct']);
     Route::get('/equipment-units', [EquipmentUnitController::class, 'index']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/equipment-units/export', [EquipmentUnitController::class, 'export']);
     Route::get('/equipment-units/by-code/{code}', [EquipmentUnitController::class, 'byCode']);
     Route::get('/equipment-units/{equipmentUnit}', [EquipmentUnitController::class, 'show']);
     Route::get('/equipment-units/{equipmentUnit}/barcode', [EquipmentUnitController::class, 'barcode']);
@@ -347,6 +362,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     // REQ-18: Registro de mantenciones (FU-05, PAN-01; DIR-01 lectura)
     Route::middleware('role:DIR-01,PAN-01')->group(function () {
         Route::get('/maintenance-records', [MaintenanceRecordController::class, 'index']);
+        Route::get('/maintenance-records/export', [MaintenanceRecordController::class, 'export']);
         Route::get('/maintenance-records/summary', [MaintenanceRecordController::class, 'summary']);
         Route::get('/maintenance-records/{maintenanceRecord}', [MaintenanceRecordController::class, 'show']);
         Route::get('/equipment-units/{equipmentUnit}/maintenance-records', [MaintenanceRecordController::class, 'unitIndex']);

@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportUsersRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Requests\UpdateUserStatusRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Reports\ReportExporter;
+use App\Reports\UsersReport;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -25,8 +29,30 @@ class UserController extends Controller
     {
         Gate::authorize('viewAny', User::class);
 
-        $query = User::with('careers');
+        $query = $this->filter(User::with('careers'), $request);
 
+        $perPage = $this->perPage($request);
+        $users = $query->orderByDesc('created_at')->paginate($perPage);
+
+        return UserResource::collection($users);
+    }
+
+    /**
+     * Reporte Excel de los usuarios con los filtros del listado; la exportación queda en auditoría (docs/reportes-excel.md).
+     */
+    public function export(ExportUsersRequest $request, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new UsersReport($request, $this->filter(User::query(), $request)), $request);
+    }
+
+    /**
+     * Filtros del listado (`storeroom_id`, `career_id`, `role`, `area`, `is_active`, `search`), compartidos con el reporte Excel.
+     *
+     * @param  Builder<User>  $query
+     * @return Builder<User>
+     */
+    private function filter(Builder $query, Request $request): Builder
+    {
         if ($request->filled('storeroom_id')) {
             $query->where('storeroom_id', $request->integer('storeroom_id'));
         }
@@ -55,10 +81,7 @@ class UserController extends Controller
             });
         }
 
-        $perPage = $this->perPage($request);
-        $users = $query->orderByDesc('created_at')->paginate($perPage);
-
-        return UserResource::collection($users);
+        return $query;
     }
 
     /**

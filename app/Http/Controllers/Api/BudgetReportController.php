@@ -3,14 +3,19 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportBudgetsRequest;
 use App\Http\Resources\BudgetMovementResource;
 use App\Http\Resources\BudgetSummaryResource;
 use App\Models\AnnualBudget;
 use App\Models\BudgetMovement;
 use App\Models\InvoiceIntake;
+use App\Reports\BudgetsReport;
+use App\Reports\ReportExporter;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
@@ -28,8 +33,28 @@ class BudgetReportController extends Controller
 
         $request->validate(['year' => ['sometimes', 'integer'], 'career_id' => ['sometimes', 'integer']]);
 
-        $query = AnnualBudget::query()->with('career');
+        $query = $this->filterSummary(AnnualBudget::query()->with('career'), $request);
 
+        return BudgetSummaryResource::collection($query->orderByDesc('year')->orderBy('career_id')->get());
+    }
+
+    /**
+     * Reporte Excel: resumen por presupuesto y movimientos, con los filtros del resumen (docs/reportes-excel.md).
+     * Sin `year` salen todos los años.
+     */
+    public function export(ExportBudgetsRequest $request, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new BudgetsReport($request, $this->filterSummary(AnnualBudget::query(), $request)), $request);
+    }
+
+    /**
+     * Filtros del resumen (`year`, `career_id`), compartidos con el reporte Excel.
+     *
+     * @param  Builder<AnnualBudget>  $query
+     * @return Builder<AnnualBudget>
+     */
+    private function filterSummary(Builder $query, Request $request): Builder
+    {
         if ($request->filled('year')) {
             $query->where('year', $request->integer('year'));
         }
@@ -38,7 +63,7 @@ class BudgetReportController extends Controller
             $query->where('career_id', $request->integer('career_id'));
         }
 
-        return BudgetSummaryResource::collection($query->orderByDesc('year')->orderBy('career_id')->get());
+        return $query;
     }
 
     /**

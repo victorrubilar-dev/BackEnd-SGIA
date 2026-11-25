@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Evento crítico auditado (REQ-NF-01). Solo se inserta; no se edita ni se borra desde la API.
+ *
+ * @property array<string, mixed>|null $old_values
+ * @property array<string, mixed>|null $new_values
  */
 class AuditLog extends Model
 {
@@ -21,6 +24,11 @@ class AuditLog extends Model
         'invoice_intake' => InvoiceIntake::class,
         'purchase_request' => PurchaseRequest::class,
     ];
+
+    /** Exportación de un reporte con datos personales (docs/reportes-excel.md): no apunta a un registro (`auditable_id` 0). */
+    public const REPORT_TYPE = 'report';
+
+    public const REPORT_EXPORT_ACTION = 'report.export';
 
     protected $fillable = [
         'user_id', 'action', 'auditable_type', 'auditable_id',

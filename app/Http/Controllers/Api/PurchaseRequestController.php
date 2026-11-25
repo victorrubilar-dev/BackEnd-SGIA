@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\SupplierArea;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportPurchaseRequestsRequest;
 use App\Http\Requests\SelectPurchaseRequestQuotationRequest;
 use App\Http\Requests\SendPurchaseRequestRequest;
 use App\Http\Requests\StorePurchaseRequestOrderRequest;
@@ -16,8 +17,11 @@ use App\Models\AnnualBudget;
 use App\Models\Purchase;
 use App\Models\PurchaseRequest;
 use App\Models\PurchaseRequestQuotation;
+use App\Reports\PurchaseRequestsReport;
+use App\Reports\ReportExporter;
 use App\Services\PurchaseRequestService;
 use App\Services\PurchaseRequestStateMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -52,8 +56,27 @@ class PurchaseRequestController extends Controller
             'to' => ['sometimes', 'date'],
         ], ['status.in' => 'El estado debe ser: '.implode(', ', PurchaseRequestStateMachine::STATUSES).'.']);
 
-        $query = PurchaseRequest::query()->with(['items.product', 'annualBudget.career', 'creator', 'purchase'])->withCount('quotations');
+        $query = $this->filter(PurchaseRequest::query()->with(['items.product', 'annualBudget.career', 'creator', 'purchase'])->withCount('quotations'), $request);
 
+        return PurchaseRequestResource::collection($query->orderByDesc('id')->paginate($this->perPage($request)));
+    }
+
+    /**
+     * Reporte Excel de las solicitudes con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportPurchaseRequestsRequest $request, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new PurchaseRequestsReport($request, $this->filter(PurchaseRequest::query(), $request)), $request);
+    }
+
+    /**
+     * Filtros del listado (`status`, `code`, `from`/`to` de creación), compartidos con el reporte Excel.
+     *
+     * @param  Builder<PurchaseRequest>  $query
+     * @return Builder<PurchaseRequest>
+     */
+    private function filter(Builder $query, Request $request): Builder
+    {
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
         }
@@ -70,7 +93,7 @@ class PurchaseRequestController extends Controller
             $query->whereDate('created_at', '<=', $request->date('to'));
         }
 
-        return PurchaseRequestResource::collection($query->orderByDesc('id')->paginate($this->perPage($request)));
+        return $query;
     }
 
     /** Enum de áreas para selects: `[{value, label}]`. */

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Exceptions\InvalidPurchaseStatusTransition;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Export\ExportPurchasesRequest;
 use App\Http\Requests\ScanArrivalRequest;
 use App\Http\Requests\UpdatePurchaseStatusRequest;
 use App\Http\Resources\BudgetMovementResource;
@@ -15,12 +16,16 @@ use App\Models\BudgetMovement;
 use App\Models\InvoiceIntake;
 use App\Models\Purchase;
 use App\Models\Quotation;
+use App\Reports\PurchasesReport;
+use App\Reports\ReportExporter;
 use App\Services\InvoiceOcrService;
 use App\Services\PurchaseService;
 use App\Services\PurchaseStateMachine;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -36,18 +41,37 @@ class PurchaseController extends Controller
     {
         Gate::authorize('viewAny', Purchase::class);
 
-        $query = Purchase::with(['supplier', 'items']);
+        $query = $this->filter(Purchase::with(['supplier', 'items']), $request, $purchaseService);
 
+        $perPage = $this->perPage($request);
+        $purchases = $query->orderByDesc('created_at')->paginate($perPage);
+
+        return PurchaseResource::collection($purchases);
+    }
+
+    /**
+     * Reporte Excel de las órdenes de compra con los filtros del listado (docs/reportes-excel.md).
+     */
+    public function export(ExportPurchasesRequest $request, PurchaseService $purchaseService, ReportExporter $exporter): Response
+    {
+        return $exporter->download(new PurchasesReport($request, $this->filter(Purchase::query(), $request, $purchaseService)), $request);
+    }
+
+    /**
+     * Filtros del listado (`status`/`estado`, `supplier_id`, `quotation_id`, `search`, `linkable`), compartidos con el reporte Excel.
+     *
+     * @param  Builder<Purchase>  $query
+     * @return Builder<Purchase>
+     */
+    private function filter(Builder $query, Request $request, PurchaseService $purchaseService): Builder
+    {
         $purchaseService->applyFilters($query, $request);
 
         if ($request->boolean('linkable')) {
             $query->linkable();
         }
 
-        $perPage = $this->perPage($request);
-        $purchases = $query->orderByDesc('created_at')->paginate($perPage);
-
-        return PurchaseResource::collection($purchases);
+        return $query;
     }
 
     /**

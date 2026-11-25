@@ -4,17 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ConfirmInvoiceIntakeRequest;
+use App\Http\Requests\Export\ExportInvoiceIntakesRequest;
 use App\Http\Requests\StoreInvoiceIntakeRequest;
 use App\Http\Resources\InvoiceIntakeResource;
 use App\Models\AnnualBudget;
 use App\Models\InvoiceIntake;
 use App\Models\Purchase;
 use App\Models\User;
+use App\Reports\InvoiceIntakesReport;
+use App\Reports\ReportExporter;
 use App\Services\InvoiceIntakeService;
 use App\Services\PurchaseRequestService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -35,8 +40,34 @@ class InvoiceIntakeController extends Controller
             'to' => ['sometimes', 'date'],
         ]);
 
-        $query = InvoiceIntake::query();
+        $query = $this->filter(InvoiceIntake::query(), $request);
 
+        return InvoiceIntakeResource::collection($query->with(['purchase:id,code,status', 'annualBudget'])->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
+    }
+
+    /**
+     * Reporte Excel de las facturas con los filtros del listado, más `purchase_id` y `purchase_request_code` (docs/reportes-excel.md).
+     */
+    public function export(ExportInvoiceIntakesRequest $request, ReportExporter $exporter): Response
+    {
+        $query = $this->filter(InvoiceIntake::query(), $request)
+            ->when($request->filled('purchase_id'), fn (Builder $q) => $q->where('purchase_id', $request->integer('purchase_id')))
+            ->when($request->filled('purchase_request_code'), fn (Builder $q) => $q->whereHas(
+                'purchase.purchaseRequest',
+                fn (Builder $r) => $r->where('code', 'ilike', '%'.$request->string('purchase_request_code').'%'),
+            ));
+
+        return $exporter->download(new InvoiceIntakesReport($request, $query), $request);
+    }
+
+    /**
+     * Filtros del listado (`status`, `annual_budget_id`, `from`/`to` de recepción), compartidos con el reporte Excel.
+     *
+     * @param  Builder<InvoiceIntake>  $query
+     * @return Builder<InvoiceIntake>
+     */
+    private function filter(Builder $query, Request $request): Builder
+    {
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
         }
@@ -53,7 +84,7 @@ class InvoiceIntakeController extends Controller
             $query->whereDate('received_at', '<=', $request->date('to'));
         }
 
-        return InvoiceIntakeResource::collection($query->with(['purchase:id,code,status', 'annualBudget'])->orderByDesc('received_at')->orderByDesc('id')->paginate($this->perPage($request)));
+        return $query;
     }
 
     public function store(StoreInvoiceIntakeRequest $request, InvoiceIntakeService $service, PurchaseRequestService $purchaseRequests): JsonResponse
