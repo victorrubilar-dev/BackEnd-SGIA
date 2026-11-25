@@ -237,3 +237,8 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 - **Bloqueos:** bloquear siempre unidades y luego producto, en ese orden.
 - **Migraciones con backfill:** probarlas con `php artisan migrate:fresh --seed` y también sobre una copia de la BD de desarrollo con datos, no solo en la BD de tests.
 - **Frontend:** casi todas las fases cambian Resources; coordinar con `front-end.md` antes de desplegar.
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `GET /api/equipment-units/export` (`DIR-01`, `PAN-01`): mismos filtros que `GET /api/equipment-units`, respeta el pañol de `PAN-01`; hoja «Unidades» (`EquipmentUnitExportTest`).
+- [ ] `GET /api/maintenance-records/export` (`DIR-01`, `PAN-01`): filtros `career_id`, `sin_carrera`, `from`, `to`; hoja «Mantenciones» (`MaintenanceRecordExportTest`).

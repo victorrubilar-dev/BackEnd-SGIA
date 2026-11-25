@@ -535,6 +535,20 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
+| `GET` | `/api/products/export` | `DIR-01`, `PAN-01` | Excel del inventario con los filtros de `GET /api/products` (hojas Productos, Unidades, Info). | `docs/reportes-excel.md` |
+| `GET` | `/api/equipment-units/export` | `DIR-01`, `PAN-01` | Excel de unidades con los filtros de `GET /api/equipment-units`. | `docs/reportes-excel.md` |
+| `GET` | `/api/alerts/export` | `DIR-01`, `PAN-01` | Excel de alertas de stock (`alert_type`, `is_resolved`). | `docs/reportes-excel.md` |
+| `GET` | `/api/maintenance-records/export` | `DIR-01`, `PAN-01` | Excel de mantenciones (`career_id`, `sin_carrera`, `from`, `to`). | `docs/reportes-excel.md` |
+| `GET` | `/api/incident-reports/export` | `DIR-01`, `PAN-01` | Excel de informes de novedades (`status`, `severity`, `search`). | `docs/reportes-excel.md` |
+| `GET` | `/api/students/export` | `PAN-01` | Excel de estudiantes (`career_id`, `is_active`, `search`). | `docs/reportes-excel.md` |
+| `GET` | `/api/purchase-requests/export` | `DIR-01` | Excel de solicitudes de compra e ítems (`status`, `code`, `from`, `to`). | `docs/reportes-excel.md` |
+| `GET` | `/api/purchases/export` | `DIR-01` | Excel de órdenes de compra e ítems. | `docs/reportes-excel.md` |
+| `GET` | `/api/invoice-intakes/export` | `DIR-01` | Excel de facturas e ítems (`status`, `annual_budget_id`, `from`, `to`). | `docs/reportes-excel.md` |
+| `GET` | `/api/budgets/export` | `DIR-01` | Excel de presupuestos: resumen por carrera y movimientos (`year`). | `docs/reportes-excel.md` |
+| `GET` | `/api/suppliers/export` | `DIR-01` | Excel de proveedores (`area`, `category`, `is_active`, `search`). | `docs/reportes-excel.md` |
+| `GET` | `/api/audit-logs/export` | `AD-01` | Excel del registro de auditoría con los filtros del listado. | `docs/reportes-excel.md` |
+| `GET` | `/api/users/export` | `AD-01` | Excel de usuarios con los filtros de `GET /api/users`. | `docs/reportes-excel.md` |
+| `GET` | `/api/monitoring/export` | `AD-01` | Excel de inicios de sesión, fallidos y sesiones activas (`hours`, `email`, `ip_address`). | `docs/reportes-excel.md` |
 
 ---
 

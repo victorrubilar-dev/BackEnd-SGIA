@@ -15,3 +15,10 @@
 - [x] Paginación en los listados (`per_page` por defecto 15, máximo 100).
 - [x] Eager loading verificado: `Model::preventLazyLoading()` fuera de producción (toda la suite falla ante un N+1) y `ListQueryPerformanceTest` recorre los listados, incluidos los nuevos, con tope de consultas por solicitud.
 - [x] Índices para filtros frecuentes: `products.barcode`, `loans.status`, `purchases.status`, `products.area`, más `users.role_id`, `maintenance_records(status, started_at)`, `maintenance_documents(equipment_unit_id, document_type)` y `audit_logs(auditable_type, auditable_id)` (`ListQueryPerformanceTest::test_frequent_filters_are_indexed`).
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `XlsxWriter` con varias hojas, fechas reales, montos CLP y cabecera gris; `ReportExporter` con hoja «Info» (reporte, usuario, fecha, filtros, filas) y tope de 10.000 filas con `X-Report-Truncated` (`XlsxWriterTest`, `ReportExporterTest`).
+- [ ] `GET /api/audit-logs/export` (`AD-01`): mismos filtros que el listado; hoja «Eventos» (`AuditLogExportTest`).
+- [ ] `GET /api/monitoring/export` (`AD-01`): hojas «Inicios de sesión», «Fallidos» y «Sesiones activas» (`MonitoringExportTest`).
+- [ ] Las exportaciones de auditoría, usuarios, estudiantes y monitoreo quedan en `audit_logs` (acción `export`).

@@ -29,3 +29,7 @@
 
 ### Pendiente
 - [ ] El PDF incrusta firma y foto solo con la extensión PHP `gd` instalada (el test del PDF no lo verifica porque no está en este entorno).
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `GET /api/incident-reports/export` (`DIR-01`, `PAN-01`): filtros `status`, `severity`, `search`, `product_id`, `equipment_unit_id`; solo los informes que el usuario puede ver; hoja «Informes» (`IncidentReportExportTest`).

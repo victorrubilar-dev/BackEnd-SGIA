@@ -64,3 +64,8 @@
 - [x] `GET/POST /api/products/{id}/units`, `GET /api/equipment-units`, `by-code/{code}`, `GET/PATCH/DELETE /api/equipment-units/{id}`, `PATCH …/status`, `GET …/barcode` (`EquipmentUnitTest`).
 - [x] Contadores de un equipo derivados de sus unidades; `quantity` y `/condition` bloqueados (`422`) en equipos (`EquipmentUnitTest`).
 - [x] Borrado protegido con `422`: producto con unidades, cajón con unidades, ubicación con cajones (`EquipmentUnitSchemaTest`, `CodeSequenceTest`).
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `GET /api/products/export` (`DIR-01`, `PAN-01`): mismos filtros que `GET /api/products`; hojas «Productos» y «Unidades» (`ProductExportTest`).
+- [ ] `GET /api/alerts/export` (`DIR-01`, `PAN-01`): filtros `alert_type`, `is_resolved`; hoja «Alertas» (`StockAlertExportTest`).

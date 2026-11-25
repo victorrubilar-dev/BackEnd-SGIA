@@ -90,3 +90,11 @@ La OC se emite **fuera del sistema** y se sube ligada al código de la solicitud
 - [x] Fase 6: factura ligada a la solicitud; anular repone y devuelve la solicitud a `con_oc` (`PurchaseRequestInvoiceTest`).
 - [x] Fase 7: `POST /api/purchases` retirado (`405`, `PurchaseStatusTest`/`PurchaseBudgetTest`); las OC históricas de seeders y tests usan `PurchaseService::createReserved` (sin ruta). Tablas `quotation*` conservadas. `ENDPOINTS.md` actualizado.
 - [x] Re-facturar por `purchase_request_code` aunque la reserva ya se haya liberado (`PurchaseRequestInvoiceTest`).
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `GET /api/purchase-requests/export` (`DIR-01`): filtros `status`, `code`, `from`, `to`; hojas «Solicitudes» e «Ítems» (`PurchaseRequestExportTest`).
+- [ ] `GET /api/purchases/export` (`DIR-01`): mismos filtros que el listado; hojas «Órdenes» e «Ítems» (`PurchaseExportTest`).
+- [ ] `GET /api/invoice-intakes/export` (`DIR-01`): filtros `status`, `annual_budget_id`, `from`, `to`; hojas «Facturas» e «Ítems» (`InvoiceIntakeExportTest`).
+- [ ] `GET /api/budgets/export` (`DIR-01`): filtro `year`; hojas «Resumen» y «Movimientos» (`BudgetExportTest`).
+- [ ] `GET /api/suppliers/export` (`DIR-01`): filtros `area`, `category`, `is_active`, `search`; hoja «Proveedores» (`SupplierExportTest`).

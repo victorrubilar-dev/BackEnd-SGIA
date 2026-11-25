@@ -73,3 +73,8 @@ El panel muestra `quantity` (todos los pañoles), pero la solicitud valida solo 
 - [x] El listado con `storeroom_id` no introduce N+1 (`ListQueryPerformanceTest`).
 - [x] `ProductStoreroomAvailabilityTest` y `ResourceContractTest` cubren el contrato.
 - [x] `ENDPOINTS.md`, `TASKS/front-end.md` y el documento del plan quedan actualizados como implementado.
+
+
+### Exportar Excel (`docs/reportes-excel.md`)
+- [ ] `GET /api/loans/export?format=xlsx`: fechas como fecha de Excel, hoja «Detalle» (una fila por ítem/unidad) y hoja «Info» (`LoanExportTest`).
+- [ ] `GET /api/students/export` (`PAN-01`): filtros `career_id`, `is_active`, `search`; hoja «Estudiantes» con préstamos totales y activos (`StudentExportTest`).
