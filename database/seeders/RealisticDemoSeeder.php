@@ -6,12 +6,15 @@ use App\Models\AnnualBudget;
 use App\Models\Cajon;
 use App\Models\Career;
 use App\Models\Category;
+use App\Models\ChartTemplate;
 use App\Models\EquipmentUnit;
+use App\Models\FailedLogin;
 use App\Models\IncidentReport;
 use App\Models\InvoiceIntake;
 use App\Models\Loan;
 use App\Models\LoanItem;
 use App\Models\Location;
+use App\Models\LoginRecord;
 use App\Models\MaintenanceRecord;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -21,12 +24,15 @@ use App\Models\QuotationSupplier;
 use App\Models\Student;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Rules\ChileanRut;
 use App\Services\AnnualBudgetService;
 use App\Services\CodeSequenceService;
 use App\Services\EquipmentUnitService;
 use App\Services\InvoiceIntakeService;
 use App\Services\PurchaseService;
 use App\Services\StockAlertService;
+use App\Services\UserChartService;
+use Dompdf\Dompdf;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +42,11 @@ use Illuminate\Support\Facades\Storage;
 /**
  * Datos de demostración realistas para presentar el sistema completo (reemplaza a DemoMetricsSeeder + InvoiceDemoSeeder).
  * Deja SIN procesar la factura 1 (prueba1.jpeg, Electroplus): su OC de pilas queda pendiente y la factura sin subir.
+ * Variedad: 6 salas/talleres/bodegas nuevas, ~55 productos (equipos, maquetas e insumos; uno inactivo, insumos críticos y
+ * agotados), 13 docentes (uno inactivo; docente@sgia.cl con solicitudes propias), 2 pañoleros y 2 directores, 30 estudiantes
+ * (3 inactivos), 220 préstamos (algunos atrasados), ~32 mantenciones (en curso, anuladas, bajas, próximas y vencidas),
+ * ~26 informes, 10 solicitudes de compra (todas las etapas, una facturada) y accesos de la última semana para Monitoreo.
+ * Si faltan las imágenes de `pruebas-facturas/` (no se versionan), cada factura usa un PDF de demostración generado.
  * Uso: php artisan migrate:fresh --seed --seeder=RealisticDemoSeeder   (destruye la BD local)
  */
 class RealisticDemoSeeder extends Seeder
@@ -64,15 +75,19 @@ class RealisticDemoSeeder extends Seeder
         $budgets = $this->budgets($admin, $careers);
         $teachers = $this->teachers($password, $careers);
         $students = $this->students($careers);
+        $panoleros = collect([$panolero, $this->staff($password, $careers)]);
 
         $this->purchasing($admin, $director, $suppliers, $products, $budgets);
-        $this->loans($panolero, $teachers, $students, $products, $locations, $careers);
+        $this->loans($panoleros, $teachers, $students, $products, $locations, $careers);
         $this->maintenance($panolero, $suppliers);
         $this->incidents($teachers, $locations, $products);
+        $this->access($teachers);
+        $this->dashboards();
 
         $this->command?->info(sprintf(
-            'Demo realista: %d productos, %d unidades, %d préstamos, %d OC, %d solicitudes de compra, %d facturas, %d alertas. Factura 1 (Electroplus) pendiente.',
-            Product::count(), EquipmentUnit::count(), Loan::count(), Purchase::count(), PurchaseRequest::count(), InvoiceIntake::count(), DB::table('stock_alerts')->count()
+            'Demo realista: %d productos, %d unidades, %d préstamos, %d OC, %d solicitudes de compra, %d facturas, %d alertas, %d mantenciones, %d informes, %d estudiantes, %d usuarios. Factura 1 (Electroplus) pendiente.',
+            Product::count(), EquipmentUnit::count(), Loan::count(), Purchase::count(), PurchaseRequest::count(), InvoiceIntake::count(), DB::table('stock_alerts')->count(),
+            MaintenanceRecord::count(), IncidentReport::count(), Student::count(), User::count()
         ));
     }
 
@@ -84,6 +99,8 @@ class RealisticDemoSeeder extends Seeder
             ['Laboratorio de Ciberseguridad C-105', Location::TIPO_SALA, 'Laboratorio de Ciberseguridad y Hacking Ético', '1', 1, ['Mesa-A', 'Mesa-B', 'Caja-Fuerte-Equipos']],
             ['Sala de Computación S-210', Location::TIPO_SALA, 'Sala de Programación y Desarrollo de Software', '2', 2, ['Armario-Notebooks']],
             ['Bodega de Insumos', Location::TIPO_BODEGA, 'Bodega de insumos y material de reposición', '1', 1, ['Estante-I1', 'Estante-I2', 'Estante-I3']],
+            ['Taller de Electrónica E-102', Location::TIPO_TALLER, 'Taller de soldadura, prototipos e impresión 3D', '1', 1, ['Banco-1', 'Banco-2', 'Herramientas']],
+            ['Laboratorio de IoT I-301', Location::TIPO_SALA, 'Laboratorio de Internet de las Cosas y domótica', '3', 3, ['IoT-1', 'IoT-2']],
         ];
         foreach ($extra as [$name, $type, $desc, $building, $floor, $drawers]) {
             $loc = Location::firstOrCreate(['nombre' => $name], [
@@ -150,10 +167,37 @@ class RealisticDemoSeeder extends Seeder
             'guantes' => ['Guantes de seguridad Ansell Nitrilo Hyflex 11-800', 'insumo', 'ISD', 'Seguridad', 'systelec', 0, 20, 4632, 'Bodega de Insumos', 'Estante-I3', null],
             'gafas' => ['Gafas de seguridad Raptor Tech claras', 'insumo', 'ISD', 'Seguridad', 'systelec', 0, 10, 620, 'Bodega de Insumos', 'Estante-I3', null],
             'cinta' => ['Cinta seguridad peligro amarilla-negra 100 m x 48 mm', 'insumo', 'ISD', 'Seguridad', 'systelec', 0, 2, 3468, 'Bodega de Insumos', 'Estante-I3', null],
+            // Más variedad: equipos y maquetas de todas las carreras.
+            'ap' => ['Access Point Ubiquiti UniFi U6 Lite', 'equipo', 'ISD', 'Redes', 'redsur', 8, 2, 129000, 'Laboratorio de Redes R-204', 'Rack-2', 'UAP'],
+            'tester' => ['Certificador de cableado Fluke MicroScanner2', 'equipo', 'ISD', 'Redes', 'redsur', 4, 1, 260000, 'Laboratorio de Redes R-204', 'Armario-Redes', 'FMS'],
+            'fortigate' => ['Firewall Fortinet FortiGate 40F', 'equipo', 'IC', 'Ciberseguridad', 'ciberlab', 4, 1, 690000, 'Laboratorio de Ciberseguridad C-105', 'Caja-Fuerte-Equipos', 'FGT'],
+            'camara' => ['Cámara IP Hikvision domo 4MP', 'equipo', 'IC', 'Ciberseguridad', 'ciberlab', 6, 2, 59000, 'Laboratorio de Ciberseguridad C-105', 'Mesa-B', 'HKV'],
+            'tablet' => ['Tablet Samsung Galaxy Tab A9', 'equipo', 'II', 'Computación', 'compintegral', 8, 2, 169990, 'Sala de Computación S-210', 'Armario-Notebooks', 'SGT'],
+            'nas' => ['NAS Synology DS224+', 'equipo', 'II', 'Computación', 'compintegral', 2, 1, 459000, 'Sala de Computación S-210', 'Armario-Notebooks', 'SYN'],
+            'ups' => ['UPS APC Back-UPS 1500VA', 'equipo', 'II', 'Electricidad', 'electroplus', 4, 1, 219000, 'Pañol Central', 'Estante-E1', 'APC'],
+            'cautin' => ['Estación de soldadura Hakko FX-888D', 'equipo', 'AP', 'Electrónica', 'systelec', 8, 2, 145000, 'Taller de Electrónica E-102', 'Banco-1', 'HKO'],
+            'impresora3d' => ['Impresora 3D Creality Ender 3 V3', 'equipo', 'AP', 'Electrónica', 'compintegral', 3, 1, 289000, 'Taller de Electrónica E-102', 'Banco-2', 'CR3'],
+            'esp32' => ['Kit ESP32 DevKit IoT', 'equipo', 'AP', 'Electrónica', 'systelec', 20, 5, 12900, 'Laboratorio de IoT I-301', 'IoT-1', 'ESP'],
+            'maq_fibra' => ['Maqueta de red de fibra óptica FTTH', 'maqueta', 'ISD', 'Redes', 'redsur', 2, 1, 190000, 'Laboratorio de Redes R-204', 'Armario-Redes', 'MFO'],
+            'maq_iot' => ['Maqueta de domótica IoT', 'maqueta', 'AP', 'Electrónica', 'systelec', 3, 1, 160000, 'Laboratorio de IoT I-301', 'IoT-2', 'MIO'],
+            'maq_soc' => ['Maqueta de centro de operaciones de seguridad (SOC)', 'maqueta', 'IC', 'Ciberseguridad', 'ciberlab', 2, 1, 240000, 'Laboratorio de Ciberseguridad C-105', 'Mesa-A', 'MSC'],
+            // Insumos con stock holgado, crítico (bajo el mínimo) y agotado.
+            'patch_fibra' => ['Patch cord fibra óptica LC-LC 2 m', 'insumo', 'ISD', 'Redes', 'redsur', 40, 15, 4900, 'Bodega de Insumos', 'Estante-I1', null],
+            'canaleta' => ['Canaleta PVC 20x10 mm (tira 2 m)', 'insumo', 'ISD', 'Electricidad', 'electroplus', 3, 10, 1500, 'Bodega de Insumos', 'Estante-I3', null],
+            'bridas' => ['Bridas plásticas 200 mm (bolsa 100)', 'insumo', 'ISD', 'Electricidad', 'electroplus', 18, 5, 2300, 'Bodega de Insumos', 'Estante-I3', null],
+            'alcohol' => ['Alcohol isopropílico 99% (1 L)', 'insumo', 'II', 'Computación', 'compintegral', 4, 3, 6900, 'Bodega de Insumos', 'Estante-I2', null],
+            'hdmi' => ['Cable HDMI 2 m', 'insumo', 'II', 'Audiovisual', 'compintegral', 12, 4, 3990, 'Bodega de Insumos', 'Estante-I1', null],
+            'cr2032' => ['Pila botón CR2032 (blíster 5)', 'insumo', 'AP', 'Electricidad', 'electroplus', 2, 6, 2500, 'Bodega de Insumos', 'Estante-I3', null],
+            'termo' => ['Tubo termocontraíble surtido (kit)', 'insumo', 'AP', 'Electrónica', 'systelec', 9, 4, 5200, 'Taller de Electrónica E-102', 'Herramientas', null],
+            'filamento' => ['Filamento PLA 1,75 mm (rollo 1 kg)', 'insumo', 'AP', 'Electrónica', 'compintegral', 5, 3, 15990, 'Taller de Electrónica E-102', 'Herramientas', null],
+            'microsd' => ['Tarjeta microSD 32GB', 'insumo', 'IC', 'Ciberseguridad', 'ciberlab', 0, 5, 6500, 'Bodega de Insumos', 'Estante-I2', null],
+            // Producto descontinuado: queda inactivo.
+            'hub' => ['Hub USB 2.0 de 4 puertos (descontinuado)', 'insumo', 'II', 'Computación', 'compintegral', 3, 0, 4990, 'Bodega de Insumos', 'Estante-I1', null, false],
         ];
 
         return collect($rows)->map(function ($d) use ($codes, $units, $cat, $admin, $careers, $suppliers, $locations, $cajones) {
-            [$name, $type, $career, $category, $supplier, $qty, $min, $price, $place, $drawer, $serialPrefix] = $d;
+            [$name, $type, $career, $category, $supplier, $qty, $min, $price, $place, $drawer, $serialPrefix] = array_slice($d, 0, 11);
+            $active = $d[11] ?? true;
             $hasUnits = $type !== Product::TYPE_SUPPLY;
             $cajon = $cajones[$drawer];
 
@@ -168,7 +212,7 @@ class RealisticDemoSeeder extends Seeder
                 'maintenance_priority' => $hasUnits ? (['equipo' => 'A', 'maqueta' => 'C'][$type]) : 'C',
                 'requires_calibration' => in_array($name, ['Osciloscopio Rigol DS1054Z', 'Multímetro digital Fluke 117', 'Fuente de poder variable 30V 5A'], true),
                 'maintenance_frequency_months' => $hasUnits ? ($type === 'equipo' ? 6 : 12) : null,
-                'is_active' => true, 'created_by' => $admin->id, 'updated_by' => $admin->id,
+                'is_active' => $active, 'created_by' => $admin->id, 'updated_by' => $admin->id,
             ]);
 
             if ($hasUnits && $qty > 0) {
@@ -194,27 +238,77 @@ class RealisticDemoSeeder extends Seeder
     {
         $names = Career::pluck('name', 'code');
 
-        return collect([
+        $teachers = collect([
             ['Carlos Muñoz Henríquez', 'ISD'], ['Patricia Soto Alarcón', 'II'], ['Andrés Rojas Quezada', 'IC'],
             ['Daniela Fuentes Maturana', 'AP'], ['Felipe Vargas Cifuentes', 'II'], ['Camila Reyes Painemal', 'IC'],
+            ['Gonzalo Sepúlveda Araya', 'ISD'], ['Valeria Henríquez Toro', 'AP'], ['Martín Cárcamo Uribe', 'IC'],
+            ['Catalina Aguilera Ríos', 'II'], ['Sebastián Lagos Ñancupil', 'AP'],
+            // Docente que ya no trabaja en la sede: inactivo (no entra, conserva su historial).
+            ['Rodrigo Leiva Saavedra', 'ISD', false],
         ])->map(fn ($t, $i) => User::updateOrCreate(
             ['email' => 'docente'.($i + 1).'@sgia.cl'],
-            ['name' => $t[0], 'password' => $password, 'role' => User::ROLE_TEACHER, 'area' => $names[$t[1]], 'is_active' => true]
+            ['name' => $t[0], 'password' => $password, 'role' => User::ROLE_TEACHER, 'area' => $names[$t[1]], 'is_active' => $t[2] ?? true]
         )->setRelation('careerCode', $t[1]));
+
+        // La cuenta de presentación (docente@sgia.cl) también tiene préstamos e informes propios.
+        $demo = User::where('email', 'docente@sgia.cl')->firstOrFail();
+        $demo->update(['name' => 'Francisco Morales Bravo', 'area' => $names['II']]);
+
+        return $teachers->push($demo->setRelation('careerCode', 'II'));
+    }
+
+    /** Segundo pañolero (turno tarde) y segunda directora (Informática y Ciberseguridad). Devuelve el pañolero. */
+    private function staff(string $password, $careers): User
+    {
+        $panol = User::updateOrCreate(['email' => 'panol2@sgia.cl'], [
+            'name' => 'Héctor Jara Morales', 'password' => $password, 'role' => User::ROLE_WAREHOUSE, 'area' => 'Informática', 'is_active' => true,
+        ]);
+        $directora = User::updateOrCreate(['email' => 'director2@sgia.cl'], [
+            'name' => 'Marcela Bustos Riquelme', 'password' => $password, 'role' => User::ROLE_DIRECTOR, 'area' => 'Informática', 'is_active' => true,
+        ]);
+        $directora->careers()->syncWithoutDetaching([$careers['II'], $careers['IC']]);
+
+        return $panol;
     }
 
     private function students($careers)
     {
-        return collect([
+        $rows = [
             ['21345678-9', 'Matías Parra Lagos', 'IC'], ['20987654-3', 'Sofía Contreras Díaz', 'II'],
             ['21111222-K', 'Benjamín Navarro Silva', 'AP'], ['20555444-1', 'Valentina Ortiz Ruiz', 'ISD'],
             ['21666777-5', 'Joaquín Mella Soto', 'IC'], ['20222333-7', 'Antonia Vega Cid', 'AP'],
             ['21098765-4', 'Ignacio Carrasco Leal', 'ISD'], ['20876543-2', 'Francisca Neira Millar', 'II'],
             ['21234987-6', 'Tomás Painemal Huenchullán', 'IC'], ['20765432-1', 'Javiera Alarcón Pino', 'AP'],
-        ])->map(fn ($s) => Student::firstOrCreate(['rut' => $s[0]], [
-            'full_name' => $s[1], 'email' => strtolower(explode(' ', $s[1])[0]).'.'.strtolower(explode(' ', $s[1])[1]).'@alumnos.inacap.cl',
-            'career_id' => $careers[$s[2]], 'registered_at' => now()->subDays(mt_rand(30, 200)),
-        ]));
+        ];
+        // 20 más, con RUT de dígito verificador válido; los tres últimos quedan inactivos (egresados o retirados).
+        $more = [
+            ['Agustín Fuentealba Rivas', 'ISD'], ['Isidora Catalán Burgos', 'II'], ['Vicente Huaiquil Torres', 'IC'],
+            ['Florencia Arriagada Paz', 'AP'], ['Lucas Riquelme Espinoza', 'ISD'], ['Emilia Saavedra Cortés', 'II'],
+            ['Diego Quilodrán Molina', 'IC'], ['Martina Gallardo Opazo', 'AP'], ['Cristóbal Yáñez Bravo', 'ISD'],
+            ['Josefa Hidalgo Sanhueza', 'II'], ['Maximiliano Ulloa Vera', 'IC'], ['Trinidad Bustamante Lillo', 'AP'],
+            ['Felipe Cayuqueo Antilef', 'ISD'], ['Renata Jofré Castillo', 'II'], ['Bastián Orellana Pérez', 'IC'],
+            ['Amanda Villagra Retamal', 'AP'], ['Simón Toledo Garrido', 'ISD'], ['Paz Zúñiga Lobos', 'II'],
+            ['Nicolás Mardones Fica', 'IC'], ['Constanza Barra Vidal', 'AP'],
+        ];
+        foreach ($more as $i => [$name, $career]) {
+            $body = (string) (20_300_000 + $i * 61_237);
+            $rows[] = [$body.'-'.ChileanRut::checkDigit($body), $name, $career, $i >= 17];
+        }
+
+        return collect($rows)->map(function ($s) use ($careers) {
+            // Dígito verificador siempre válido (los RUT de la lista original no lo tenían).
+            $body = explode('-', $s[0])[0];
+            $s[0] = $body.'-'.ChileanRut::checkDigit($body);
+            $student = Student::firstOrCreate(['rut' => $s[0]], [
+                'full_name' => $s[1], 'email' => strtolower(explode(' ', $s[1])[0]).'.'.strtolower(explode(' ', $s[1])[1]).'@alumnos.inacap.cl',
+                'career_id' => $careers[$s[2]], 'registered_at' => now()->subDays(mt_rand(30, 400)),
+            ]);
+            if ($s[3] ?? false) {
+                $student->forceFill(['is_active' => false])->save();
+            }
+
+            return $student;
+        })->filter(fn ($s) => $s->is_active)->values();
     }
 
     private function purchasing(User $admin, User $director, $suppliers, $products, $budgets): void
@@ -238,8 +332,7 @@ class RealisticDemoSeeder extends Seeder
             return $p;
         };
         $confirm = function (Purchase $p, string $file, string $number, array $l, int $daysAgo) use ($intakes, $products, $price, $admin) {
-            $path = 'invoice-intakes/'.basename($file);
-            Storage::disk('local')->put($path, file_get_contents(base_path("pruebas-facturas/{$file}")));
+            $path = $this->storeInvoiceFile($file, $number);
             $intake = InvoiceIntake::create([
                 'user_id' => $admin->id, 'annual_budget_id' => $p->annual_budget_id, 'purchase_id' => $p->id,
                 'pdf_path' => $path, 'document_number' => $number, 'status' => InvoiceIntake::STATUS_DRAFT,
@@ -294,9 +387,18 @@ class RealisticDemoSeeder extends Seeder
             [PurchaseRequest::STATUS_QUOTED, 'IC', 'Pendrives de arranque forense.', [['pendrive', 30]], ['ciberseguridad', 'informatica'], [['ciberlab', 1.15], ['compintegral', 1.1], ['systelec', 1.2]], 1, 9],
             [PurchaseRequest::STATUS_ORDERED, 'AP', 'Reposición de pilas AAA para multímetros.', [['aaa', 40]], ['telecomunicaciones'], [['electroplus', 1.0], ['systelec', 0.97], ['microtec', 1.05]], 0, 14],
             [PurchaseRequest::STATUS_CANCELLED, 'ISD', 'Switches para ampliar el laboratorio (se posterga al próximo año).', [['switch', 4]], [], [], null, 20],
+            [PurchaseRequest::STATUS_DRAFT, 'IC', 'Tarjetas microSD para el laboratorio forense (agotadas).', [['microsd', 25]], [], [], null, 0],
+            [PurchaseRequest::STATUS_SENT, 'II', 'Cables HDMI y alcohol isopropílico para las salas de computación.', [['hdmi', 15], ['alcohol', 6]], ['informatica', 'diseno'], [], null, 4],
+            [PurchaseRequest::STATUS_QUOTED, 'ISD', 'Canaletas y bridas para ordenar el cableado del laboratorio R-204.', [['canaleta', 40], ['bridas', 10]], ['telecomunicaciones'], [['redsur', 1.0], ['electroplus', 0.95], ['systelec', 1.08]], null, 8],
+            // Ciclo completo: con OC y factura confirmada (queda «facturada», stock ingresado y presupuesto consumido).
+            [PurchaseRequest::STATUS_ORDERED, 'AP', 'Termocontraíble y patch cords de fibra para el taller de electrónica.', [['termo', 6], ['patch_fibra', 20]], ['telecomunicaciones'], [['systelec', 1.0], ['redsur', 0.98], ['electroplus', 1.06]], 1, 30, '7731'],
         ];
 
-        foreach ($defs as [$status, $budget, $notes, $lines, $areas, $quotes, $selected, $daysAgo]) {
+        $intakes = app(InvoiceIntakeService::class);
+
+        foreach ($defs as $def) {
+            [$status, $budget, $notes, $lines, $areas, $quotes, $selected, $daysAgo] = $def;
+            $invoiceNumber = $def[8] ?? null;
             $when = now()->subDays($daysAgo);
             $approvedAt = $status === PurchaseRequest::STATUS_DRAFT ? null : $when->copy()->addHours(2);
             $request = PurchaseRequest::create([
@@ -357,8 +459,49 @@ class RealisticDemoSeeder extends Seeder
                     ]);
                 }
                 $budgetService->reserve($budgets[$budget]->refresh(), $chosen->total, $purchase, $director->id);
+
+                if ($invoiceNumber !== null) {
+                    $intake = InvoiceIntake::create([
+                        'user_id' => $director->id, 'annual_budget_id' => $purchase->annual_budget_id, 'purchase_id' => $purchase->id,
+                        'pdf_path' => $this->storeInvoiceFile("factura-{$invoiceNumber}.pdf", $invoiceNumber), 'document_number' => $invoiceNumber,
+                        'status' => InvoiceIntake::STATUS_DRAFT,
+                        'raw_ocr_payload' => ['invoice_number' => $invoiceNumber, 'supplier_id' => $purchase->supplier_id, 'items' => [], 'ocr_available' => true],
+                    ]);
+                    $intakes->confirm($intake, $invoiceNumber, $purchase->items()->get()->map(fn ($it) => [
+                        'product_id' => $it->product_id, 'quantity' => $it->quantity, 'unit_price' => (float) $it->unit_price,
+                    ])->all(), $director->id);
+                    $at = $when->copy()->addDays(12);
+                    $intake->forceFill(['created_at' => $at, 'updated_at' => $at, 'received_at' => $at])->saveQuietly();
+                    $purchase->refresh()->forceFill(['received_at' => $at])->saveQuietly();
+                }
             }
         }
+    }
+
+    /**
+     * Guarda el archivo de una factura de demostración y devuelve su ruta. Usa `pruebas-facturas/{$file}` si existe
+     * (no se versiona); si no, un PDF generado con DomPDF que dice que es de demostración.
+     */
+    private function storeInvoiceFile(string $file, string $number): string
+    {
+        $source = base_path("pruebas-facturas/{$file}");
+        if (is_file($source)) {
+            $path = 'invoice-intakes/'.basename($file);
+            Storage::disk('local')->put($path, (string) file_get_contents($source));
+
+            return $path;
+        }
+
+        $dompdf = new Dompdf;
+        $dompdf->loadHtml('<html><body style="font-family: DejaVu Sans, sans-serif; padding: 40px;">'
+            .'<h1 style="font-size: 22px;">Factura N° '.e($number).'</h1>'
+            .'<p style="font-size: 14px; color: #555;">Documento de demostración de SGIA: reemplaza a la imagen original de la factura, que no está en el repositorio.</p>'
+            .'</body></html>');
+        $dompdf->render();
+        $path = 'invoice-intakes/demo-factura-'.$number.'.pdf';
+        Storage::disk('local')->put($path, (string) $dompdf->output());
+
+        return $path;
     }
 
     private function quotations($admin, $suppliers, $products): void
@@ -406,7 +549,7 @@ class RealisticDemoSeeder extends Seeder
         }
     }
 
-    private function loans(User $panolero, $teachers, $students, $products, $locations, $careers): void
+    private function loans(Collection $panoleros, $teachers, $students, $products, $locations, $careers): void
     {
         $subjects = [
             'ISD' => ['Redes de Computadores', 'Telecomunicaciones I', 'Cableado Estructurado'],
@@ -416,26 +559,44 @@ class RealisticDemoSeeder extends Seeder
         ];
         $rooms = $locations->filter(fn ($l) => $l->tipo === Location::TIPO_SALA)->values();
         $blocks = [['08:30', '10:00', 'Bloque 1-2'], ['10:15', '11:45', 'Bloque 3-4'], ['14:00', '15:30', 'Bloque 5-6'], ['15:45', '17:15', 'Bloque 7-8']];
-        $loanable = $products->filter(fn ($p) => $p->type !== Product::TYPE_SUPPLY || in_array($p->stock_minimo, [6, 8, 10, 20, 80, 100], true))
+        $loanable = $products->filter(fn ($p) => $p->is_active)
+            ->filter(fn ($p) => $p->type !== Product::TYPE_SUPPLY || in_array($p->stock_minimo, [4, 5, 6, 8, 10, 15, 20, 80, 100], true))
             ->reject(fn ($p) => in_array($p->name, ['Tarjeta de interconexión Modbus TCP a Profibus DP GCA-EN-024806', 'Válvula on/off con switch posición (bola 1 cuerpo, acero carbono)'], true))
             ->filter(fn ($p) => $p->type !== Product::TYPE_SUPPLY || $p->quantity > 0)->values();
         $busy = [];
 
-        for ($i = 1; $i <= 110; $i++) {
-            $day = now()->subDays(mt_rand(0, 150));
+        $active = $teachers->filter(fn ($t) => $t->is_active)->values();
+        $demoTeacher = $teachers->firstWhere('email', 'docente@sgia.cl');
+
+        for ($i = 1; $i <= 220; $i++) {
+            // Las 4 primeras, de la cuenta de presentación; ~20 más en los últimos 5 días (cola y préstamos abiertos).
+            $day = match (true) {
+                $i <= 4 => now()->subDays($i - 1),
+                $i <= 24 => now()->subDays(mt_rand(0, 5)),
+                // 3 atrasados fijos (hace 7, 9 y 11 días), para que Inicio y Analítica siempre los muestren.
+                $i <= 27 => now()->subDays(7 + ($i - 25) * 2),
+                default => now()->subDays(mt_rand(0, 180)),
+            };
+            $forcedLate = $i >= 25 && $i <= 27;
             if ($day->isWeekend()) {
                 $day = $day->previousWeekday();
             }
             $day = $day->startOfDay();
-            $teacher = $teachers->random();
-            $career = $teacher->careerCode;
             $recent = $day->gte(now()->subDays(3));
+            $teacher = $i <= 4 ? $demoTeacher : ($recent ? $active->random() : $teachers->random());
+            $career = $teacher->careerCode;
             $roll = mt_rand(1, 100);
-            $status = $recent
-                ? [Loan::STATUS_PENDING, Loan::STATUS_IN_PROGRESS, Loan::STATUS_PROCESSED][$roll % 3]
-                : ($roll <= 90 ? Loan::STATUS_PROCESSED : Loan::STATUS_REJECTED);
-            $open = $status === Loan::STATUS_PROCESSED && $recent;
-            $due = $day->copy()->addDays(mt_rand(0, 3));
+            $status = $i <= 4
+                ? [Loan::STATUS_PENDING, Loan::STATUS_IN_PROGRESS, Loan::STATUS_PROCESSED, Loan::STATUS_REJECTED][$i - 1]
+                : ($recent
+                    ? [Loan::STATUS_PENDING, Loan::STATUS_IN_PROGRESS, Loan::STATUS_PROCESSED][$roll % 3]
+                    : ($roll <= 90 || $forcedLate ? Loan::STATUS_PROCESSED : Loan::STATUS_REJECTED));
+            // Abiertos: los recientes (vencen desde hoy) y los 3 atrasados fijos.
+            $late = $forcedLate;
+            $open = $status === Loan::STATUS_PROCESSED && ($recent || $late);
+            $panolero = $panoleros->random();
+            // Los recientes que siguen abiertos vencen desde hoy: solo quedan atrasados los `$late` a propósito.
+            $due = $open && $recent ? now()->startOfDay()->addDays(mt_rand(0, 3)) : $day->copy()->addDays(mt_rand(0, 3));
             $returned = $status === Loan::STATUS_PROCESSED && ! $open ? $due->copy()->setTime(mt_rand(15, 18), mt_rand(0, 59)) : null;
             [$start, $end, $block] = $blocks[array_rand($blocks)];
             $direct = mt_rand(1, 100) <= 40;
@@ -498,29 +659,49 @@ class RealisticDemoSeeder extends Seeder
             MaintenanceRecord::TYPE_CORRECTIVE => 'Reemplazo de componente dañado y prueba posterior a la reparación.',
             MaintenanceRecord::TYPE_CALIBRATION => 'Calibración contra patrón con certificado.',
         ];
-        $picked = EquipmentUnit::where('status', EquipmentUnit::STATUS_AVAILABLE)->inRandomOrder()->limit(16)->get();
+        $picked = EquipmentUnit::where('status', EquipmentUnit::STATUS_AVAILABLE)->inRandomOrder()->limit(32)->get();
+        $workshops = ['microtec', 'systelec', 'compintegral'];
 
         foreach ($picked as $k => $u) {
             $type = MaintenanceRecord::TYPES[$k % 3];
             $external = $type === MaintenanceRecord::TYPE_CALIBRATION || $k % 5 === 0;
-            $done = $k >= 3;
-            $start = now()->subDays(mt_rand(4, 170));
+            // 0-4 en curso, 5-6 anuladas, 7-8 terminan en baja, el resto operativas.
+            $status = match (true) {
+                $k <= 4 => MaintenanceRecord::STATUS_IN_PROGRESS,
+                $k <= 6 => MaintenanceRecord::STATUS_CANCELLED,
+                default => MaintenanceRecord::STATUS_FINISHED,
+            };
+            $writeOff = $k === 7 || $k === 8;
+            $done = $status === MaintenanceRecord::STATUS_FINISHED;
+            $start = $k <= 4 ? now()->subDays(mt_rand(1, 12)) : now()->subDays(mt_rand(4, 170));
             MaintenanceRecord::create([
                 'equipment_unit_id' => $u->id, 'responsible_id' => $panolero->id,
-                'maintenance_type' => $type,
+                'maintenance_type' => $writeOff ? MaintenanceRecord::TYPE_CORRECTIVE : $type,
                 'execution_mode' => $external ? MaintenanceRecord::MODE_EXTERNAL : MaintenanceRecord::MODE_OWN,
-                'external_supplier_id' => $external ? $suppliers['microtec']->id : null,
-                'repair_cost' => $external ? mt_rand(18, 95) * 1000 : 0,
+                'external_supplier_id' => $external ? $suppliers[$workshops[$k % 3]]->id : null,
+                'repair_cost' => $external && $status !== MaintenanceRecord::STATUS_CANCELLED ? mt_rand(18, 95) * 1000 : 0,
                 'spare_parts_used' => $type === MaintenanceRecord::TYPE_CORRECTIVE ? 'Repuestos según diagnóstico' : null,
-                'technical_notes' => $notes[$type],
-                'status' => $done ? MaintenanceRecord::STATUS_FINISHED : MaintenanceRecord::STATUS_IN_PROGRESS,
-                'result' => $done ? MaintenanceRecord::RESULT_OPERATIONAL : null,
+                'technical_notes' => match (true) {
+                    $writeOff => 'Daño irreparable: el costo de reparación supera el valor del equipo. Se da de baja.',
+                    $status === MaintenanceRecord::STATUS_CANCELLED => 'Se anula: el equipo se reemplazó por garantía antes de la revisión.',
+                    default => $notes[$type],
+                },
+                'status' => $status,
+                'result' => $done ? ($writeOff ? MaintenanceRecord::RESULT_WRITE_OFF : MaintenanceRecord::RESULT_OPERATIONAL) : null,
                 'started_at' => $start, 'finished_at' => $done ? $start->copy()->addDays(mt_rand(1, 5)) : null,
                 'created_by' => $panolero->id,
             ]);
-            if ($done) {
-                $u->forceFill(['last_maintenance_at' => $start, 'next_maintenance_at' => $start->copy()->addMonths(6)])->save();
-            } else {
+            if ($writeOff) {
+                $u->update(['status' => EquipmentUnit::STATUS_WRITTEN_OFF]);
+            } elseif ($done) {
+                // Próxima mantención: la mayoría en 6 meses; algunas esta semana y otras ya vencidas (avisos de mantención).
+                $next = match ($k % 6) {
+                    0 => now()->addDays(mt_rand(1, 7)),
+                    1 => now()->subDays(mt_rand(3, 20)),
+                    default => $start->copy()->addMonths(6),
+                };
+                $u->forceFill(['last_maintenance_at' => $start, 'next_maintenance_at' => $next])->save();
+            } elseif ($status === MaintenanceRecord::STATUS_IN_PROGRESS) {
                 $u->update(['status' => EquipmentUnit::STATUS_IN_REPAIR]);
             }
         }
@@ -552,13 +733,30 @@ class RealisticDemoSeeder extends Seeder
             ['fuente', 'Perilla de voltaje con juego', 'El ajuste de voltaje salta entre valores.', 'media', 'reportado', 'mantencion'],
             ['maq_lan', 'Faltan patch cords en la maqueta', 'La maqueta fue devuelta sin tres cables de conexión.', 'leve', 'reportado', 'reposicion'],
             ['crimpadora', 'Cuchilla desgastada', 'Ya no corta bien el cable UTP.', 'leve', 'resuelto', 'mantencion'],
+            ['ap', 'Access point se reinicia solo', 'Se cae la red inalámbrica del laboratorio cada 20 minutos aproximadamente.', 'media', 'en_revision', 'falla'],
+            ['fortigate', 'Licencia de firmware vencida', 'No se pueden actualizar las firmas del IPS para la clase de hardening.', 'media', 'reportado', 'mantencion'],
+            ['camara', 'Imagen nocturna en blanco', 'El infrarrojo no enciende; la grabación nocturna sale en blanco.', 'leve', 'reparado', 'falla'],
+            ['tablet', 'Pantalla trizada', 'La tablet volvió de préstamo con la pantalla trizada en una esquina.', 'media', 'en_reparacion', 'falla'],
+            ['ups', 'Batería hinchada', 'La UPS emite pitidos y la batería está deformada. Se retira de uso por seguridad.', 'critica', 'dado_de_baja', 'falla'],
+            ['cautin', 'Punta del cautín oxidada', 'No toma temperatura de trabajo; se necesitan puntas de repuesto.', 'leve', 'resuelto', 'reposicion'],
+            ['impresora3d', 'Boquilla obstruida', 'La impresora no extruye filamento desde la última clase.', 'media', 'reparado', 'mantencion'],
+            ['esp32', 'Faltan cables micro-USB en los kits', 'Tres kits ESP32 llegaron sin cable de programación.', 'leve', 'reportado', 'reposicion'],
+            ['notebook', 'Teclado con teclas sueltas', 'Las teclas Ctrl y Alt se desprenden con el uso.', 'leve', 'en_revision', 'falla'],
+            ['maq_iot', 'Sensor de movimiento sin lectura', 'El sensor PIR de la maqueta no detecta presencia.', 'media', 'en_reparacion', 'falla'],
+            ['tester', 'Certificador sin calibración vigente', 'El certificado de calibración venció el mes pasado.', 'media', 'reportado', 'mantencion'],
+            ['router', 'Faltan cables seriales', 'Se necesitan cables seriales DCE/DTE para la práctica de WAN.', 'leve', 'resuelto', 'reposicion'],
+            ['nas', 'Disco 2 con sectores defectuosos', 'El NAS avisa SMART crítico en el disco de la bahía 2.', 'critica', 'reportado', 'falla'],
+            ['switch', 'Ventilador ruidoso', 'El ventilador del switch del rack 2 hace mucho ruido.', 'leve', 'descartado', 'mantencion'],
         ];
         $statusMap = ['descartado' => IncidentReport::STATUS_DISMISSED];
         $teacherList = $teachers instanceof Collection ? $teachers : collect([$teachers]);
 
         foreach ($cases as $i => [$key, $title, $desc, $severity, $status, $request]) {
             $product = $products[$key];
-            $teacher = $teacherList->random();
+            // 1 de cada 6 es de la cuenta de presentación (su «Mis informes» nunca queda vacío).
+            $teacher = $i % 6 === 0
+                ? ($teacherList->firstWhere('email', 'docente@sgia.cl') ?? $teacherList->random())
+                : $teacherList->random();
             $at = now()->subDays(mt_rand(1, 90));
             $report = IncidentReport::create([
                 'product_id' => $product->id,
@@ -573,6 +771,76 @@ class RealisticDemoSeeder extends Seeder
                 'suggestion' => $request === 'falla' ? 'Revisar el equipo antes de la próxima clase.' : null,
             ]);
             $report->forceFill(['created_at' => $at, 'updated_at' => $at])->saveQuietly();
+        }
+    }
+
+    /** Panel de Analítica armado para los directores (con el mismo servicio que usa la API). */
+    private function dashboards(): void
+    {
+        $charts = app(UserChartService::class);
+        $panels = [
+            'director@sgia.cl' => ['loans_trend', 'loans_by_status', 'usage_by_career', 'top_supplies', 'maintenance_by_type'],
+            'director2@sgia.cl' => ['loans_by_subject', 'equipment_by_condition', 'alerts_by_criticality'],
+        ];
+        foreach ($panels as $email => $codes) {
+            $user = User::where('email', $email)->firstOrFail();
+            foreach ($codes as $code) {
+                $charts->create($user, ['chart_template_id' => ChartTemplate::where('code', $code)->value('id')]);
+            }
+        }
+    }
+
+    /**
+     * Accesos de los últimos 6 días para Monitoreo (AD-01, ventana de 7 días): inicios de sesión de cada usuario activo,
+     * claves mal escritas, un docente inactivo intentando entrar y una ráfaga bloqueada desde una IP externa.
+     */
+    private function access(Collection $teachers): void
+    {
+        $agents = [
+            'web' => ['Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36',
+                'Mozilla/5.0 (X11; Linux x86_64; rv:133.0) Gecko/20100101 Firefox/133.0'],
+            'mobile' => ['SGIA/1.0 (Android 14; Samsung SM-A546E)', 'SGIA/1.0 (iOS 18.1; iPhone14,5)'],
+        ];
+        $at = fn () => now()->subDays(mt_rand(0, 5))->setTime(mt_rand(8, 20), mt_rand(0, 59));
+
+        foreach (User::where('is_active', true)->get() as $user) {
+            $device = $user->role === User::ROLE_TEACHER && mt_rand(1, 10) <= 7 ? 'mobile' : 'web';
+            $last = null;
+            for ($n = mt_rand(2, 9); $n > 0; $n--) {
+                $when = $at();
+                LoginRecord::create([
+                    'user_id' => $user->id, 'device_type' => $device, 'user_agent' => $agents[$device][mt_rand(0, 1)],
+                    'ip_address' => '10.20.'.mt_rand(1, 30).'.'.mt_rand(2, 250), 'logged_in_at' => $when,
+                ]);
+                $last = $last === null || $when->gt($last) ? $when : $last;
+            }
+            $user->forceFill(['last_login_at' => $last])->saveQuietly();
+        }
+
+        $fail = fn (string $email, string $reason, string $ip, ?User $user = null) => FailedLogin::create([
+            'email' => $email, 'user_id' => $user?->id, 'reason' => $reason, 'ip_address' => $ip,
+            'user_agent' => $agents['web'][0], 'attempted_at' => $at(),
+        ]);
+        foreach (User::where('is_active', true)->inRandomOrder()->limit(8)->get() as $user) {
+            $fail($user->email, FailedLogin::REASON_INVALID_CREDENTIALS, '10.20.'.mt_rand(1, 30).'.'.mt_rand(2, 250), $user);
+        }
+        foreach (['admin@sgia.com', 'director@inacap.cl', 'panolero@sgia.cl'] as $typo) {
+            $fail($typo, FailedLogin::REASON_INVALID_CREDENTIALS, '10.20.4.'.mt_rand(2, 250));
+        }
+        $inactive = $teachers->firstWhere('is_active', false);
+        if ($inactive) {
+            foreach (range(1, 3) as $_) {
+                $fail($inactive->email, FailedLogin::REASON_INACTIVE, '10.20.12.87', $inactive);
+            }
+        }
+        // Ráfaga contra la cuenta de administración desde fuera de la red de la sede.
+        $burst = now()->subDays(2)->setTime(3, 14);
+        foreach (range(0, 11) as $k) {
+            FailedLogin::create([
+                'email' => 'admin@sgia.cl', 'user_id' => User::where('email', 'admin@sgia.cl')->value('id'),
+                'reason' => $k < 5 ? FailedLogin::REASON_INVALID_CREDENTIALS : FailedLogin::REASON_THROTTLED,
+                'ip_address' => '190.163.45.12', 'user_agent' => 'python-requests/2.32.3', 'attempted_at' => $burst->copy()->addSeconds($k * 7),
+            ]);
         }
     }
 }
