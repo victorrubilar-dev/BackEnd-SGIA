@@ -71,4 +71,4 @@
 - [x] `GET /api/alerts/export` (`DIR-01`, `PAN-01`): filtros `alert_type`, `is_resolved`; hoja «Alertas» (`StockAlertExportTest`).
 
 ### Exportar Excel: ubicaciones y año (`docs/reportes-excel.md`, ampliación)
-- [ ] `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`): hojas «Dónde está cada cosa», «Cajones» y «Salas»; filtros `search`, `tipo`, `storeroom_id`, `location_id`; sin sala, incluye lo que no tiene ubicación (`LocationExportTest`).
+- [x] `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`): hojas «Dónde está cada cosa», «Cajones» y «Salas»; filtros `search`, `tipo`, `storeroom_id`, `location_id`; sin sala, incluye lo que no tiene ubicación (`LocationExportTest`).

@@ -529,7 +529,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 
 ### 15. Reportes Excel por pantalla (`docs/reportes-excel.md`)
 
-Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo>-AAAAMMDD-HHMMSS.xlsx"`) con las hojas de datos y una hoja «Info» final (reporte, usuario, rol, fecha, filtros aplicados en texto, filas por hoja y aviso si se cortó). Aceptan los mismos filtros que su listado (sin `page`/`per_page`); sin filtros sale el reporte completo visible para el rol. Tope de 10.000 filas por hoja: si se corta, `X-Report-Truncated: 1` (expuesta por CORS junto con `Content-Disposition`). `403` por rol, `422` por filtro inválido. Los reportes con datos personales (estudiantes, auditoría, usuarios, monitoreo) dejan un registro `report.export` en `audit_logs` (`auditable_type=report`, filtrable en `GET /api/audit-logs`).
+Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo>-AAAAMMDD-HHMMSS.xlsx"`) con las hojas de datos y una hoja «Info» final (reporte, usuario, rol, fecha, filtros aplicados en texto, filas por hoja y aviso si se cortó). Aceptan los mismos filtros que su listado (sin `page`/`per_page`); sin filtros sale el reporte completo visible para el rol. Cada hoja de operaciones lleva la columna «Año» junto a su fecha; años e ID van sin separador de miles. Tope de 10.000 filas por hoja: si se corta, `X-Report-Truncated: 1` (expuesta por CORS junto con `Content-Disposition`). `403` por rol, `422` por filtro inválido. Los reportes con datos personales (estudiantes, auditoría, usuarios, monitoreo) dejan un registro `report.export` en `audit_logs` (`auditable_type=report`, filtrable en `GET /api/audit-logs`).
 
 | Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
 |---|---|---|---|:---:|
@@ -544,6 +544,7 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 | `GET` | `/api/invoice-intakes/export` | `DIR-01` | Facturas: hojas «Facturas» e «Ítems». `status`, `annual_budget_id`, `from`, `to`, más `purchase_id` y `purchase_request_code`. | ✅ Implementado |
 | `GET` | `/api/budgets/export` | `DIR-01` | Presupuestos: hojas «Resumen» (inicial, reservado, gastado, saldo, disponible, % de ejecución) y «Movimientos». `year` (sin año, todos), `career_id`. | ✅ Implementado |
 | `GET` | `/api/suppliers/export` | `DIR-01` | Proveedores: hoja «Proveedores». `search`, `area`, `category`, `is_active`. | ✅ Implementado |
+| `GET` | `/api/locations/export` | `DIR-01`, `PAN-01`, `AD-01` | Ubicaciones: hojas «Dónde está cada cosa» (una fila por unidad e insumo: pañol, sala, zona, estante, cajón y su código, lleno, código, producto, serie, estado, cantidad), «Cajones» y «Salas». Filtros de `GET /api/locations` (`search`, `tipo`, `storeroom_id`) más `location_id`; sin filtros suma al final los insumos «Sin ubicación». | ✅ Implementado |
 | `GET` | `/api/audit-logs/export` | `AD-01` | Auditoría: hoja «Eventos» (cambios «campo: antes → después», IP, navegador). Filtros de `GET /api/audit-logs`. Se audita. | ✅ Implementado |
 | `GET` | `/api/users/export` | `AD-01` | Usuarios: hoja «Usuarios». Filtros de `GET /api/users`: `search`, `role`, `area`, `career_id`, `storeroom_id`, `is_active`. Se audita. | ✅ Implementado |
 | `GET` | `/api/monitoring/export` | `AD-01` | Monitoreo: hojas «Inicios de sesión» (`hours` 1–168, por defecto 24), «Fallidos» (`email`, `ip_address`, `reason`) y «Sesiones activas». Se audita. | ✅ Implementado |
@@ -556,10 +557,9 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
-| `GET` | `/api/locations/export` | `DIR-01`, `PAN-01`, `AD-01` | Excel de ubicaciones: «Dónde está cada cosa», «Cajones» y «Salas» (`search`, `tipo`, `storeroom_id`, `location_id`). | `docs/reportes-excel.md` |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (208 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (209 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

@@ -528,4 +528,4 @@ Plan y contrato en `docs/reportes-excel.md`. No rompe contrato: todo es aditivo.
 - La web envía los filtros activos de cada pantalla con `exportReport` y el botón compartido `ExportExcelButton`; el historial ahora también envía el estado.
 - `audit_logs` acepta `auditable_type=report` (exportaciones con datos personales, acción `report.export`).
 
-- Ampliación (2026-11-25): nuevo `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`; `search`, `tipo`, `storeroom_id`, `location_id`); todas las hojas de operaciones suman la columna «Año» junto a su fecha, y los años salen sin separador de miles.
+- Ampliación (2026-11-25, implementada): nuevo `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`; `search`, `tipo`, `storeroom_id`, `location_id`); todas las hojas de operaciones suman la columna «Año» junto a su fecha, y los años salen sin separador de miles.

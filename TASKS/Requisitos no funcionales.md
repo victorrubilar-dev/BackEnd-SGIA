@@ -24,5 +24,5 @@
 - [x] Las exportaciones de auditoría, usuarios, estudiantes y monitoreo quedan en `audit_logs` (acción `export`).
 
 ### Exportar Excel: ubicaciones y año (`docs/reportes-excel.md`, ampliación)
-- [ ] Columna «Año» junto a la fecha de cada operación (`ReportSheet::$yearOf`) en préstamos, detalle, alertas, mantenciones, novedades, solicitudes, órdenes, facturas, movimientos, auditoría, inicios de sesión y fallidos (`ReportExporterTest` y tests de cada reporte).
-- [ ] El año sale como número sin separador de miles (`XlsxWriter::YEAR`); `ReportExporter` lo fuerza en las cabeceras «Año…» e «ID» (`XlsxWriterTest`, `ReportExporterTest`).
+- [x] Columna «Año» junto a la fecha de cada operación (`ReportSheet::$yearOf`) en préstamos, detalle, alertas, mantenciones, novedades, solicitudes, órdenes, facturas, movimientos, auditoría, inicios de sesión y fallidos (`ReportExporterTest` y tests de cada reporte).
+- [x] El año sale como número sin separador de miles (`XlsxWriter::YEAR`); `ReportExporter` lo fuerza en las cabeceras «Año…» e «ID» (`XlsxWriterTest`, `ReportExporterTest`).
