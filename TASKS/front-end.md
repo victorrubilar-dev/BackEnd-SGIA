@@ -520,9 +520,10 @@ Plan en `docs/pdf-estilo-trazo.md`. No cambia ningún endpoint ni nombre de arch
 Plan en `docs/mantenciones-por-carrera.md`. No rompe contrato: `GET /api/maintenance-records` suma los parámetros `career_id` (carrera del producto de la unidad) y `sin_carrera=1`; `422` si `career_id` no es entero.
 
 
-## Reportes Excel por pantalla (en implementación, noviembre 2026) — Informativo
+## Reportes Excel por pantalla (implementado en backend y frontend, noviembre 2026) — Informativo
 
 Plan y contrato en `docs/reportes-excel.md`. No rompe contrato: todo es aditivo.
 - Rutas nuevas `GET /api/<recurso>/export` (productos, unidades, alertas, mantenciones, novedades, estudiantes, solicitudes de compra, órdenes, facturas, presupuestos, proveedores, auditoría, usuarios, monitoreo). Aceptan los mismos filtros que su listado; roles: los de la pantalla con el botón; responden un `.xlsx` (`Content-Disposition` con el nombre) y la cabecera `X-Report-Truncated: 0|1`.
 - `GET /api/loans/export?format=xlsx` suma las hojas «Detalle» e «Info» y fechas reales; la hoja «Préstamos» mantiene sus columnas.
-- La web debe enviar los filtros activos de la pantalla (el historial hoy no envía el estado).
+- La web envía los filtros activos de cada pantalla con `exportReport` y el botón compartido `ExportExcelButton`; el historial ahora también envía el estado.
+- `audit_logs` acepta `auditable_type=report` (exportaciones con datos personales, acción `report.export`).

@@ -18,7 +18,7 @@
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `XlsxWriter` con varias hojas, fechas reales, montos CLP y cabecera gris; `ReportExporter` con hoja «Info» (reporte, usuario, fecha, filtros, filas) y tope de 10.000 filas con `X-Report-Truncated` (`XlsxWriterTest`, `ReportExporterTest`).
-- [ ] `GET /api/audit-logs/export` (`AD-01`): mismos filtros que el listado; hoja «Eventos» (`AuditLogExportTest`).
-- [ ] `GET /api/monitoring/export` (`AD-01`): hojas «Inicios de sesión», «Fallidos» y «Sesiones activas» (`MonitoringExportTest`).
-- [ ] Las exportaciones de auditoría, usuarios, estudiantes y monitoreo quedan en `audit_logs` (acción `export`).
+- [x] `XlsxWriter` con varias hojas, fechas reales, montos CLP y cabecera gris; `ReportExporter` con hoja «Info» (reporte, usuario, fecha, filtros, filas) y tope de 10.000 filas con `X-Report-Truncated` (`XlsxWriterTest`, `ReportExporterTest`).
+- [x] `GET /api/audit-logs/export` (`AD-01`): mismos filtros que el listado; hoja «Eventos» (`AuditLogExportTest`).
+- [x] `GET /api/monitoring/export` (`AD-01`): hojas «Inicios de sesión», «Fallidos» y «Sesiones activas» (`MonitoringExportTest`).
+- [x] Las exportaciones de auditoría, usuarios, estudiantes y monitoreo quedan en `audit_logs` (acción `export`).

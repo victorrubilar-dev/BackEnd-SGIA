@@ -1,6 +1,6 @@
 # Reportes en Excel por módulo
 
-**Estado: aprobado (2026-11-25), en implementación en la rama `feat/reportes-excel` de ambos repos.** Primero los botones en cada pantalla (como en el historial de préstamos); el centro de reportes `/reportes` se decide después de ver cómo quedan. Seguimiento en `TASKS/*.md` (casillas «Exportar Excel»), contrato para el frontend en `TASKS/front-end.md` y rutas en «Endpoints Pendientes» de `ENDPOINTS.md`.
+**Estado: implementado (2026-11-25) en backend y frontend, rama `feat/reportes-excel` de ambos repos**, salvo el centro de reportes `/reportes`, que se decide después de ver los botones (decisión 10). Seguimiento en `TASKS/*.md` (casillas «Exportar Excel»), contrato para el frontend en `TASKS/front-end.md` y rutas en «Endpoints Pendientes» de `ENDPOINTS.md`.
 
 ## Problema
 
@@ -79,14 +79,24 @@ Una pantalla por rol que lista los reportes disponibles con un formulario de fil
 
 ## Fases
 
-1. [ ] Plan y documentos (este archivo, TASKS, ENDPOINTS).
-2. [ ] Backend: `XlsxWriter` multihoja con estilos, `ReportExporter`, hoja «Info», tests.
-3. [ ] Backend: reportes de operación (inventario, equipos, préstamos mejorado, alertas, mantenciones, novedades, estudiantes).
-4. [ ] Backend: reportes de compras (solicitudes, órdenes, facturas, presupuestos, proveedores).
-5. [ ] Backend: reportes de administración (auditoría, usuarios, monitoreo).
-6. [ ] Frontend: `exportReport` + `ExportExcelButton` y botón en cada pantalla.
+1. [x] Plan y documentos (este archivo, TASKS, ENDPOINTS).
+2. [x] Backend: `XlsxWriter` multihoja con estilos, `ReportExporter`, hoja «Info», tests.
+3. [x] Backend: reportes de operación (inventario, equipos, préstamos mejorado, alertas, mantenciones, novedades, estudiantes).
+4. [x] Backend: reportes de compras (solicitudes, órdenes, facturas, presupuestos, proveedores).
+5. [x] Backend: reportes de administración (auditoría, usuarios, monitoreo).
+6. [x] Frontend: `exportReport` + `ExportExcelButton` y botón en cada pantalla.
 7. [ ] (Después) Frontend: centro de reportes `/reportes`, según cómo queden los botones.
-8. [ ] Prueba contra la API real con cada rol: abrir cada `.xlsx` en LibreOffice, con y sin filtros.
+8. [x] Prueba contra la API real con cada rol: abrir cada `.xlsx` en LibreOffice, con y sin filtros.
+
+## Notas de implementación
+
+- **Estructura:** `App\Reports\<X>Report` implementa `Report` (título, prefijo, hojas, filtros legibles, si se audita); `ReportSheet` describe cada hoja (consulta leída con `lazy(500)`, función registro → fila, tipos y anchos; `ReportSheet::expanded` para una fila por ítem); `ReportExporter` arma el libro, la hoja «Info», el tope y la auditoría; `ReportFilters` traduce IDs a nombres para «Info». En cada controlador el filtrado del `index` se extrajo a un método común (o ya estaba en el Service: `ProductService`, `EquipmentUnitService`, `MaintenanceRecordService`, `LoanService`, `PurchaseService`) y lo usan el listado y el export.
+- **Validación:** cada export tiene su FormRequest en `app/Http/Requests/Export` (base `ExportRequest` con mensajes en español); es algo más estricta que algunos `index` (p. ej. `to` anterior a `from`, `role` inválido) y responde `422`.
+- **Auditoría:** `AuditLog::REPORT_TYPE = 'report'`, acción `report.export`, `auditable_id` 0, `new_values` con reporte, filtros y filas. `GET /api/audit-logs?auditable_type=report` los lista.
+- **Columnas del plan que no existen en la BD:** RUN de usuarios (la tabla `users` no lo tiene), neto e IVA de facturas (solo `total_deducted`) y fecha «facturada» de la solicitud (se usa `received_at` de la factura confirmada).
+- **`/equipos`** sale siempre completo: la pantalla lista productos y filtra en el navegador (estado del producto, categoría, búsqueda), filtros que no existen en `/equipment-units`. El Excel trae producto y categoría por unidad para filtrar con el autofiltro. Tampoco se envían la búsqueda de `/alertas` y `/compras/proveedores` (solo filtra la página cargada) ni `email`/`ip_address` de monitoreo (no hay controles).
+- **Ícono del botón en burdeo** (`text-accent`) en vez del verde de préstamos, por la paleta sin verde; también en el historial.
+- **Prueba real (2026-11-25):** Chromium por CDP con los accesos de demostración: las 16 descargas (7 de PAN-01, 6 de DIR-01, 3 de AD-01) se abrieron con LibreOffice. PAN-01 exporta 83 préstamos (su pañol) y DIR-01 165. La prueba encontró un `500` en novedades: `problems` es una lista de `{type, description}`, no de códigos; se corrigió y quedó en `IncidentReportExportTest`. Las 8 exportaciones de AD-01 y PAN-01 con datos personales dejaron sus registros `report.export` en la auditoría de desarrollo.
 
 ## Fuera de alcance
 

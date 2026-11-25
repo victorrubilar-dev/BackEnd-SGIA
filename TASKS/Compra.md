@@ -93,8 +93,8 @@ La OC se emite **fuera del sistema** y se sube ligada al código de la solicitud
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `GET /api/purchase-requests/export` (`DIR-01`): filtros `status`, `code`, `from`, `to`; hojas «Solicitudes» e «Ítems» (`PurchaseRequestExportTest`).
-- [ ] `GET /api/purchases/export` (`DIR-01`): mismos filtros que el listado; hojas «Órdenes» e «Ítems» (`PurchaseExportTest`).
-- [ ] `GET /api/invoice-intakes/export` (`DIR-01`): filtros `status`, `annual_budget_id`, `from`, `to`; hojas «Facturas» e «Ítems» (`InvoiceIntakeExportTest`).
-- [ ] `GET /api/budgets/export` (`DIR-01`): filtro `year`; hojas «Resumen» y «Movimientos» (`BudgetExportTest`).
-- [ ] `GET /api/suppliers/export` (`DIR-01`): filtros `area`, `category`, `is_active`, `search`; hoja «Proveedores» (`SupplierExportTest`).
+- [x] `GET /api/purchase-requests/export` (`DIR-01`): filtros `status`, `code`, `from`, `to`; hojas «Solicitudes» e «Ítems» (`PurchaseRequestExportTest`).
+- [x] `GET /api/purchases/export` (`DIR-01`): mismos filtros que el listado; hojas «Órdenes» e «Ítems» (`PurchaseExportTest`).
+- [x] `GET /api/invoice-intakes/export` (`DIR-01`): filtros `status`, `annual_budget_id`, `from`, `to`; hojas «Facturas» e «Ítems» (`InvoiceIntakeExportTest`).
+- [x] `GET /api/budgets/export` (`DIR-01`): filtros `year` y `career_id`; hojas «Resumen» y «Movimientos» (`BudgetExportTest`).
+- [x] `GET /api/suppliers/export` (`DIR-01`): filtros `area`, `category`, `is_active`, `search`; hoja «Proveedores» (`SupplierExportTest`).

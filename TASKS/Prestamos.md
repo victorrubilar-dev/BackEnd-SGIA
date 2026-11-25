@@ -76,5 +76,5 @@ El panel muestra `quantity` (todos los pañoles), pero la solicitud valida solo 
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `GET /api/loans/export?format=xlsx`: fechas como fecha de Excel, hoja «Detalle» (una fila por ítem/unidad) y hoja «Info» (`LoanExportTest`).
-- [ ] `GET /api/students/export` (`PAN-01`): filtros `career_id`, `is_active`, `search`; hoja «Estudiantes» con préstamos totales y activos (`StudentExportTest`).
+- [x] `GET /api/loans/export?format=xlsx`: fechas como fecha de Excel, hoja «Detalle» (una fila por ítem/unidad) y hoja «Info» (`LoanExportTest`).
+- [x] `GET /api/students/export` (`PAN-01`): filtros `career_id`, `is_active`, `search`; hoja «Estudiantes» con préstamos totales y activos (`StudentExportTest`).

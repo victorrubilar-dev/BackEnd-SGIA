@@ -32,4 +32,4 @@
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `GET /api/incident-reports/export` (`DIR-01`, `PAN-01`): filtros `status`, `severity`, `search`, `product_id`, `equipment_unit_id`; solo los informes que el usuario puede ver; hoja «Informes» (`IncidentReportExportTest`).
+- [x] `GET /api/incident-reports/export` (`DIR-01`, `PAN-01`): filtros `status`, `severity`, `search`, `product_id`, `equipment_unit_id`; solo los informes que el usuario puede ver; hoja «Informes» con los problemas del formulario (`IncidentReportExportTest`).

@@ -240,5 +240,5 @@ Corresponde a `equipos` de `MODELS.MD`. Solo esquema y modelo; la funcionalidad 
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `GET /api/equipment-units/export` (`DIR-01`, `PAN-01`): mismos filtros que `GET /api/equipment-units`, respeta el pañol de `PAN-01`; hoja «Unidades» (`EquipmentUnitExportTest`).
-- [ ] `GET /api/maintenance-records/export` (`DIR-01`, `PAN-01`): filtros `career_id`, `sin_carrera`, `from`, `to`; hoja «Mantenciones» (`MaintenanceRecordExportTest`).
+- [x] `GET /api/equipment-units/export` (`DIR-01`, `PAN-01`): mismos filtros que `GET /api/equipment-units`, respeta el pañol de `PAN-01`; hoja «Unidades» (`EquipmentUnitExportTest`).
+- [x] `GET /api/maintenance-records/export` (`DIR-01`, `PAN-01`): filtros `career_id`, `sin_carrera`, `from`, `to`; hoja «Mantenciones» (`MaintenanceRecordExportTest`).

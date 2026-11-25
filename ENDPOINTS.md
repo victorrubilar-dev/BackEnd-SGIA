@@ -432,7 +432,7 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|:---:|
 | `GET` | `/api/loans` | `PAN-01`, `DIR-01` | Historial de préstamos con ítems (stock disponible y ubicación) y solicitante.<br>**Query Params:** `estado` (alias `status`: `pendiente`, `en_proceso`, `procesado`, `rechazado`), `insumo` (alias `product` o `product_id`: nombre/código del producto en los ítems), `profesor` (alias `teacher` / `borrower`: nombre del docente o de quien retira), `sala` (alias `room`), `career_id`, `storeroom_id`, `location_id`, `loan_date`, `tipo` (alias `type`: `remoto` \| `presencial`), `search` (código o asignatura), `atrasado` (alias `overdue`: solo entregados, no devueltos y vencidos), `devuelto` (alias `returned`), `per_page` (1-100). `estado` o `tipo` inválidos responden `422`. `PAN-01` ve solo los préstamos de su pañol, también si filtra por otro `storeroom_id`; `DIR-01` ve todos. | ✅ Implementado |
 | `GET` | `/api/loans/{id}` | `PAN-01`, `DIR-01` | Detalle de un préstamo (con `subject` y `career`): ítems con producto y ubicación física (en equipos/maquetas, `units[].cajon` y `units[].location` de cada unidad), solicitante, quién aprobó y quién entregó, motivo de rechazo y `allowed_transitions`. `PAN-01`: solo de su pañol (`403` si es de otro). | ✅ Implementado |
-| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01` | Exporta el historial en `format=csv` (por defecto), `format=excel` o `xlsx` (libro `.xlsx` real, hoja «Préstamos» con cabecera en negrita, fila congelada y autofiltro; `docs/exportaciones-y-campana.md`) o `format=pdf`. Otro `format` → `422`. Acepta `from`, `to` (fecha del préstamo) y los mismos filtros de `GET /api/loans`. Máximo 5.000 filas. `PAN-01` exporta solo los préstamos de su pañol. | ✅ Implementado |
+| `GET` | `/api/loans/export` | `DIR-01`, `PAN-01` | Exporta el historial en `format=csv` (por defecto), `format=excel` o `xlsx` (libro `.xlsx` real, hoja «Préstamos» con cabecera en negrita, fila congelada y autofiltro; `docs/exportaciones-y-campana.md`) o `format=pdf`. Otro `format` → `422`. Acepta `from`, `to` (fecha del préstamo) y los mismos filtros de `GET /api/loans`. El `.xlsx` suma las hojas «Detalle» (una fila por unidad o insumo prestado) e «Info», con fechas reales de Excel y tope de 10.000 filas (`docs/reportes-excel.md`); CSV y PDF, máximo 5.000 filas. `PAN-01` exporta solo los préstamos de su pañol. | ✅ Implementado |
 
 ### 11.1 Estudiantes (`FU-04` / `REQ-20`)
 
@@ -527,6 +527,27 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 | `PATCH` | `/api/me/charts/{id}` | `DIR-01` | Edita cualquier campo salvo `user_id` y `dashboard_template_id` (`422`); `is_active: false` lo oculta sin borrarlo. Cambiar `chart_template_id` toma la consulta de la nueva plantilla. Una posición ocupada → `422`. Cambiar la consulta hasta igualarla a otro gráfico propio → `422` en `chart`. | ✅ Implementado |
 | `DELETE` | `/api/me/charts/{id}` | `DIR-01` | `204`. | ✅ Implementado |
 
+### 15. Reportes Excel por pantalla (`docs/reportes-excel.md`)
+
+Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo>-AAAAMMDD-HHMMSS.xlsx"`) con las hojas de datos y una hoja «Info» final (reporte, usuario, rol, fecha, filtros aplicados en texto, filas por hoja y aviso si se cortó). Aceptan los mismos filtros que su listado (sin `page`/`per_page`); sin filtros sale el reporte completo visible para el rol. Tope de 10.000 filas por hoja: si se corta, `X-Report-Truncated: 1` (expuesta por CORS junto con `Content-Disposition`). `403` por rol, `422` por filtro inválido. Los reportes con datos personales (estudiantes, auditoría, usuarios, monitoreo) dejan un registro `report.export` en `audit_logs` (`auditable_type=report`, filtrable en `GET /api/audit-logs`).
+
+| Método | Endpoint | Roles Permitidos | Descripción / Parámetros | Estado |
+|---|---|---|---|:---:|
+| `GET` | `/api/products/export` | `DIR-01`, `PAN-01` | Inventario: hojas «Productos» y «Unidades». Filtros de `GET /api/products`: `search`, `type`, `area`, `is_active`, `critical_only`, `sala`, `cajon`, `cajon_id`, `location_id`, `supplier_id`. | ✅ Implementado |
+| `GET` | `/api/equipment-units/export` | `DIR-01`, `PAN-01` | Unidades de equipos y maquetas: hoja «Unidades» (producto, categoría, estado, pañol, sala, cajón, mantenciones, préstamos). Filtros de `GET /api/equipment-units`: `search`, `product_id`, `status`, `cajon_id`, `location_id`, `storeroom_id`, `maintenance_due`. | ✅ Implementado |
+| `GET` | `/api/alerts/export` | `DIR-01`, `PAN-01` | Alertas de stock: hoja «Alertas» (con la solicitud de compra abierta del producto). `alert_type`, `is_resolved` (sin él, solo abiertas, como la bandeja), `exclude_dismissed`. | ✅ Implementado |
+| `GET` | `/api/maintenance-records/export` | `DIR-01`, `PAN-01` | Mantenciones: hoja «Mantenciones». `career_id`, `sin_carrera`, `from`, `to`, `status`, `maintenance_type`, `execution_mode`, `product_id`, `equipment_unit_id`. | ✅ Implementado |
+| `GET` | `/api/incident-reports/export` | `DIR-01`, `PAN-01` | Informes de novedades: hoja «Informes» (con los problemas del formulario). `search`, `status`, `severity`, `request_type`, `product_id`, `equipment_unit_id`. | ✅ Implementado |
+| `GET` | `/api/students/export` | `PAN-01` | Estudiantes: hoja «Estudiantes» (RUT, correo, préstamos totales y en curso). `search`, `career_id`, `is_active`. Se audita. | ✅ Implementado |
+| `GET` | `/api/purchase-requests/export` | `DIR-01` | Solicitudes de compra: hojas «Solicitudes» (fechas por etapa, total, OC) e «Ítems». `status`, `code`, `from`, `to`. | ✅ Implementado |
+| `GET` | `/api/purchases/export` | `DIR-01` | Órdenes de compra: hojas «Órdenes» e «Ítems». Filtros de `GET /api/purchases` (`status`/`estado`, `supplier_id`, `quotation_id`, `search`, `linkable`). | ✅ Implementado |
+| `GET` | `/api/invoice-intakes/export` | `DIR-01` | Facturas: hojas «Facturas» e «Ítems». `status`, `annual_budget_id`, `from`, `to`, más `purchase_id` y `purchase_request_code`. | ✅ Implementado |
+| `GET` | `/api/budgets/export` | `DIR-01` | Presupuestos: hojas «Resumen» (inicial, reservado, gastado, saldo, disponible, % de ejecución) y «Movimientos». `year` (sin año, todos), `career_id`. | ✅ Implementado |
+| `GET` | `/api/suppliers/export` | `DIR-01` | Proveedores: hoja «Proveedores». `search`, `area`, `category`, `is_active`. | ✅ Implementado |
+| `GET` | `/api/audit-logs/export` | `AD-01` | Auditoría: hoja «Eventos» (cambios «campo: antes → después», IP, navegador). Filtros de `GET /api/audit-logs`. Se audita. | ✅ Implementado |
+| `GET` | `/api/users/export` | `AD-01` | Usuarios: hoja «Usuarios». Filtros de `GET /api/users`: `search`, `role`, `area`, `career_id`, `storeroom_id`, `is_active`. Se audita. | ✅ Implementado |
+| `GET` | `/api/monitoring/export` | `AD-01` | Monitoreo: hojas «Inicios de sesión» (`hours` 1–168, por defecto 24), «Fallidos» (`email`, `ip_address`, `reason`) y «Sesiones activas». Se audita. | ✅ Implementado |
+
 ---
 
 ## 🟡 Endpoints Pendientes (Por Implementar)
@@ -535,23 +556,9 @@ Catálogo de carreras con su nivel. El `area` del usuario se une por nombre exac
 |---|---|---|---|---|
 | `GET` / `PUT` | `/api/equipment/{id}/specs` | Todos / `DIR-01` | Especificaciones técnicas, manual, fecha de compra y vida útil. | REQ-12 |
 | `GET` | `/api/products?storeroom_id={id}` | Todos (`auth`) | Parámetro nuevo del listado: cada producto suma `available_in_storeroom` (unidades `disponible` del pañol en equipos y maquetas; `quantity` en insumos). No excluye productos; sin el parámetro, la respuesta no cambia. `422` si `storeroom_id` no es válido. | `docs/disponibilidad-por-panol.md` |
-| `GET` | `/api/products/export` | `DIR-01`, `PAN-01` | Excel del inventario con los filtros de `GET /api/products` (hojas Productos, Unidades, Info). | `docs/reportes-excel.md` |
-| `GET` | `/api/equipment-units/export` | `DIR-01`, `PAN-01` | Excel de unidades con los filtros de `GET /api/equipment-units`. | `docs/reportes-excel.md` |
-| `GET` | `/api/alerts/export` | `DIR-01`, `PAN-01` | Excel de alertas de stock (`alert_type`, `is_resolved`). | `docs/reportes-excel.md` |
-| `GET` | `/api/maintenance-records/export` | `DIR-01`, `PAN-01` | Excel de mantenciones (`career_id`, `sin_carrera`, `from`, `to`). | `docs/reportes-excel.md` |
-| `GET` | `/api/incident-reports/export` | `DIR-01`, `PAN-01` | Excel de informes de novedades (`status`, `severity`, `search`). | `docs/reportes-excel.md` |
-| `GET` | `/api/students/export` | `PAN-01` | Excel de estudiantes (`career_id`, `is_active`, `search`). | `docs/reportes-excel.md` |
-| `GET` | `/api/purchase-requests/export` | `DIR-01` | Excel de solicitudes de compra e ítems (`status`, `code`, `from`, `to`). | `docs/reportes-excel.md` |
-| `GET` | `/api/purchases/export` | `DIR-01` | Excel de órdenes de compra e ítems. | `docs/reportes-excel.md` |
-| `GET` | `/api/invoice-intakes/export` | `DIR-01` | Excel de facturas e ítems (`status`, `annual_budget_id`, `from`, `to`). | `docs/reportes-excel.md` |
-| `GET` | `/api/budgets/export` | `DIR-01` | Excel de presupuestos: resumen por carrera y movimientos (`year`). | `docs/reportes-excel.md` |
-| `GET` | `/api/suppliers/export` | `DIR-01` | Excel de proveedores (`area`, `category`, `is_active`, `search`). | `docs/reportes-excel.md` |
-| `GET` | `/api/audit-logs/export` | `AD-01` | Excel del registro de auditoría con los filtros del listado. | `docs/reportes-excel.md` |
-| `GET` | `/api/users/export` | `AD-01` | Excel de usuarios con los filtros de `GET /api/users`. | `docs/reportes-excel.md` |
-| `GET` | `/api/monitoring/export` | `AD-01` | Excel de inicios de sesión, fallidos y sesiones activas (`hours`, `email`, `ip_address`). | `docs/reportes-excel.md` |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (193 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (208 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

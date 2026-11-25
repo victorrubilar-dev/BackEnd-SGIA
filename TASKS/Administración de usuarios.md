@@ -15,4 +15,4 @@ Decisión: `storeroom_id` del usuario es informativo (pañol por defecto del che
 
 
 ### Exportar Excel (`docs/reportes-excel.md`)
-- [ ] `GET /api/users/export` (`AD-01`): mismos filtros que `GET /api/users`; hoja «Usuarios» (`UserExportTest`).
+- [x] `GET /api/users/export` (`AD-01`): mismos filtros que `GET /api/users`; hoja «Usuarios» (`UserExportTest`).
