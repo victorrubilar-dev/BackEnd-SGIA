@@ -34,7 +34,7 @@ GET /api/reports/top-teachers?from=2026-07-01&to=2026-12-31[&career_id=3][&store
 
 ## Backend
 
-- `app/Reports/TopSuppliersReport.php` y `app/Reports/TopTeachersReport.php` (el segundo `ScopedReport`), con la agregación en una consulta por cifra (`count(*) filter (where …)`, `sum`) y el puesto calculado en PHP.
+- `app/Reports/TopSuppliersReport.php` y `app/Reports/TopTeachersReport.php` (el segundo `ScopedReport`), con la agregación en una consulta por cifra (`count(*) filter (where …)`, `sum`) y el puesto calculado en PHP (`TopRanking`). Las asignaturas, carreras y el último préstamo tampoco cuentan los rechazados.
 - `ReportController::topSuppliers` y `::topTeachers`; `ExportTopSuppliersRequest` y `ExportTopTeachersRequest` (sobre `ExportRequest`).
 - Rutas junto a `/reports/period`.
 
@@ -45,9 +45,9 @@ GET /api/reports/top-teachers?from=2026-07-01&to=2026-12-31[&career_id=3][&store
 
 ## Fases
 
-- [ ] 1. Plan y documentos (este archivo, `CLAUDE.md`, `ENDPOINTS.md` de ambos repos, `TASKS`).
-- [ ] 2. `TopSuppliersReport` + ruta + tests (ranking, cancelada fuera, período, carrera, `top`, empates, `403`/`422`).
-- [ ] 3. `TopTeachersReport` + ruta + tests (ranking, rechazados aparte, pañol de PAN-01, tipo, `top`, `403`/`422`).
+- [x] 1. Plan y documentos (este archivo, `CLAUDE.md`, `ENDPOINTS.md` de ambos repos, `TASKS`).
+- [x] 2. `TopSuppliersReport` + ruta + tests (ranking, cancelada fuera, período, carrera, `top`, empates, `403`/`422`).
+- [x] 3. `TopTeachersReport` + ruta + tests (ranking, rechazados aparte, pañol de PAN-01, tipo, `top`, `403`/`422`).
 - [ ] 4. Catálogo del frontend + tests.
 - [ ] 5. Prueba contra la API real (vista previa = archivo, roles).
 

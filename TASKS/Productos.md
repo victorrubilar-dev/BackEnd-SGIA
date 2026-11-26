@@ -79,5 +79,5 @@
 - [x] `GET /api/alerts/critical-stock` y `/alerts/export`: filtro `search` (nombre o código del producto) (`StockAlertExportTest`).
 
 ### Rankings del centro de reportes (`docs/reportes-rankings.md`)
-- [ ] `GET /api/reports/top-suppliers` (`DIR-01`): proveedores con más compras del período (sin canceladas), puesto con empates, `career_id`, `top`, hoja «Órdenes».
-- [ ] `GET /api/reports/top-teachers` (`DIR-01`, `PAN-01`): profesores con más préstamos del período (rechazados aparte), pañol de PAN-01, `career_id`, `storeroom_id`, `tipo`, `top`, hoja «Préstamos».
+- [x] `GET /api/reports/top-suppliers` (`DIR-01`): proveedores con más compras del período (sin canceladas), puesto con empates, `career_id`, `top`, hoja «Órdenes» (`RankingReportsTest`).
+- [x] `GET /api/reports/top-teachers` (`DIR-01`, `PAN-01`): profesores con más préstamos del período (rechazados aparte), pañol de PAN-01, `career_id`, `storeroom_id`, `tipo`, `top`, hoja «Préstamos» (`RankingReportsTest`).

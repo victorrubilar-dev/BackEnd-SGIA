@@ -291,6 +291,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
 
     // Centro de reportes (docs/centro-reportes.md): informe del período y «Mis descargas» (salen de audit_logs).
     Route::middleware('role:DIR-01,PAN-01')->get('/reports/period', [ReportController::class, 'period']);
+    // Rankings (docs/reportes-rankings.md).
+    Route::middleware('role:DIR-01')->get('/reports/top-suppliers', [ReportController::class, 'topSuppliers']);
+    Route::middleware('role:DIR-01,PAN-01')->get('/reports/top-teachers', [ReportController::class, 'topTeachers']);
     Route::middleware('role:DIR-01,PAN-01,AD-01')->get('/me/report-downloads', [ReportController::class, 'downloads']);
 
     // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL
