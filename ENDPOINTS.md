@@ -560,6 +560,8 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 | `GET` | `/api/<recurso>/export?preview=1` | Los de cada export | Vista previa en JSON de las mismas hojas (cabeceras, tipos, 20 filas, total, totales, Info). No se audita. | `docs/centro-reportes.md` |
 | `GET` | `/api/reports/period` | `DIR-01`, `PAN-01` | Informe del período: «Resumen general» + préstamos, mantenciones, novedades y alertas (`from`, `to` obligatorios; `career_id`, `storeroom_id`). | `docs/centro-reportes.md` |
 | `GET` | `/api/me/report-downloads` | `DIR-01`, `PAN-01`, `AD-01` | Últimas 20 descargas de reportes del usuario (para «Repetir»). | `docs/centro-reportes.md` |
+| `GET` | `/api/reports/top-suppliers` | `DIR-01` | Proveedores con más compras: ranking por monto de las órdenes del período (sin canceladas) + hoja «Órdenes» (`from`, `to` obligatorios; `career_id`, `top`). | `docs/reportes-rankings.md` |
+| `GET` | `/api/reports/top-teachers` | `DIR-01`, `PAN-01` | Profesores con más préstamos: ranking por préstamos del período (sin rechazados) + hoja «Préstamos»; PAN-01 solo su pañol (`from`, `to` obligatorios; `career_id`, `storeroom_id`, `tipo`, `top`). | `docs/reportes-rankings.md` |
 | `GET` | `from`/`to` en `/alerts`, `/incident-reports`, `/purchases`, `/budgets/export`, `/monitoring/export`; `estado`, `oracle_category_id` en `/products`; `search` en `/alerts/critical-stock` | — | Parámetros nuevos (aditivos) en listados y exports. | `docs/centro-reportes.md` |
 
 ---

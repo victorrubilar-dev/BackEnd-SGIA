@@ -77,3 +77,7 @@
 ### Centro de reportes y vista previa (`docs/centro-reportes.md`)
 - [x] `GET /api/products` y `/products/export`: filtros `estado` (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`, regla de `Product::operationalStatus`) y `oracle_category_id` (`ProductExportTest`).
 - [x] `GET /api/alerts/critical-stock` y `/alerts/export`: filtro `search` (nombre o código del producto) (`StockAlertExportTest`).
+
+### Rankings del centro de reportes (`docs/reportes-rankings.md`)
+- [ ] `GET /api/reports/top-suppliers` (`DIR-01`): proveedores con más compras del período (sin canceladas), puesto con empates, `career_id`, `top`, hoja «Órdenes».
+- [ ] `GET /api/reports/top-teachers` (`DIR-01`, `PAN-01`): profesores con más préstamos del período (rechazados aparte), pañol de PAN-01, `career_id`, `storeroom_id`, `tipo`, `top`, hoja «Préstamos».
