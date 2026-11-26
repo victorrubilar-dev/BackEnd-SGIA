@@ -75,5 +75,5 @@
 
 
 ### Centro de reportes y vista previa (`docs/centro-reportes.md`)
-- [ ] `GET /api/products` y `/products/export`: filtros `estado` (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`, regla de `Product::operationalStatus`) y `oracle_category_id` (`ProductExportTest`).
-- [ ] `GET /api/alerts/critical-stock` y `/alerts/export`: filtro `search` (nombre o código del producto) (`StockAlertExportTest`).
+- [x] `GET /api/products` y `/products/export`: filtros `estado` (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`, regla de `Product::operationalStatus`) y `oracle_category_id` (`ProductExportTest`).
+- [x] `GET /api/alerts/critical-stock` y `/alerts/export`: filtro `search` (nombre o código del producto) (`StockAlertExportTest`).

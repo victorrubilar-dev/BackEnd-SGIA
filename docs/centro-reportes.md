@@ -1,6 +1,6 @@
 # Centro de reportes `/reportes` con vista previa
 
-**Estado: plan aprobado (2026-11-25), sin implementar.** Rama `feat/reportes-excel` de ambos repos. Continúa `docs/reportes-excel.md` (los 16 reportes Excel por pantalla, ya implementados). Pedido: «mejor creemos una página de reportes específica» y «que se muestre una vista previa de cómo queda antes de descargarlo».
+**Estado: implementado en backend y frontend (2026-11-26), probado contra la API real con los tres roles.** Rama `feat/reportes-excel` de ambos repos. Continúa `docs/reportes-excel.md` (los 16 reportes Excel por pantalla, ya implementados). Pedido: «mejor creemos una página de reportes específica» y «que se muestre una vista previa de cómo queda antes de descargarlo».
 
 ## Problema
 
@@ -52,7 +52,7 @@ Mismos roles, filtros y `422` que la descarga.
 }
 ```
 
-`rows`: hasta 20 por hoja; fechas en ISO (`2026-03-10` o `2026-03-10T14:30:00-03:00`), números como número, `sí`/`no` como texto. `types` usa los nombres de `XlsxWriter` (`text`, `date`, `datetime`, `money`, `integer`, `year`). `totals`: `null` si la hoja no tiene totales.
+`rows`: hasta 20 por hoja; fechas en ISO (`2026-03-10` o `2026-03-10T14:30:00-03:00`), números como número (también los `decimal` de Eloquent en columnas `money`, `integer` y `year`), `sí`/`no` como texto. `types` usa los nombres de `XlsxWriter` (`text`, `date`, `datetime`, `money`, `integer`, `year`). `totals`: `null` si la hoja no tiene totales.
 
 ### Período
 
@@ -95,14 +95,24 @@ Mismos roles, filtros y `422` que la descarga.
 
 ## Fases
 
-1. [ ] Plan y documentos (este archivo, TASKS, ENDPOINTS).
-2. [ ] Backend: vista previa (`preview=1`), «Alcance», auditar todas las descargas (`path`, `query`).
-3. [ ] Backend: `from`/`to` en alertas, novedades, órdenes, movimientos y monitoreo; `estado` y `oracle_category_id` en productos; `search` en alertas.
-4. [ ] Backend: hoja «Resumen» y fila de totales.
-5. [ ] Backend: «Informe del período» y `GET /api/me/report-downloads`.
-6. [ ] Frontend: página `/reportes` (catálogo, filtros, período, vista previa, descarga) y menú.
-7. [ ] Frontend: «Mis descargas» con «Repetir»; filtros del servidor en `/equipos`, `/alertas` y `/compras/proveedores`.
-8. [ ] Prueba contra la API real con los tres roles (vista previa = archivo descargado, abierto con LibreOffice).
+1. [x] Plan y documentos (este archivo, TASKS, ENDPOINTS).
+2. [x] Backend: vista previa (`preview=1`), «Alcance», auditar todas las descargas (`path`, `query`).
+3. [x] Backend: `from`/`to` en alertas, novedades, órdenes, movimientos y monitoreo; `estado` y `oracle_category_id` en productos; `search` en alertas.
+4. [x] Backend: hoja «Resumen» y fila de totales.
+5. [x] Backend: «Informe del período» y `GET /api/me/report-downloads`.
+6. [x] Frontend: página `/reportes` (catálogo, filtros, período, vista previa, descarga) y menú.
+7. [x] Frontend: «Mis descargas» con «Repetir»; filtros del servidor en `/equipos`, `/alertas` y `/compras/proveedores`.
+8. [x] Prueba contra la API real con los tres roles (vista previa = archivo descargado, abierto con LibreOffice).
+
+## Prueba contra la API real (2026-11-26)
+
+Login rápido + Chromium por CDP con `PAN-01`, `DIR-01` y `AD-01`, período 2026:
+
+- Los 26 reportes del catálogo (9 de PAN-01, 13 de DIR-01, 4 de AD-01) responden `200` en vista previa y descarga; las rutas de otros roles, `403`; `/reports/period` sin fechas, `422`.
+- Vista previa = archivo: mismas hojas, cabeceras, primeras 20 filas, total de filas, fila de totales e «Info» en los 26 libros (68 hojas).
+- LibreOffice abre los 38 `.xlsx` (incluidos los de la UI) y el `SUBTOTAL` calcula lo mismo que `totals` de la vista previa.
+- La vista previa no se audita; cada descarga suma una fila en «Mis descargas» y «Repetir» vuelve a pedir la misma ruta y parámetros.
+- Hallazgos corregidos: los montos `decimal` llegaban como texto en la vista previa (`"12000000.00"`); el catálogo del frontend declaraba mal las hojas de «Presupuestos» y del «Informe del período».
 
 ## Fuera de alcance
 

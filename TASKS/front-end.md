@@ -530,7 +530,7 @@ Plan y contrato en `docs/reportes-excel.md`. No rompe contrato: todo es aditivo.
 
 - Ampliación (2026-11-25, implementada): nuevo `GET /api/locations/export` (`DIR-01`, `PAN-01`, `AD-01`; `search`, `tipo`, `storeroom_id`, `location_id`); todas las hojas de operaciones suman la columna «Año» junto a su fecha, y los años salen sin separador de miles.
 
-## Centro de reportes con vista previa (plan, noviembre 2026) — Informativo
+## Centro de reportes con vista previa (implementado, noviembre 2026) — Informativo
 
 Plan y contrato en `docs/centro-reportes.md`. No rompe contrato: todo es aditivo.
 - `preview=1` en cada `/export`: JSON con hojas, tipos, 20 filas, total, totales e Info.

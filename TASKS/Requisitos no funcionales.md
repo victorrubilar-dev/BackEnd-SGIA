@@ -29,10 +29,10 @@
 
 
 ### Centro de reportes y vista previa (`docs/centro-reportes.md`)
-- [ ] `preview=1` en cada `/export` y en `/reports/period`: JSON con las mismas hojas (cabeceras, tipos, 20 filas, total, totales, Info), sin auditar (`ReportPreviewTest`).
-- [ ] Fila «Alcance» en la hoja «Info» (`ScopedReport`; préstamos de PAN-01 con su pañol) (`ReportPreviewTest`, `LoanExportTest`).
-- [ ] Todas las descargas quedan en `audit_logs` (`report.export`) con `path`, `query` y `personal` (`ReportExporterTest`).
-- [ ] `from`/`to` en alertas, novedades, órdenes, movimientos de presupuesto y monitoreo (export y listado) (tests de cada export).
-- [ ] Hoja «Resumen» (`Agrupado por`, `Valor`, `Cantidad`, `Monto`) desde las filas filtradas y fila de totales con `SUBTOTAL` fuera del autofiltro (`ReportSummaryTest`, `XlsxWriterTest`).
-- [ ] `GET /api/reports/period` (`DIR-01`, `PAN-01`): «Resumen general» + préstamos, mantenciones, novedades y alertas del período; `422` sin `from`/`to` (`PeriodReportTest`).
-- [ ] `GET /api/me/report-downloads` (`DIR-01`, `PAN-01`, `AD-01`): últimas 20 descargas propias (`ReportDownloadsTest`).
+- [x] `preview=1` en cada `/export` y en `/reports/period`: JSON con las mismas hojas (cabeceras, tipos, 20 filas, total, totales, Info; montos y cantidades como número), sin auditar (`ReportExporterTest`, `LoanExportTest`, `PeriodReportTest`).
+- [x] Fila «Alcance» en la hoja «Info» (`ScopedReport`; préstamos de PAN-01 con su pañol) (`ReportExporterTest`, `PeriodReportTest`).
+- [x] Todas las descargas quedan en `audit_logs` (`report.export`) con `path`, `query` y `personal` (`ReportExporterTest`).
+- [x] `from`/`to` en alertas, novedades, órdenes, movimientos de presupuesto y monitoreo (export y listado) (tests de cada export).
+- [x] Hoja «Resumen» (`Agrupado por`, `Valor`, `Cantidad`, `Monto`) desde las filas filtradas y fila de totales con `SUBTOTAL` fuera del autofiltro (`ReportExporterTest`, `PurchaseExportTest` y los tests de cada export).
+- [x] `GET /api/reports/period` (`DIR-01`, `PAN-01`): «Resumen general» + préstamos, mantenciones, novedades y alertas del período; `422` sin `from`/`to` (`PeriodReportTest`).
+- [x] `GET /api/me/report-downloads` (`DIR-01`, `PAN-01`, `AD-01`): últimas 20 descargas propias (`ReportDownloadsTest`).
