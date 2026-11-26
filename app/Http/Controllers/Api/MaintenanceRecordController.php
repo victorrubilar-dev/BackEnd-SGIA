@@ -57,9 +57,9 @@ class MaintenanceRecordController extends Controller
     /**
      * GET /api/maintenance-records/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportMaintenanceRecordsRequest $request, MaintenanceRecordService $maintenance, ReportExporter $exporter): Response
+    public function export(ExportMaintenanceRecordsRequest $request, MaintenanceRecordService $maintenance, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new MaintenanceRecordsReport($request, $maintenance), $request);
+        return $exporter->respond(new MaintenanceRecordsReport($request, $maintenance), $request);
     }
 
     /**

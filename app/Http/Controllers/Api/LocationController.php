@@ -36,14 +36,14 @@ class LocationController extends Controller
     /**
      * GET /api/locations/export: dónde está cada cosa, cajones y salas en Excel (docs/reportes-excel.md, ampliación A1).
      */
-    public function export(ExportLocationsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportLocationsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
         $query = $this->filtered(Location::query(), $request);
         if ($request->filled('location_id')) {
             $query->whereKey($request->integer('location_id'));
         }
 
-        return $exporter->download(new LocationsReport($request, $query), $request);
+        return $exporter->respond(new LocationsReport($request, $query), $request);
     }
 
     /**

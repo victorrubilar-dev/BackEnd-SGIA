@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\QuotationController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RoomMapController;
 use App\Http\Controllers\Api\StockAlertController;
@@ -287,6 +288,10 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::patch('/zonas/{zona}', [ZonaController::class, 'update']);
         Route::delete('/zonas/{zona}', [ZonaController::class, 'destroy']);
     });
+
+    // Centro de reportes (docs/centro-reportes.md): informe del período y «Mis descargas» (salen de audit_logs).
+    Route::middleware('role:DIR-01,PAN-01')->get('/reports/period', [ReportController::class, 'period']);
+    Route::middleware('role:DIR-01,PAN-01,AD-01')->get('/me/report-downloads', [ReportController::class, 'downloads']);
 
     // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL
     Route::middleware('role:DIR-01')->group(function () {

@@ -65,9 +65,9 @@ class EquipmentUnitController extends Controller
     /**
      * GET /api/equipment-units/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportEquipmentUnitsRequest $request, EquipmentUnitService $units, ReportExporter $exporter): Response
+    public function export(ExportEquipmentUnitsRequest $request, EquipmentUnitService $units, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new EquipmentUnitsReport($request, $units), $request);
+        return $exporter->respond(new EquipmentUnitsReport($request, $units), $request);
     }
 
     /**

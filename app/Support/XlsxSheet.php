@@ -14,6 +14,7 @@ final class XlsxSheet
      * @param  iterable<array<int, string|int|float|bool|DateTimeInterface|null>>  $rows
      * @param  array<int, string>  $types  Tipo por índice de columna (`XlsxWriter::DATE`, `DATETIME`, `MONEY`, `INTEGER`, `TEXT`).
      * @param  array<int, float|int>  $widths  Ancho (en caracteres) por índice de columna.
+     * @param  list<int>  $totals  Columnas con fila de totales al pie (`SUBTOTAL(109, …)`, fuera del autofiltro).
      */
     public function __construct(
         public readonly string $name,
@@ -23,5 +24,6 @@ final class XlsxSheet
         public readonly array $widths = [],
         public readonly bool $filter = true,
         public readonly bool $freezeHeader = true,
+        public readonly array $totals = [],
     ) {}
 }

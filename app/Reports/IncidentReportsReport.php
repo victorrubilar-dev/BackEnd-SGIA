@@ -46,13 +46,15 @@ final class IncidentReportsReport implements Report
             'request_type' => 'Tipo de solicitud',
             'product_id' => 'Producto',
             'equipment_unit_id' => 'Unidad',
+            'from' => 'Desde',
+            'to' => 'Hasta',
         ]);
     }
 
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Informes',
                 ['Código', 'Fecha', 'Tipo', 'Severidad', 'Estado', 'Título', 'Producto', 'Unidad', 'Carrera', 'Lugar', 'Reportado por', 'Docente', 'Asignatura', 'Problemas', 'Descripción', 'Sugerencia', 'Firmado', 'Actualizado'],
                 (clone $this->query)->orderByDesc('created_at')->orderByDesc('id'),
@@ -79,7 +81,7 @@ final class IncidentReportsReport implements Report
                 [1 => XlsxWriter::DATE, 16 => XlsxWriter::DATETIME, 17 => XlsxWriter::DATETIME],
                 [20, 12, 13, 10, 13, 34, 32, 18, 28, 26, 24, 24, 26, 40, 60, 40, 17, 17],
                 yearOf: 1,
-            ),
+            ))->summarized(['Severidad', 'Estado', 'Carrera']),
         ];
     }
 

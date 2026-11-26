@@ -19,6 +19,7 @@ class ExportPurchasesRequest extends ExportRequest
             'quotation_id' => ['nullable', 'integer'],
             'search' => ['nullable', 'string', 'max:120'],
             'linkable' => ['nullable', 'boolean'],
+            ...$this->dateRange(),
         ];
     }
 

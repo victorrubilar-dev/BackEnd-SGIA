@@ -48,7 +48,7 @@ class InvoiceIntakeController extends Controller
     /**
      * Reporte Excel de las facturas con los filtros del listado, más `purchase_id` y `purchase_request_code` (docs/reportes-excel.md).
      */
-    public function export(ExportInvoiceIntakesRequest $request, ReportExporter $exporter): Response
+    public function export(ExportInvoiceIntakesRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
         $query = $this->filter(InvoiceIntake::query(), $request)
             ->when($request->filled('purchase_id'), fn (Builder $q) => $q->where('purchase_id', $request->integer('purchase_id')))
@@ -57,7 +57,7 @@ class InvoiceIntakeController extends Controller
                 fn (Builder $r) => $r->where('code', 'ilike', '%'.$request->string('purchase_request_code').'%'),
             ));
 
-        return $exporter->download(new InvoiceIntakesReport($request, $query), $request);
+        return $exporter->respond(new InvoiceIntakesReport($request, $query), $request);
     }
 
     /**

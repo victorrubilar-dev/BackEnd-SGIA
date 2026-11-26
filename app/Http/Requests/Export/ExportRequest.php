@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Export;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Base de las solicitudes de reporte Excel (docs/reportes-excel.md): valida los mismos filtros que el
@@ -16,6 +17,14 @@ abstract class ExportRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->model === null || ($this->user()?->can('viewAny', $this->model) ?? false);
+    }
+
+    /**
+     * `preview=1` pide la vista previa en JSON (docs/centro-reportes.md); vale para todo reporte.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->addRules(['preview' => ['nullable', 'boolean']]);
     }
 
     /**

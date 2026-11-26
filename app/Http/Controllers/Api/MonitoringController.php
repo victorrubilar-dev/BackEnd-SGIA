@@ -29,18 +29,21 @@ class MonitoringController extends Controller
     public function __construct(private SecurityMonitorService $monitor) {}
 
     /**
-     * GET /api/monitoring/logins — resumen de inicios de sesión de las últimas `hours` horas (24 por defecto).
+     * GET /api/monitoring/logins — resumen de inicios de sesión de las últimas `hours` horas (24 por defecto),
+     * o del período `from`–`to` si viene.
      */
     public function logins(LoginActivityRequest $request): JsonResponse
     {
-        return response()->json(['data' => $this->monitor->loginActivity($request->integer('hours', 24))]);
+        return response()->json(['data' => $this->monitor->loginActivity($request->integer('hours', 24), $request->date('from'), $request->date('to'))]);
     }
 
     /**
-     * GET /api/monitoring/failed-logins — intentos rechazados, más reciente primero. Filtros `email`, `ip_address`, `reason`.
+     * GET /api/monitoring/failed-logins — intentos rechazados, más reciente primero. Filtros `email`, `ip_address`,
+     * `reason` y `from`/`to` (fecha del intento).
      */
     public function failedLogins(Request $request): AnonymousResourceCollection
     {
+        $this->validateDateRange($request);
         $query = $this->failedLoginsQuery($request);
 
         return FailedLoginResource::collection($query->orderByDesc('attempted_at')->orderByDesc('id')->paginate($this->perPage($request)));
@@ -61,24 +64,27 @@ class MonitoringController extends Controller
     }
 
     /**
-     * GET /api/monitoring/export — reporte Excel: inicios de sesión de la ventana `hours`, intentos fallidos con
-     * los filtros de `failed-logins` y sesiones activas. Tiene correos e IP: queda en auditoría (docs/reportes-excel.md).
+     * GET /api/monitoring/export — reporte Excel: inicios de sesión de la ventana `hours` (o del período `from`–`to`),
+     * intentos fallidos con los filtros de `failed-logins` y sesiones activas. Tiene correos e IP: queda en
+     * auditoría (docs/reportes-excel.md).
      */
-    public function export(ExportMonitoringRequest $request, ReportExporter $exporter): Response
+    public function export(ExportMonitoringRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
         $hours = $request->integer('hours', 24);
+        [$from, $to] = $this->monitor->window($hours, $request->date('from'), $request->date('to'));
 
-        return $exporter->download(new MonitoringReport(
+        return $exporter->respond(new MonitoringReport(
             $request,
             $hours,
-            LoginRecord::query()->where('logged_in_at', '>=', $this->monitor->windowStart($hours))->where('logged_in_at', '<=', now()),
+            LoginRecord::query()->where('logged_in_at', '>=', $from)->where('logged_in_at', '<=', $to),
             $this->failedLoginsQuery($request),
             $this->sessionsQuery(),
         ), $request);
     }
 
     /**
-     * Intentos rechazados con los filtros `email` (parcial), `ip_address` y `reason`.
+     * Intentos rechazados con los filtros `email` (parcial), `ip_address`, `reason` y `from`/`to` (fecha del intento;
+     * sin ellos, todos).
      *
      * @return Builder<FailedLogin>
      */
@@ -87,7 +93,9 @@ class MonitoringController extends Controller
         return FailedLogin::query()
             ->when($request->filled('email'), fn ($q) => $q->where('email', 'ilike', '%'.$request->string('email').'%'))
             ->when($request->filled('ip_address'), fn ($q) => $q->where('ip_address', $request->string('ip_address')))
-            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->string('reason')));
+            ->when($request->filled('reason'), fn ($q) => $q->where('reason', $request->string('reason')))
+            ->when($request->filled('from'), fn ($q) => $q->where('attempted_at', '>=', $request->date('from')->startOfDay()))
+            ->when($request->filled('to'), fn ($q) => $q->where('attempted_at', '<=', $request->date('to')->endOfDay()));
     }
 
     /**

@@ -58,7 +58,7 @@ final class AuditLogsReport implements Report
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Eventos',
                 ['Fecha y hora', 'Usuario', 'Correo', 'Rol', 'Acción', 'Entidad', 'ID', 'Cambios', 'IP', 'Navegador'],
                 (clone $this->query)->with('user')->orderByDesc('created_at')->orderByDesc('id'),
@@ -77,7 +77,7 @@ final class AuditLogsReport implements Report
                 [0 => XlsxWriter::DATETIME, 6 => XlsxWriter::INTEGER],
                 [17, 24, 28, 9, 26, 18, 8, 70, 15, 40],
                 yearOf: 0,
-            ),
+            ))->summarized(['Acción', 'Usuario']),
         ];
     }
 

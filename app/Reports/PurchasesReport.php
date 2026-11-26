@@ -52,13 +52,15 @@ final class PurchasesReport implements Report
             'quotation_id' => 'Cotización',
             'search' => 'Búsqueda',
             'linkable' => 'Solo esperando factura',
+            'from' => 'Creada desde',
+            'to' => 'Creada hasta',
         ]);
     }
 
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Órdenes',
                 ['OC', 'N° OC proveedor', 'Proveedor', 'RUT proveedor', 'Solicitud', 'Carrera', 'Año presupuesto', 'Estado', 'Total', 'Reservado', 'Ítems', 'Creada', 'Llegada esperada', 'Recibida', 'Guía', 'Factura', 'Creada por', 'Notas'],
                 (clone $this->query)
@@ -88,8 +90,8 @@ final class PurchasesReport implements Report
                 [6 => XlsxWriter::INTEGER, 8 => XlsxWriter::MONEY, 9 => XlsxWriter::MONEY, 10 => XlsxWriter::INTEGER, 11 => XlsxWriter::DATETIME, 12 => XlsxWriter::DATE, 13 => XlsxWriter::DATETIME],
                 [18, 16, 30, 14, 15, 30, 10, 12, 14, 14, 8, 17, 15, 17, 14, 14, 24, 40],
                 yearOf: 11,
-            ),
-            new ReportSheet(
+            ))->summarized(['Estado', 'Proveedor'], 'Total', ['Total', 'Reservado']),
+            (new ReportSheet(
                 'Ítems',
                 ['OC', 'Estado OC', 'Código producto', 'Producto', 'Cantidad', 'Precio unitario', 'Subtotal'],
                 PurchaseItem::query()
@@ -107,7 +109,7 @@ final class PurchasesReport implements Report
                 ],
                 [4 => XlsxWriter::INTEGER, 5 => XlsxWriter::MONEY, 6 => XlsxWriter::MONEY],
                 [18, 12, 18, 40, 10, 15, 15],
-            ),
+            ))->summarized([], null, ['Subtotal']),
         ];
     }
 }

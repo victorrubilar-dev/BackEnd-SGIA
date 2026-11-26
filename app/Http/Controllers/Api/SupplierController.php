@@ -48,9 +48,9 @@ class SupplierController extends Controller
     /**
      * Reporte Excel de los proveedores con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportSuppliersRequest $request, ReportExporter $exporter): Response
+    public function export(ExportSuppliersRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new SuppliersReport($request, $this->filter(Supplier::query(), $request)), $request);
+        return $exporter->respond(new SuppliersReport($request, $this->filter(Supplier::query(), $request)), $request);
     }
 
     /**

@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- * Monitoreo (`/monitoreo`): inicios de sesión de las últimas `hours` horas, intentos fallidos con los filtros de
+ * Monitoreo (`/monitoreo`): inicios de sesión de las últimas `hours` horas (o del período `from`–`to`), intentos fallidos con los filtros de
  * `GET /api/monitoring/failed-logins` y sesiones activas. Tiene correos e IP: la exportación queda en `audit_logs`.
  */
 final class MonitoringReport implements Report
@@ -52,7 +52,13 @@ final class MonitoringReport implements Report
 
     public function filters(): array
     {
-        return ['Inicios de sesión' => 'últimas '.$this->hours.' horas'] + ReportFilters::describe($this->request->query(), [
+        $period = $this->request->filled('from') || $this->request->filled('to')
+            ? []
+            : ['Inicios de sesión' => 'últimas '.$this->hours.' horas'];
+
+        return $period + ReportFilters::describe($this->request->query(), [
+            'from' => 'Desde',
+            'to' => 'Hasta',
             'email' => 'Correo (fallidos)',
             'ip_address' => 'IP (fallidos)',
             'reason' => ['Motivo (fallidos)', fn ($v) => is_string($v) ? self::REASONS[$v] ?? null : null],
@@ -62,7 +68,7 @@ final class MonitoringReport implements Report
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Inicios de sesión',
                 ['Fecha y hora', 'Usuario', 'Correo', 'Rol', 'Dispositivo', 'IP', 'Navegador'],
                 (clone $this->logins)->with('user')->orderByDesc('logged_in_at')->orderByDesc('id'),
@@ -78,7 +84,7 @@ final class MonitoringReport implements Report
                 [0 => XlsxWriter::DATETIME],
                 [17, 26, 30, 9, 14, 15, 50],
                 yearOf: 0,
-            ),
+            ))->summarized(['Rol', 'Usuario']),
             new ReportSheet(
                 'Fallidos',
                 ['Fecha y hora', 'Correo', 'Usuario', 'Motivo', 'IP', 'Navegador'],

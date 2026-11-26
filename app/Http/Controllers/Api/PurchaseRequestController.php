@@ -64,9 +64,9 @@ class PurchaseRequestController extends Controller
     /**
      * Reporte Excel de las solicitudes con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportPurchaseRequestsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportPurchaseRequestsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new PurchaseRequestsReport($request, $this->filter(PurchaseRequest::query(), $request)), $request);
+        return $exporter->respond(new PurchaseRequestsReport($request, $this->filter(PurchaseRequest::query(), $request)), $request);
     }
 
     /**

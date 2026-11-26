@@ -55,7 +55,7 @@ final class MaintenanceRecordsReport implements Report
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Mantenciones',
                 ['Inicio', 'Término', 'Unidad', 'Producto', 'Carrera', 'Tipo', 'Ejecución', 'Estado', 'Responsable', 'Proveedor externo', 'REV-A', 'REV-B', 'REV-C', 'PFG', 'Requiere otra mantención', 'Costo', 'Repuestos', 'Notas técnicas', 'Próxima mantención'],
                 $this->maintenance->listQuery($this->request)->with(['equipmentUnit.product.career', 'responsible', 'externalSupplier']),
@@ -83,7 +83,7 @@ final class MaintenanceRecordsReport implements Report
                 [0 => XlsxWriter::DATETIME, 1 => XlsxWriter::DATETIME, 15 => XlsxWriter::MONEY, 18 => XlsxWriter::DATE],
                 [17, 17, 18, 34, 28, 12, 15, 11, 24, 24, 7, 7, 9, 6, 13, 13, 30, 60, 18],
                 yearOf: 0,
-            ),
+            ))->summarized(['Tipo', 'Estado', 'Carrera'], 'Costo', ['Costo']),
         ];
     }
 }

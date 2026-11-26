@@ -43,6 +43,13 @@ final class XlsxWriter
 
     private const STYLE_INTEGER = 5;
 
+    /** Fila de totales: negrita, y negrita con formato de pesos o de entero. */
+    private const STYLE_TOTAL = 6;
+
+    private const STYLE_TOTAL_MONEY = 7;
+
+    private const STYLE_TOTAL_INTEGER = 8;
+
     /**
      * Libro de una hoja (se mantiene para el historial de préstamos).
      *
@@ -150,14 +157,23 @@ final class XlsxWriter
         $sheetRows = $sheet->headers !== [] ? [self::row(1, $sheet->headers, [], true)] : [];
         $rowNumber = $sheet->headers !== [] ? 1 : 0;
         $maxColumns = count($sheet->headers);
+        $sums = array_fill_keys($sheet->totals, 0);
         foreach ($sheet->rows as $row) {
             $values = array_values($row);
             $maxColumns = max($maxColumns, count($values));
             $sheetRows[] = self::row(++$rowNumber, $values, $sheet->types, false);
+            foreach ($sheet->totals as $i) {
+                $sums[$i] += is_numeric($values[$i] ?? null) ? $values[$i] + 0 : 0;
+            }
         }
 
         $lastColumn = self::column(max($maxColumns, 1) - 1);
         $lastRow = max($rowNumber, 1);
+        $dataLastRow = $lastRow;
+        if ($sheet->totals !== [] && $rowNumber > 1) {
+            $sheetRows[] = self::totalsRow(++$rowNumber, $sums, $sheet->types, $dataLastRow);
+            $lastRow = $rowNumber;
+        }
         $cols = '';
         foreach ($sheet->headers as $i => $header) {
             $width = $sheet->widths[$i] ?? self::defaultWidth($header, $sheet->types[$i] ?? null);
@@ -174,10 +190,39 @@ final class XlsxWriter
             .'<sheetFormatPr defaultRowHeight="15"/>'
             .($cols !== '' ? '<cols>'.$cols.'</cols>' : '')
             .'<sheetData>'.implode('', $sheetRows).'</sheetData>'
-            .($sheet->filter && $sheet->headers !== [] ? '<autoFilter ref="A1:'.$lastColumn.$lastRow.'"/>' : '')
+            .($sheet->filter && $sheet->headers !== [] ? '<autoFilter ref="A1:'.$lastColumn.$dataLastRow.'"/>' : '')
             .'</worksheet>';
 
-        return [$xml, $sheet->headers !== [] ? '$A$1:$'.$lastColumn.'$'.$lastRow : null];
+        return [$xml, $sheet->headers !== [] ? '$A$1:$'.$lastColumn.'$'.$dataLastRow : null];
+    }
+
+    /**
+     * Fila «Total» al pie: `SUBTOTAL(109, …)` suma solo las filas visibles al filtrar en Excel; el valor ya
+     * calculado va en `<v>` para quien no recalcula. La etiqueta va en la primera columna que no se suma.
+     *
+     * @param  array<int, int|float>  $sums
+     * @param  array<int, string>  $types
+     */
+    private static function totalsRow(int $number, array $sums, array $types, int $dataLastRow): string
+    {
+        $labelColumn = 0;
+        while (array_key_exists($labelColumn, $sums)) {
+            $labelColumn++;
+        }
+        $cells = [$labelColumn => self::text(self::column($labelColumn).$number, 'Total', self::STYLE_TOTAL)];
+        foreach ($sums as $i => $sum) {
+            $col = self::column($i);
+            $style = match ($types[$i] ?? null) {
+                self::MONEY => self::STYLE_TOTAL_MONEY,
+                self::INTEGER => self::STYLE_TOTAL_INTEGER,
+                default => self::STYLE_TOTAL,
+            };
+            $v = is_float($sum) ? rtrim(rtrim(sprintf('%.6F', $sum), '0'), '.') : (string) $sum;
+            $cells[$i] = '<c r="'.$col.$number.'" s="'.$style.'"><f>SUBTOTAL(109,'.$col.'2:'.$col.$dataLastRow.')</f><v>'.$v.'</v></c>';
+        }
+        ksort($cells);
+
+        return '<row r="'.$number.'">'.implode('', $cells).'</row>';
     }
 
     private static function defaultWidth(string $header, ?string $type): int
@@ -280,13 +325,16 @@ final class XlsxWriter
             .'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'
             .'<border><left/><right/><top/><bottom style="thin"><color rgb="FFA1A1AA"/></bottom><diagonal/></border></borders>'
             .'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-            .'<cellXfs count="6">'
+            .'<cellXfs count="9">'
             .'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'
             .'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'
             .'<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="166" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
             .'<xf numFmtId="3" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>'
+            .'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'
+            .'<xf numFmtId="166" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/>'
+            .'<xf numFmtId="3" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1" applyNumberFormat="1"/>'
             .'</cellXfs>'
             .'<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>'
             .'</styleSheet>';

@@ -56,9 +56,9 @@ class ProductController extends Controller
     /**
      * Reporte Excel del inventario con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportProductsRequest $request, ProductService $products, ReportExporter $exporter): Response
+    public function export(ExportProductsRequest $request, ProductService $products, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new ProductsReport($request, $products), $request);
+        return $exporter->respond(new ProductsReport($request, $products), $request);
     }
 
     /**

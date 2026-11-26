@@ -42,9 +42,9 @@ class BudgetReportController extends Controller
      * Reporte Excel: resumen por presupuesto y movimientos, con los filtros del resumen (docs/reportes-excel.md).
      * Sin `year` salen todos los años.
      */
-    public function export(ExportBudgetsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportBudgetsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new BudgetsReport($request, $this->filterSummary(AnnualBudget::query(), $request)), $request);
+        return $exporter->respond(new BudgetsReport($request, $this->filterSummary(AnnualBudget::query(), $request)), $request);
     }
 
     /**

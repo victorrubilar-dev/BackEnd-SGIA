@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Cajon;
 use App\Models\EquipmentUnit;
 use App\Models\Location;
+use App\Models\OracleCategory;
 use App\Models\Product;
 use App\Models\User;
 use App\Reports\ReportExporter;
@@ -102,6 +103,48 @@ class ProductExportTest extends TestCase
         $this->assertStringContainsString('«Productos» se cortó', $info['Aviso']);
     }
 
+    public function test_status_and_oracle_category_filters_in_the_list_and_the_export_with_stock_totals(): void
+    {
+        $this->actingAsRole(User::ROLE_WAREHOUSE);
+        $tag = 'EST'.fake()->unique()->numerify('#####');
+        $category = OracleCategory::create(['name' => "{$tag} Cables"]);
+        $make = fn (string $name, array $attrs) => Product::factory()->create(['name' => "{$tag} {$name}", 'type' => Product::TYPE_SUPPLY, 'stock_minimo' => 0, 'quantity' => 0, 'quantity_in_repair' => 0, 'quantity_written_off' => 0, 'is_active' => true, ...$attrs]);
+        $available = $make('Disponible', ['quantity' => 4, 'quantity_in_repair' => 2, 'oracle_category_id' => $category->id]);
+        $repair = $make('Reparación', ['quantity_in_repair' => 2, 'quantity_written_off' => 1, 'oracle_category_id' => $category->id]);
+        $writtenOff = $make('Baja', ['quantity_written_off' => 3]);
+        $inactive = $make('Inactivo', ['quantity' => 9, 'is_active' => false, 'oracle_category_id' => $category->id]);
+        $empty = $make('Vacío', []);
+
+        $expected = [
+            'disponible' => [$available],
+            'en_reparacion' => [$repair],
+            'dado_de_baja' => [$writtenOff, $inactive],
+            'sin_stock' => [$empty],
+        ];
+        foreach ($expected as $status => $products) {
+            $ids = array_map(fn (Product $p) => $p->id, $products);
+            $listed = $this->getJson("/api/products?search={$tag}&estado={$status}")->assertOk()->json('data');
+            $this->assertEqualsCanonicalizing($ids, array_column($listed, 'id'), "listado estado={$status}");
+            foreach ($listed as $row) {
+                $this->assertSame($status, $row['estado'], 'misma regla que Product::operationalStatus()');
+            }
+            $exported = $this->xlsxRecords($this->get("/api/products/export?search={$tag}&estado={$status}")->assertOk(), 'Productos');
+            $this->assertEqualsCanonicalizing(array_map(fn (Product $p) => $p->name, $products), array_column($exported, 'Nombre'), "export estado={$status}");
+        }
+
+        $listed = $this->getJson("/api/products?search={$tag}&oracle_category_id={$category->id}")->assertOk()->json('data');
+        $this->assertEqualsCanonicalizing([$available->id, $repair->id, $inactive->id], array_column($listed, 'id'));
+
+        $response = $this->get("/api/products/export?search={$tag}&oracle_category_id={$category->id}&estado=dado_de_baja")->assertOk();
+        $this->assertSame(["{$tag} Inactivo"], array_column($this->xlsxRecords($response, 'Productos'), 'Nombre'));
+        $this->assertSame("Búsqueda: {$tag}; Categoría: {$tag} Cables; Estado: Dado de baja", $this->xlsxInfo($response)['Filtros']);
+
+        // Inventario es una foto: totales de stock, sin hoja «Resumen».
+        $response = $this->get("/api/products/export?search={$tag}&oracle_category_id={$category->id}")->assertOk();
+        $this->assertSame(['Productos', 'Unidades', 'Info'], array_keys($this->readXlsx($response)));
+        $this->assertSame(['Código' => 'Total', 'Stock' => 13], $this->xlsxTotals($response, 'Productos'));
+    }
+
     public function test_roles_and_validation(): void
     {
         foreach ([User::ROLE_ADMIN, User::ROLE_TEACHER] as $role) {
@@ -112,5 +155,9 @@ class ProductExportTest extends TestCase
         $this->actingAsRole(User::ROLE_WAREHOUSE);
         $this->getJson('/api/products/export?type=avion')->assertUnprocessable()->assertJsonValidationErrors('type');
         $this->getJson('/api/products/export?cajon_id=abc')->assertUnprocessable()->assertJsonValidationErrors('cajon_id');
+        $this->getJson('/api/products/export?estado=perdido')->assertUnprocessable()->assertJsonValidationErrors('estado');
+        $this->getJson('/api/products/export?oracle_category_id=abc')->assertUnprocessable()->assertJsonValidationErrors('oracle_category_id');
+        $this->getJson('/api/products?estado=perdido')->assertUnprocessable()->assertJsonValidationErrors('estado');
+        $this->getJson('/api/products?oracle_category_id=abc')->assertUnprocessable()->assertJsonValidationErrors('oracle_category_id');
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditLog;
+use App\Models\Career;
 use App\Models\EquipmentUnit;
 use App\Models\Loan;
 use App\Models\LoanItem;
@@ -101,7 +103,7 @@ class LoanExportTest extends TestCase
         LoanItem::create(['loan_id' => $loan->id, 'name' => 'Cable HDMI', 'quantity' => 3]);
 
         $response = $this->get("/api/loans/export?format=xlsx&storeroom_id={$storeroom->id}&estado=en_proceso&devuelto=0")->assertOk();
-        $this->assertSame(['Préstamos', 'Detalle', 'Info'], array_keys($this->readXlsx($response)));
+        $this->assertSame(['Préstamos', 'Detalle', 'Resumen', 'Info'], array_keys($this->readXlsx($response)));
 
         $loans = $this->xlsxRecords($response, 'Préstamos');
         $this->assertSame([$loan->code], array_column($loans, 'Código'), 'el estado filtra');
@@ -119,5 +121,49 @@ class LoanExportTest extends TestCase
         $this->assertStringContainsString('Estado: En proceso', $info['Filtros']);
         $this->assertStringContainsString("Pañol: {$storeroom->name}", $info['Filtros']);
         $this->assertStringContainsString('Devuelto: no', $info['Filtros']);
+    }
+
+    public function test_summary_by_status_type_and_career(): void
+    {
+        $storeroom = Storeroom::factory()->create();
+        $career = Career::factory()->create();
+        Loan::factory()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-10', 'type' => 'presencial', 'career_id' => $career->id]);
+        Loan::factory()->inProgress()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-11', 'type' => 'presencial', 'career_id' => $career->id]);
+        Loan::factory()->inProgress()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-12', 'type' => 'remoto', 'career_id' => null]);
+        Loan::factory()->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-04-01', 'career_id' => $career->id]);
+
+        $response = $this->get("/api/loans/export?format=xlsx&storeroom_id={$storeroom->id}&from=2026-03-01&to=2026-03-31")->assertOk();
+        $this->assertCount(3, $this->xlsxRecords($response, 'Préstamos'), 'el préstamo de abril queda fuera');
+        $summary = $this->xlsxSummary($response);
+        $this->assertContains('Estado|En proceso|2', $summary);
+        $this->assertContains('Tipo|Presencial|2', $summary);
+        $this->assertContains('Tipo|Remoto|1', $summary);
+        $this->assertContains("Carrera|{$career->name}|2", $summary);
+        $this->assertContains('Carrera|(sin dato)|1', $summary);
+        $this->assertNull($this->xlsxTotals($response, 'Préstamos'));
+    }
+
+    public function test_preview_returns_the_same_sheets_as_json_and_is_not_audited(): void
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        Sanctum::actingAs($director);
+        $storeroom = Storeroom::factory()->create();
+        Loan::factory()->processed()->count(3)->create(['storeroom_id' => $storeroom->id, 'loan_date' => '2026-03-10']);
+        $query = "format=xlsx&storeroom_id={$storeroom->id}&from=2026-03-01&to=2026-03-31";
+
+        $json = $this->getJson("/api/loans/export?{$query}&preview=1")->assertOk()
+            ->assertJsonStructure(['title', 'filename', 'truncated', 'sheets' => [['name', 'headers', 'types', 'rows', 'total_rows', 'totals', 'truncated']], 'info'])
+            ->json();
+        $this->assertSame('Historial de préstamos', $json['title']);
+        $this->assertSame(['Préstamos', 'Detalle', 'Resumen'], array_column($json['sheets'], 'name'));
+        $this->assertSame(3, $json['sheets'][0]['total_rows']);
+        $this->assertCount(3, $json['sheets'][0]['rows']);
+        $this->assertSame('2026-03-10', $json['sheets'][0]['rows'][0][7], 'fecha en ISO');
+        $this->assertContains(['Estado', 'Procesado', 3], $json['sheets'][2]['rows']);
+        $this->assertFalse(AuditLog::where('user_id', $director->id)->where('action', AuditLog::REPORT_EXPORT_ACTION)->exists(), 'la vista previa no se audita');
+
+        $xlsx = $this->get("/api/loans/export?{$query}")->assertOk();
+        $this->assertSame(['Préstamos', 'Detalle', 'Resumen', 'Info'], array_keys($this->readXlsx($xlsx)));
+        $this->assertSame(1, AuditLog::where('user_id', $director->id)->where('action', AuditLog::REPORT_EXPORT_ACTION)->count(), 'la descarga sí');
     }
 }

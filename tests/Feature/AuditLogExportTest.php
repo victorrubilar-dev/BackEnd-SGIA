@@ -51,7 +51,7 @@ class AuditLogExportTest extends TestCase
 
         $response = $this->get("/api/audit-logs/export?user_id={$actor->id}")->assertOk();
         $this->assertMatchesRegularExpression('/filename="auditoria-\d{8}-\d{6}\.xlsx"/', (string) $response->headers->get('Content-Disposition'));
-        $this->assertSame(['Eventos', 'Info'], array_keys($this->readXlsx($response)));
+        $this->assertSame(['Eventos', 'Resumen', 'Info'], array_keys($this->readXlsx($response)));
 
         $events = collect($this->xlsxRecords($response, 'Eventos'))->keyBy('Acción');
         $this->assertCount(2, $events);
@@ -89,6 +89,25 @@ class AuditLogExportTest extends TestCase
         $events = $this->xlsxRecords($response, 'Eventos');
         $this->assertSame([AuditLog::REPORT_EXPORT_ACTION], array_column($events, 'Acción'));
         $this->assertSame('Reporte', $events[0]['Entidad']);
+    }
+
+    public function test_period_and_summary_by_action_and_user(): void
+    {
+        $this->actingAsRole(User::ROLE_ADMIN);
+        $tag = 'AUD'.fake()->unique()->numerify('#####');
+        $actor = User::factory()->create(['name' => "{$tag} Actor"]);
+        $at = fn (string $action, string $date) => $this->log($actor, $action)->forceFill(['created_at' => $date])->save();
+        $at('product.updated', '2026-03-01 00:10:00');
+        $at('product.updated', '2026-03-15 10:00:00');
+        $at('product.created', '2026-03-31 23:50:00');
+        $at('product.created', '2026-04-01 00:05:00');
+
+        $response = $this->get("/api/audit-logs/export?user_id={$actor->id}&from=2026-03-01&to=2026-03-31")->assertOk();
+        $this->assertCount(3, $this->xlsxRecords($response, 'Eventos'));
+        $summary = $this->xlsxSummary($response);
+        $this->assertContains('Acción|product.updated|2', $summary);
+        $this->assertContains('Acción|product.created|1', $summary);
+        $this->assertContains("Usuario|{$tag} Actor|3", $summary);
     }
 
     public function test_changes_text_handles_deleted_values(): void

@@ -43,14 +43,14 @@ class StudentController extends Controller
     /**
      * GET /api/students/export: reporte Excel con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportStudentsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportStudentsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
         $query = $this->filtered(
             Student::with('career')->withCount(['loans', 'loans as active_loans_count' => fn ($q) => $q->where('status', Loan::STATUS_IN_PROGRESS)]),
             $request
         );
 
-        return $exporter->download(new StudentsReport($request, $query), $request);
+        return $exporter->respond(new StudentsReport($request, $query), $request);
     }
 
     /**

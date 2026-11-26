@@ -18,6 +18,9 @@ final class ReportSheet
      * @param  array<int, string>  $types
      * @param  array<int, float|int>  $widths
      * @param  int|null  $yearOf  Índice de la columna de fecha de la operación: `ReportExporter` agrega «Año» justo después.
+     * @param  list<string>  $summary  Cabeceras por las que la hoja «Resumen» cuenta las filas (docs/centro-reportes.md).
+     * @param  string|null  $summaryAmount  Cabecera del monto que «Resumen» suma por grupo.
+     * @param  list<string>  $totals  Cabeceras con fila de totales al pie.
      */
     public function __construct(
         public readonly string $name,
@@ -28,7 +31,16 @@ final class ReportSheet
         public readonly array $widths = [],
         public readonly bool $expand = false,
         public readonly ?int $yearOf = null,
+        public readonly array $summary = [],
+        public readonly ?string $summaryAmount = null,
+        public readonly array $totals = [],
     ) {}
+
+    /** Copia con el resumen y los totales indicados (para no repetir los argumentos posicionales). */
+    public function summarized(array $summary, ?string $amount = null, array $totals = []): self
+    {
+        return new self($this->name, $this->headers, $this->source, $this->map, $this->types, $this->widths, $this->expand, $this->yearOf, $summary, $amount, $totals);
+    }
 
     /**
      * Hoja con una fila por cada fila devuelta por `$map` (ítems de una solicitud, unidades de un préstamo).

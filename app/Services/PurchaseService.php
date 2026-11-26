@@ -228,6 +228,15 @@ class PurchaseService
             });
         }
 
+        // Período sobre la fecha de creación de la OC (docs/centro-reportes.md, decisión 6).
+        if ($request->filled('from')) {
+            $query->where('purchases.created_at', '>=', $request->date('from')->startOfDay());
+        }
+
+        if ($request->filled('to')) {
+            $query->where('purchases.created_at', '<=', $request->date('to')->endOfDay());
+        }
+
         return $query;
     }
 }

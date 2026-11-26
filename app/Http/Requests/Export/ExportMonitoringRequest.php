@@ -7,7 +7,8 @@ use Illuminate\Validation\Rule;
 
 /**
  * Filtros de `GET /api/monitoring/export`: `hours` de `GET /api/monitoring/logins` y `email`, `ip_address`,
- * `reason` de `GET /api/monitoring/failed-logins`. Solo AD-01 (middleware de la ruta).
+ * `reason` de `GET /api/monitoring/failed-logins`; `from`/`to` reemplazan a `hours` y acotan los fallidos.
+ * Solo AD-01 (middleware de la ruta).
  */
 class ExportMonitoringRequest extends ExportRequest
 {
@@ -20,6 +21,7 @@ class ExportMonitoringRequest extends ExportRequest
             'email' => ['nullable', 'string', 'max:250'],
             'ip_address' => ['nullable', 'string', 'max:45'],
             'reason' => ['nullable', 'string', Rule::in(self::REASONS)],
+            ...$this->dateRange(),
         ];
     }
 

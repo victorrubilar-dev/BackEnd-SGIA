@@ -304,6 +304,7 @@ class LoanController extends Controller
 
         $validated = $request->validate([
             'format' => ['nullable', 'in:csv,pdf,excel,xlsx'],
+            'preview' => ['nullable', 'boolean'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date', 'after_or_equal:from'],
         ]);
@@ -320,8 +321,9 @@ class LoanController extends Controller
         }
 
         // Excel real (.xlsx) con hojas «Préstamos», «Detalle» e «Info» (docs/reportes-excel.md); tope de ReportExporter.
-        if (in_array($validated['format'] ?? 'csv', ['excel', 'xlsx'], true)) {
-            return $exporter->download(new LoansReport($request, $query), $request);
+        // La vista previa (`preview=1`, docs/centro-reportes.md) es siempre la del Excel.
+        if ($request->boolean('preview') || in_array($validated['format'] ?? 'csv', ['excel', 'xlsx'], true)) {
+            return $exporter->respond(new LoansReport($request, $query), $request);
         }
 
         // Tope de seguridad: un export no debe cargar la tabla completa en memoria.

@@ -72,7 +72,7 @@ class InvoiceIntakeExportTest extends TestCase
 
         $response = $this->get("/api/invoice-intakes/export?annual_budget_id={$budget->id}")->assertOk();
         $this->assertMatchesRegularExpression('/filename="facturas-\d{8}-\d{6}\.xlsx"/', (string) $response->headers->get('Content-Disposition'));
-        $this->assertSame(['Facturas', 'Ítems', 'Info'], array_keys($this->readXlsx($response)));
+        $this->assertSame(['Facturas', 'Ítems', 'Resumen', 'Info'], array_keys($this->readXlsx($response)));
 
         $invoices = collect($this->xlsxRecords($response, 'Facturas'))->keyBy('Folio');
         $this->assertEqualsCanonicalizing(["{$tag}-1", "{$tag}-2"], $invoices->keys()->all());
@@ -92,6 +92,26 @@ class InvoiceIntakeExportTest extends TestCase
         $this->assertSame(100000, $items[0]['Subtotal']);
 
         $this->assertStringStartsWith('Presupuesto: ', $this->xlsxInfo($response)['Filtros']);
+
+        $both = 119000 + (int) $draft->total_deducted;
+        $summary = $this->xlsxSummary($response);
+        $this->assertContains('Estado|Confirmado|1|119000', $summary);
+        $this->assertContains('Carrera|'.$budget->career->name.'|2|'.$both, $summary);
+        $this->assertSame(['Folio' => 'Total', 'Total' => $both], $this->xlsxTotals($response, 'Facturas'));
+        $this->assertSame(['Folio' => 'Total', 'Subtotal' => 100000], $this->xlsxTotals($response, 'Ítems'));
+    }
+
+    public function test_period_by_received_date_excludes_invoices(): void
+    {
+        $director = $this->actingAsRole(User::ROLE_DIRECTOR);
+        [$budget, $confirmed, $draft, $tag] = $this->invoices($director);
+        $confirmed->forceFill(['received_at' => '2026-03-31 23:00:00'])->save();
+        $draft->forceFill(['received_at' => '2026-04-01 00:30:00'])->save();
+
+        $response = $this->get("/api/invoice-intakes/export?annual_budget_id={$budget->id}&from=2026-03-01&to=2026-03-31")->assertOk();
+        $this->assertSame(["{$tag}-1"], array_column($this->xlsxRecords($response, 'Facturas'), 'Folio'));
+        $this->assertStringContainsString('Recibida desde: 2026-03-01; Recibida hasta: 2026-03-31', $this->xlsxInfo($response)['Filtros']);
+        $this->getJson('/api/invoice-intakes/export?from=2026-03-31&to=2026-03-01')->assertUnprocessable()->assertJsonValidationErrors('to');
     }
 
     public function test_status_purchase_and_request_code_filters_exclude_invoices(): void

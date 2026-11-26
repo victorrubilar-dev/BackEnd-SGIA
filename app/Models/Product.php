@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -20,6 +21,9 @@ class Product extends Model
     public const TYPES = [self::TYPE_EQUIPMENT, self::TYPE_SUPPLY, self::TYPE_SCALE_MODEL];
 
     public const MAINTENANCE_PRIORITIES = ['A', 'B', 'C'];
+
+    /** Valores de `operationalStatus()` (y del filtro `estado` de `GET /api/products`). */
+    public const OPERATIONAL_STATUSES = ['disponible', 'en_reparacion', 'dado_de_baja', 'sin_stock'];
 
     protected $attributes = [
         'type' => self::TYPE_EQUIPMENT,
@@ -167,6 +171,27 @@ class Product extends Model
             $this->quantity_in_repair > 0 => 'en_reparacion',
             $this->quantity_written_off > 0 => 'dado_de_baja',
             default => 'sin_stock',
+        };
+    }
+
+    /**
+     * Productos con el estado operativo dado, en SQL con la misma regla de `operationalStatus()`.
+     *
+     * @param  Builder<Product>  $query
+     */
+    public function scopeWithOperationalStatus(Builder $query, string $status): void
+    {
+        $active = 'coalesce(products.is_active, false)';
+        $stock = 'coalesce(products.quantity, 0) > 0';
+        $repair = 'coalesce(products.quantity_in_repair, 0) > 0';
+        $writtenOff = 'coalesce(products.quantity_written_off, 0) > 0';
+
+        match ($status) {
+            'disponible' => $query->whereRaw("{$active} and {$stock}"),
+            'en_reparacion' => $query->whereRaw("{$active} and not {$stock} and {$repair}"),
+            'dado_de_baja' => $query->whereRaw("(not {$active} or (not {$stock} and not {$repair} and {$writtenOff}))"),
+            'sin_stock' => $query->whereRaw("{$active} and not {$stock} and not {$repair} and not {$writtenOff}"),
+            default => $query->whereRaw('false'),
         };
     }
 

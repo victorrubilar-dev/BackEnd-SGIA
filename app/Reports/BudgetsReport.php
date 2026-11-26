@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 
 /**
- * Presupuestos (`/compras/presupuestos`): resumen de ejecución por presupuesto anual (carrera y año, como
- * `GET /api/budgets/summary`) y los movimientos del ledger de esos presupuestos.
+ * Presupuestos (`/compras/presupuestos`): ejecución por presupuesto anual (carrera y año, como
+ * `GET /api/budgets/summary`) y los movimientos del ledger de esos presupuestos (`from`/`to` acotan los movimientos).
  */
 final class BudgetsReport implements Report
 {
@@ -48,14 +48,22 @@ final class BudgetsReport implements Report
         return ReportFilters::describe($this->request->query(), [
             'year' => 'Año',
             'career_id' => 'Carrera',
+            'from' => 'Movimientos desde',
+            'to' => 'Movimientos hasta',
         ]);
     }
 
     public function sheets(): array
     {
+        $movements = BudgetMovement::query()
+            ->whereIn('annual_budget_id', (clone $this->query)->select('annual_budgets.id'))
+            ->when($this->request->filled('from'), fn ($q) => $q->where('budget_movements.created_at', '>=', $this->request->date('from')->startOfDay()))
+            ->when($this->request->filled('to'), fn ($q) => $q->where('budget_movements.created_at', '<=', $this->request->date('to')->endOfDay()));
+
         return [
-            new ReportSheet(
-                'Resumen',
+            // «Presupuestos» y no «Resumen»: ese nombre es de la hoja automática de `ReportExporter`.
+            (new ReportSheet(
+                'Presupuestos',
                 ['Año', 'Carrera', 'Inicial', 'Reservado', 'Gastado', 'Saldo', 'Disponible', 'Ejecución %'],
                 (clone $this->query)->with('career')->orderByDesc('year')->orderBy('career_id')->orderBy('id'),
                 function (AnnualBudget $b): array {
@@ -76,12 +84,11 @@ final class BudgetsReport implements Report
                 },
                 [0 => XlsxWriter::INTEGER, 2 => XlsxWriter::MONEY, 3 => XlsxWriter::MONEY, 4 => XlsxWriter::MONEY, 5 => XlsxWriter::MONEY, 6 => XlsxWriter::MONEY],
                 [8, 32, 15, 15, 15, 15, 15, 12],
-            ),
-            new ReportSheet(
+            ))->summarized([], null, ['Inicial', 'Reservado', 'Gastado', 'Saldo', 'Disponible']),
+            (new ReportSheet(
                 'Movimientos',
                 ['Fecha', 'Carrera', 'Año presupuesto', 'Tipo', 'Monto', 'OC', 'Factura', 'Usuario', 'Notas'],
-                BudgetMovement::query()
-                    ->whereIn('annual_budget_id', (clone $this->query)->select('annual_budgets.id'))
+                $movements
                     ->with(['annualBudget.career', 'purchase', 'invoiceIntake', 'user'])
                     ->orderBy('created_at')->orderBy('id'),
                 fn (BudgetMovement $m): array => [
@@ -98,7 +105,7 @@ final class BudgetsReport implements Report
                 [0 => XlsxWriter::DATETIME, 2 => XlsxWriter::INTEGER, 4 => XlsxWriter::MONEY],
                 [17, 32, 8, 20, 15, 18, 16, 24, 40],
                 yearOf: 0,
-            ),
+            ))->summarized(['Tipo', 'Carrera'], 'Monto'),
         ];
     }
 }

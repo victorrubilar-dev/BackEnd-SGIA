@@ -18,6 +18,7 @@ class ExportIncidentReportsRequest extends ExportRequest
             'request_type' => ['nullable', 'in:'.implode(',', IncidentReport::REQUEST_TYPES)],
             'product_id' => ['nullable', 'integer'],
             'equipment_unit_id' => ['nullable', 'integer'],
+            ...$this->dateRange(),
         ];
     }
 

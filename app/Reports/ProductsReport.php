@@ -3,6 +3,7 @@
 namespace App\Reports;
 
 use App\Models\EquipmentUnit;
+use App\Models\OracleCategory;
 use App\Models\Product;
 use App\Services\ProductService;
 use App\Support\XlsxWriter;
@@ -14,6 +15,14 @@ use Illuminate\Http\Request;
  */
 final class ProductsReport implements Report
 {
+    /** Etiquetas del filtro `estado` (`Product::operationalStatus()`). */
+    private const STATUS_LABELS = [
+        'disponible' => 'Disponible',
+        'en_reparacion' => 'En reparación',
+        'dado_de_baja' => 'Dado de baja',
+        'sin_stock' => 'Sin stock',
+    ];
+
     public function __construct(private readonly Request $request, private readonly ProductService $products) {}
 
     public function title(): string
@@ -45,6 +54,9 @@ final class ProductsReport implements Report
         if (! empty($values['type'])) {
             $values['type'] = ReportValues::label((string) $values['type']);
         }
+        if (! empty($values['estado'])) {
+            $values['estado'] = self::STATUS_LABELS[$values['estado']] ?? $values['estado'];
+        }
 
         return ReportFilters::describe($values, [
             'search' => 'Búsqueda',
@@ -57,6 +69,8 @@ final class ProductsReport implements Report
             'cajon_id' => 'Cajón',
             'location_id' => 'Sala',
             'supplier_id' => 'Proveedor',
+            'oracle_category_id' => ['Categoría', fn ($v) => is_numeric($v) ? OracleCategory::query()->whereKey((int) $v)->value('name') : null],
+            'estado' => 'Estado',
         ]);
     }
 
@@ -65,7 +79,7 @@ final class ProductsReport implements Report
         $query = fn (): Builder => $this->products->applyFilters(Product::query(), $this->request);
 
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Productos',
                 ['Código', 'Nombre', 'Tipo', 'Categoría', 'Carrera', 'Área', 'Sala', 'Cajón', 'Stock', 'Stock mínimo', 'En reparación', 'De baja', 'Stock crítico', 'Activo', 'Proveedor', 'Precio referencia', 'Código maestro', 'Creado'],
                 $query()->with(['category', 'career', 'supplier', 'cajon.location', 'location'])->orderBy('name')->orderBy('id'),
@@ -91,7 +105,7 @@ final class ProductsReport implements Report
                 ],
                 [8 => XlsxWriter::INTEGER, 9 => XlsxWriter::INTEGER, 10 => XlsxWriter::INTEGER, 11 => XlsxWriter::INTEGER, 15 => XlsxWriter::MONEY, 17 => XlsxWriter::DATE],
                 [18, 40, 10, 22, 30, 16, 26, 16, 9, 12, 13, 9, 13, 8, 28, 16, 16, 12],
-            ),
+            ))->summarized([], null, ['Stock']),
             new ReportSheet(
                 'Unidades',
                 ['Código', 'Producto', 'Tipo', 'N° de serie', 'Estado', 'Sala', 'Cajón', 'Última mantención', 'Próxima mantención'],

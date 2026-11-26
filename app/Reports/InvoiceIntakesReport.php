@@ -49,7 +49,7 @@ final class InvoiceIntakesReport implements Report
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Facturas',
                 ['Folio', 'Proveedor', 'RUT proveedor', 'OC', 'Solicitud', 'Carrera', 'Año presupuesto', 'Total', 'Estado', 'Recibida', 'Ingresada por'],
                 (clone $this->query)
@@ -71,8 +71,8 @@ final class InvoiceIntakesReport implements Report
                 [6 => XlsxWriter::INTEGER, 7 => XlsxWriter::MONEY, 9 => XlsxWriter::DATETIME],
                 [16, 30, 14, 18, 15, 30, 10, 14, 12, 17, 24],
                 yearOf: 9,
-            ),
-            new ReportSheet(
+            ))->summarized(['Estado', 'Carrera'], 'Total', ['Total']),
+            (new ReportSheet(
                 'Ítems',
                 ['Folio', 'Estado factura', 'Código producto', 'Producto', 'Texto en la factura', 'Cantidad', 'Precio unitario', 'Subtotal'],
                 InvoiceIntakeItem::query()
@@ -91,7 +91,7 @@ final class InvoiceIntakesReport implements Report
                 ],
                 [5 => XlsxWriter::INTEGER, 6 => XlsxWriter::MONEY, 7 => XlsxWriter::MONEY],
                 [16, 13, 18, 36, 36, 10, 15, 15],
-            ),
+            ))->summarized([], null, ['Subtotal']),
         ];
     }
 }

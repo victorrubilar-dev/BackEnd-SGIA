@@ -4,6 +4,8 @@ namespace App\Reports;
 
 use App\Models\Loan;
 use App\Models\LoanItem;
+use App\Models\Storeroom;
+use App\Models\User;
 use App\Support\XlsxWriter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -13,7 +15,7 @@ use Illuminate\Http\Request;
  * La hoja «Préstamos» mantiene las columnas del CSV (docs/exportaciones-y-campana.md) con fechas reales;
  * «Detalle» tiene una fila por unidad prestada (o por ítem, en los insumos).
  */
-final class LoansReport implements Report
+final class LoansReport implements ScopedReport
 {
     /** @param  Builder<Loan>  $query  Consulta ya filtrada y visible para el usuario. */
     public function __construct(private readonly Request $request, private readonly Builder $query) {}
@@ -31,6 +33,16 @@ final class LoansReport implements Report
     public function audited(): bool
     {
         return false;
+    }
+
+    /** PAN-01 ve solo los préstamos de su pañol (`Loan::visibleTo` / `User::loanStoreroomId`). */
+    public function scope(?User $user): string
+    {
+        $storeroomId = $user?->loanStoreroomId();
+
+        return $storeroomId === null
+            ? 'Todos los pañoles'
+            : 'Préstamos del pañol '.(Storeroom::query()->whereKey($storeroomId)->value('name') ?? "#{$storeroomId}");
     }
 
     public function filters(): array
@@ -69,7 +81,7 @@ final class LoansReport implements Report
     public function sheets(): array
     {
         return [
-            new ReportSheet(
+            (new ReportSheet(
                 'Préstamos',
                 ['Código', 'Tipo', 'Estado', 'Solicitante', 'Asignatura', 'Carrera', 'Sala', 'Fecha', 'Vencimiento', 'Devuelto', 'Atrasado', 'Ítems'],
                 (clone $this->query)->with(['items.units', 'requester', 'career']),
@@ -90,7 +102,7 @@ final class LoansReport implements Report
                 [7 => XlsxWriter::DATE, 8 => XlsxWriter::DATE, 9 => XlsxWriter::DATETIME],
                 [16, 11, 12, 28, 26, 30, 16, 12, 12, 17, 9, 60],
                 yearOf: 7,
-            ),
+            ))->summarized(['Estado', 'Tipo', 'Carrera']),
             ReportSheet::expanded(
                 'Detalle',
                 ['Préstamo', 'Fecha', 'Estado', 'Solicitante', 'Ítem', 'Código producto', 'Unidad', 'Cantidad', 'Entregado', 'Devuelto', 'Devuelto el', 'Condición'],

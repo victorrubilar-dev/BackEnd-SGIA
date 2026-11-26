@@ -29,34 +29,51 @@ class SecurityMonitorService
     }
 
     /**
-     * Actividad de inicio de sesión de las últimas `$hours` horas, por hora.
+     * Ventana del monitoreo: con `from` / `to` (fechas) va del inicio de `from` al fin de `to` (o a ahora);
+     * sin ellos, las últimas `$hours` horas (docs/centro-reportes.md, decisión 6).
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function window(int $hours, ?Carbon $from = null, ?Carbon $to = null): array
+    {
+        $end = $to ? $to->copy()->endOfDay() : now();
+        $start = $from ? $from->copy()->startOfDay() : $this->windowStart($hours, $end->copy()->min(now()));
+
+        return [$start, $end];
+    }
+
+    /**
+     * Actividad de inicio de sesión de las últimas `$hours` horas (o del período `from`–`to`), por hora;
+     * por día si el período pasa de 7 días (`bucket`).
      *
      * @return array<string, mixed>
      */
-    public function loginActivity(int $hours): array
+    public function loginActivity(int $hours, ?Carbon $fromDate = null, ?Carbon $toDate = null): array
     {
-        $to = now();
-        $from = $this->windowStart($hours, $to);
+        [$from, $to] = $this->window($hours, $fromDate, $toDate);
+        $daily = $from->diffInHours($to) > 168;
+        $bucket = fn (Carbon $at): string => $at->format($daily ? 'Y-m-d' : 'Y-m-d H');
 
         // shortcut: agrupa por hora en PHP; con decenas de miles de intentos por semana, pasar a date_trunc en SQL.
         $successful = LoginRecord::whereBetween('logged_in_at', [$from, $to])->pluck('logged_in_at');
         $failed = FailedLogin::whereBetween('attempted_at', [$from, $to])->get(['reason', 'attempted_at']);
 
         $byHour = [];
-        for ($hour = $from->copy(); $hour <= $to; $hour->addHour()) {
-            $byHour[$hour->format('Y-m-d H')] = ['hour' => $hour->toIso8601String(), 'successful' => 0, 'failed' => 0];
+        for ($hour = $daily ? $from->copy()->startOfDay() : $from->copy(); $hour <= $to; $daily ? $hour->addDay() : $hour->addHour()) {
+            $byHour[$bucket($hour)] = ['hour' => $hour->toIso8601String(), 'successful' => 0, 'failed' => 0];
         }
         foreach ($successful as $at) {
-            $byHour[Carbon::parse($at)->format('Y-m-d H')]['successful']++;
+            $byHour[$bucket(Carbon::parse($at))]['successful']++;
         }
         foreach ($failed as $attempt) {
-            $byHour[$attempt->attempted_at->format('Y-m-d H')]['failed']++;
+            $byHour[$bucket($attempt->attempted_at)]['failed']++;
         }
 
         $failedIn = fn () => DB::table('failed_logins')->whereBetween('attempted_at', [$from, $to]);
 
         return [
-            'window_hours' => $hours,
+            'window_hours' => $fromDate || $toDate ? (int) ceil($from->diffInHours($to)) : $hours,
+            'bucket' => $daily ? 'day' : 'hour',
             'from' => $from->toIso8601String(),
             'to' => $to->toIso8601String(),
             'totals' => [

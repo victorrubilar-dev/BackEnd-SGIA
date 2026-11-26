@@ -35,11 +35,12 @@ class PurchaseController extends Controller
     /**
      * List purchase orders with filters (REQ-08).
      *
-     * Query params: status (alias: estado), supplier_id, search, per_page.
+     * Query params: status (alias: estado), supplier_id, search, from/to (creada), per_page.
      */
     public function index(Request $request, PurchaseService $purchaseService): AnonymousResourceCollection|JsonResponse
     {
         Gate::authorize('viewAny', Purchase::class);
+        $this->validateDateRange($request);
 
         $query = $this->filter(Purchase::with(['supplier', 'items']), $request, $purchaseService);
 
@@ -52,13 +53,13 @@ class PurchaseController extends Controller
     /**
      * Reporte Excel de las órdenes de compra con los filtros del listado (docs/reportes-excel.md).
      */
-    public function export(ExportPurchasesRequest $request, PurchaseService $purchaseService, ReportExporter $exporter): Response
+    public function export(ExportPurchasesRequest $request, PurchaseService $purchaseService, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new PurchasesReport($request, $this->filter(Purchase::query(), $request, $purchaseService)), $request);
+        return $exporter->respond(new PurchasesReport($request, $this->filter(Purchase::query(), $request, $purchaseService)), $request);
     }
 
     /**
-     * Filtros del listado (`status`/`estado`, `supplier_id`, `quotation_id`, `search`, `linkable`), compartidos con el reporte Excel.
+     * Filtros del listado (`status`/`estado`, `supplier_id`, `quotation_id`, `search`, `linkable`, `from`/`to`), compartidos con el reporte Excel.
      *
      * @param  Builder<Purchase>  $query
      * @return Builder<Purchase>

@@ -16,6 +16,22 @@ abstract class Controller
     }
 
     /**
+     * Valida el período `from` / `to` (fechas, `to >= from`) de un listado; el export lo valida su FormRequest
+     * con `ExportRequest::dateRange()` (docs/centro-reportes.md, decisión 6).
+     */
+    protected function validateDateRange(Request $request): void
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date', 'after_or_equal:from'],
+        ], [
+            'from.date' => 'La fecha inicial no es válida.',
+            'to.date' => 'La fecha final no es válida.',
+            'to.after_or_equal' => 'La fecha final no puede ser anterior a la inicial.',
+        ]);
+    }
+
+    /**
      * `422` con el formato de error normalizado de la API: `message` + `errors` (campo => mensajes),
      * más datos adicionales opcionales (p. ej. `allowed_transitions`).
      *

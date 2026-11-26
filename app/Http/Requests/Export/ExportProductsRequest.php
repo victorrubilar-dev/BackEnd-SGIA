@@ -22,6 +22,13 @@ class ExportProductsRequest extends ExportRequest
             'cajon_id' => ['nullable', 'integer'],
             'location_id' => ['nullable', 'integer'],
             'supplier_id' => ['nullable', 'integer'],
+            'oracle_category_id' => ['nullable', 'integer'],
+            'estado' => ['nullable', 'string', 'in:'.implode(',', Product::OPERATIONAL_STATUSES)],
         ];
+    }
+
+    public function attributes(): array
+    {
+        return parent::attributes() + ['oracle_category_id' => 'categoría', 'estado' => 'estado'];
     }
 }

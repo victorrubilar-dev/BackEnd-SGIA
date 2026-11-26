@@ -40,9 +40,9 @@ class UserController extends Controller
     /**
      * Reporte Excel de los usuarios con los filtros del listado; la exportación queda en auditoría (docs/reportes-excel.md).
      */
-    public function export(ExportUsersRequest $request, ReportExporter $exporter): Response
+    public function export(ExportUsersRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new UsersReport($request, $this->filter(User::query(), $request)), $request);
+        return $exporter->respond(new UsersReport($request, $this->filter(User::query(), $request)), $request);
     }
 
     /**

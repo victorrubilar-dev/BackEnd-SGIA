@@ -74,7 +74,7 @@ class PurchaseRequestExportTest extends TestCase
 
         $response = $this->get("/api/purchase-requests/export?code={$tag}")->assertOk();
         $this->assertMatchesRegularExpression('/filename="solicitudes-compra-\d{8}-\d{6}\.xlsx"/', (string) $response->headers->get('Content-Disposition'));
-        $this->assertSame(['Solicitudes', 'Ítems', 'Info'], array_keys($this->readXlsx($response)));
+        $this->assertSame(['Solicitudes', 'Ítems', 'Resumen', 'Info'], array_keys($this->readXlsx($response)));
 
         $requests = collect($this->xlsxRecords($response, 'Solicitudes'))->keyBy('Código');
         $this->assertSame(["{$tag}-0002", "{$tag}-0001"], $requests->keys()->all());
@@ -97,6 +97,26 @@ class PurchaseRequestExportTest extends TestCase
         $this->assertArrayNotHasKey('Precio unitario', $items["{$tag}-0002"]);
 
         $this->assertSame("Código: {$tag}", $this->xlsxInfo($response)['Filtros']);
+
+        $summary = $this->xlsxSummary($response);
+        $this->assertContains('Estado|Con OC|1|2380', $summary);
+        $this->assertContains('Estado|Borrador|1|0', $summary);
+        $this->assertContains('Carrera|'.$ordered->annualBudget->career->name.'|2|2380', $summary);
+        $this->assertSame(['Código' => 'Total', 'Total' => 2380], $this->xlsxTotals($response, 'Solicitudes'));
+        $this->assertSame(['Solicitud' => 'Total', 'Total' => 2000], $this->xlsxTotals($response, 'Ítems'));
+    }
+
+    public function test_period_by_creation_date_excludes_requests(): void
+    {
+        $director = $this->actingAsRole(User::ROLE_DIRECTOR);
+        $tag = 'SCP'.fake()->unique()->numerify('#####');
+        [$ordered, $draft] = $this->requests($tag, $director);
+        $ordered->forceFill(['created_at' => '2026-03-31 23:00:00'])->save();
+        $draft->forceFill(['created_at' => '2026-04-01 00:30:00'])->save();
+
+        $response = $this->get("/api/purchase-requests/export?code={$tag}&from=2026-03-01&to=2026-03-31")->assertOk();
+        $this->assertSame(["{$tag}-0001"], array_column($this->xlsxRecords($response, 'Solicitudes'), 'Código'));
+        $this->assertSame(["{$tag}-0001"], array_column($this->xlsxRecords($response, 'Ítems'), 'Solicitud'));
     }
 
     public function test_status_filter_excludes_other_requests(): void

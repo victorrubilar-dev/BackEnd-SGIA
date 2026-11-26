@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Product;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ListProductsRequest extends FormRequest
@@ -16,6 +17,8 @@ class ListProductsRequest extends FormRequest
     {
         return [
             'storeroom_id' => ['nullable', 'integer', 'exists:storerooms,id'],
+            'oracle_category_id' => ['nullable', 'integer'],
+            'estado' => ['nullable', 'string', 'in:'.implode(',', Product::OPERATIONAL_STATUSES)],
         ];
     }
 
@@ -25,6 +28,9 @@ class ListProductsRequest extends FormRequest
         return [
             'storeroom_id.integer' => 'El pañol indicado no es válido.',
             'storeroom_id.exists' => 'El pañol indicado no existe.',
+            'oracle_category_id.integer' => 'La categoría indicada no es válida.',
+            'estado.in' => 'El estado debe ser: '.implode(', ', Product::OPERATIONAL_STATUSES).'.',
+            'estado.string' => 'El estado debe ser: '.implode(', ', Product::OPERATIONAL_STATUSES).'.',
         ];
     }
 }

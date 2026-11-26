@@ -139,11 +139,12 @@ class EquipmentReportController extends Controller
      *
      * GET /api/incident-reports
      * Query params: severity, status, product_id, equipment_unit_id, request_type,
-     * search (código, título o descripción), per_page.
+     * search (código, título o descripción), from/to (fecha del informe), per_page.
      */
     public function all(Request $request): AnonymousResourceCollection
     {
         Gate::authorize('viewAny', IncidentReport::class);
+        $this->validateDateRange($request);
 
         $query = $this->filtered(IncidentReport::with(['reporter', 'product', 'equipmentUnit', 'location'])->latest(), $request);
 
@@ -153,15 +154,15 @@ class EquipmentReportController extends Controller
     /**
      * GET /api/incident-reports/export: reporte Excel con los filtros de la bandeja (docs/reportes-excel.md).
      */
-    public function export(ExportIncidentReportsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportIncidentReportsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
         $query = $this->filtered(IncidentReport::with(['reporter', 'product.career', 'equipmentUnit', 'location']), $request);
 
-        return $exporter->download(new IncidentReportsReport($request, $query), $request);
+        return $exporter->respond(new IncidentReportsReport($request, $query), $request);
     }
 
     /**
-     * Filtros comunes de la bandeja y del reporte: severidad, estado, tipo, unidad, producto y búsqueda.
+     * Filtros comunes de la bandeja y del reporte: severidad, estado, tipo, unidad, producto, búsqueda y `from`/`to`.
      *
      * @param  Builder<IncidentReport>  $query
      * @return Builder<IncidentReport>
@@ -187,6 +188,15 @@ class EquipmentReportController extends Controller
             $query->where(fn ($q) => $q->where('code', 'ilike', $like)
                 ->orWhere('title', 'ilike', $like)
                 ->orWhere('description', 'ilike', $like));
+        }
+
+        // Período sobre la fecha del informe (la del formulario del docente o, si no tiene, la de creación).
+        if ($request->filled('from')) {
+            $query->whereRaw('coalesce(incident_reports.report_date, incident_reports.created_at::date) >= ?', [$request->date('from')->toDateString()]);
+        }
+
+        if ($request->filled('to')) {
+            $query->whereRaw('coalesce(incident_reports.report_date, incident_reports.created_at::date) <= ?', [$request->date('to')->toDateString()]);
         }
 
         return $query;

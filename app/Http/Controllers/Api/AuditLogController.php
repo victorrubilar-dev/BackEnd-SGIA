@@ -9,6 +9,7 @@ use App\Models\AuditLog;
 use App\Reports\AuditLogsReport;
 use App\Reports\ReportExporter;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -44,9 +45,9 @@ class AuditLogController extends Controller
     /**
      * Reporte Excel de los eventos con los filtros del listado; la exportación queda en auditoría (docs/reportes-excel.md).
      */
-    public function export(ExportAuditLogsRequest $request, ReportExporter $exporter): Response
+    public function export(ExportAuditLogsRequest $request, ReportExporter $exporter): Response|JsonResponse
     {
-        return $exporter->download(new AuditLogsReport($request, $this->filter(AuditLog::query(), $request)), $request);
+        return $exporter->respond(new AuditLogsReport($request, $this->filter(AuditLog::query(), $request)), $request);
     }
 
     /**

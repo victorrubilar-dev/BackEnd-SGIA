@@ -26,6 +26,8 @@ class StockAlertController extends Controller
     public function index(Request $request, StockAlertService $stockAlerts): AnonymousResourceCollection
     {
         // Las alertas abiertas se igualan al stock real del inventario antes de listarlas.
+        $this->validateDateRange($request);
+        $request->validate(['search' => ['nullable', 'string', 'max:120']], ['search.max' => 'La búsqueda es demasiado larga.']);
         $stockAlerts->reconcile();
 
         $query = $this->filtered(StockAlert::with(['product', 'product.location', 'product.supplier']), $request);
@@ -62,17 +64,17 @@ class StockAlertController extends Controller
     /**
      * GET /api/alerts/export: reporte Excel con los filtros de la bandeja (docs/reportes-excel.md).
      */
-    public function export(ExportStockAlertsRequest $request, StockAlertService $stockAlerts, ReportExporter $exporter): Response
+    public function export(ExportStockAlertsRequest $request, StockAlertService $stockAlerts, ReportExporter $exporter): Response|JsonResponse
     {
         $stockAlerts->reconcile();
         $query = $this->filtered(StockAlert::with(['product.career', 'product.cajon.location', 'product.location']), $request);
 
-        return $exporter->download(new StockAlertsReport($request, $query), $request);
+        return $exporter->respond(new StockAlertsReport($request, $query), $request);
     }
 
     /**
-     * Filtros comunes del listado y del reporte: `exclude_dismissed`, `alert_type` e `is_resolved`
-     * (sin `is_resolved`, solo las abiertas).
+     * Filtros comunes del listado y del reporte: `exclude_dismissed`, `alert_type`, `is_resolved` (sin él, solo
+     * las abiertas), `search` (nombre o código del producto) y `from`/`to` sobre la fecha de la alerta.
      *
      * @param  Builder<StockAlert>  $query
      * @return Builder<StockAlert>
@@ -93,6 +95,19 @@ class StockAlertController extends Controller
             $query->where('is_resolved', $request->boolean('is_resolved'));
         } else {
             $query->where('is_resolved', false);
+        }
+
+        if ($request->filled('search')) {
+            $like = '%'.$request->string('search').'%';
+            $query->whereHas('product', fn ($q) => $q->where(fn ($q) => $q->where('name', 'ilike', $like)->orWhere('barcode', 'ilike', $like)));
+        }
+
+        if ($request->filled('from')) {
+            $query->where('stock_alerts.created_at', '>=', $request->date('from')->startOfDay());
+        }
+
+        if ($request->filled('to')) {
+            $query->where('stock_alerts.created_at', '<=', $request->date('to')->endOfDay());
         }
 
         return $query;

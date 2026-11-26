@@ -15,8 +15,11 @@ class ProductService
     public function __construct(private readonly StockAlertService $stockAlerts) {}
 
     /**
-     * Aplica los filtros del listado de productos (búsqueda, tipo, área, estado,
-     * proveedor, ubicación y stock crítico).
+     * Aplica los filtros del listado de productos (búsqueda, tipo, área, activo, proveedor, ubicación,
+     * stock crítico, categoría Oracle y estado operativo).
+     *
+     * @param  Builder<Product>  $query
+     * @return Builder<Product>
      */
     public function applyFilters(Builder $query, Request $request): Builder
     {
@@ -76,6 +79,15 @@ class ProductService
 
         if ($request->boolean('critical_only')) {
             $query->whereColumn('quantity', '<=', 'stock_minimo');
+        }
+
+        if ($request->filled('oracle_category_id')) {
+            $query->where('products.oracle_category_id', $request->integer('oracle_category_id'));
+        }
+
+        // Estado operativo (`disponible`, `en_reparacion`, `dado_de_baja`, `sin_stock`), la regla de `Product::operationalStatus()`.
+        if ($request->filled('estado')) {
+            $query->withOperationalStatus((string) $request->string('estado'));
         }
 
         return $query;

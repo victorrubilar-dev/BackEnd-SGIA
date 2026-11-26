@@ -13,6 +13,8 @@ class ExportStockAlertsRequest extends ExportRequest
             'alert_type' => ['nullable', 'in:'.StockAlert::TYPE_WARNING.','.StockAlert::TYPE_CRITICAL],
             'is_resolved' => ['nullable', 'boolean'],
             'exclude_dismissed' => ['nullable', 'boolean'],
+            'search' => ['nullable', 'string', 'max:120'],
+            ...$this->dateRange(),
         ];
     }
 
