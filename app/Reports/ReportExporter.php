@@ -223,13 +223,20 @@ class ReportExporter
         ];
     }
 
-    /** Valor de una celda en JSON: fechas en ISO (solo la fecha si la columna es `date`), el resto tal cual. */
+    /**
+     * Valor de una celda en JSON: fechas en ISO (solo la fecha si la columna es `date`), números como número
+     * (los `decimal` de Eloquent llegan como texto, «12000000.00») y el resto tal cual.
+     */
     private function jsonValue(mixed $value, ?string $type = null): mixed
     {
         if ($value instanceof DateTimeInterface) {
             $local = DateTimeImmutable::createFromInterface($value)->setTimezone(new DateTimeZone(date_default_timezone_get()));
 
             return $type === XlsxWriter::DATE ? $local->format('Y-m-d') : $local->format(DATE_ATOM);
+        }
+
+        if (is_string($value) && is_numeric($value) && in_array($type, [XlsxWriter::MONEY, XlsxWriter::INTEGER, XlsxWriter::YEAR], true)) {
+            return $value + 0;
         }
 
         return is_bool($value) ? ($value ? 'sí' : 'no') : $value;

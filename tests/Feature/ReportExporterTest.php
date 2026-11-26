@@ -180,6 +180,46 @@ class ReportExporterTest extends TestCase
         $this->assertStringContainsString('<autoFilter ref="A1:F26"/>', $sheet, 'los totales quedan fuera del autofiltro');
     }
 
+    public function test_preview_sends_decimal_strings_of_numeric_columns_as_numbers(): void
+    {
+        $user = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
+        $report = new class implements Report
+        {
+            public function title(): string
+            {
+                return 'Movimientos';
+            }
+
+            public function filename(): string
+            {
+                return 'movimientos';
+            }
+
+            public function audited(): bool
+            {
+                return false;
+            }
+
+            public function filters(): array
+            {
+                return [];
+            }
+
+            public function sheets(): array
+            {
+                // Los `decimal` de Eloquent llegan como texto; el código «007» es texto y queda igual.
+                return [new ReportSheet('Movimientos', ['Código', 'Monto', 'Cantidad'], [['007', '12000000.00', '3'], ['008', '172100.50', null]],
+                    fn (array $r) => $r, [1 => XlsxWriter::MONEY, 2 => XlsxWriter::INTEGER])];
+            }
+        };
+
+        $request = Request::create('/api/x/export', 'GET', ['preview' => '1']);
+        $request->setUserResolver(fn () => $user);
+        $rows = (new ReportExporter)->respond($report, $request)->getData(true)['sheets'][0]['rows'];
+
+        $this->assertSame([['007', 12000000, 3], ['008', 172100.5, null]], $rows);
+    }
+
     public function test_year_column_after_the_operation_date_and_years_without_thousands_separator(): void
     {
         $user = User::factory()->create(['role' => User::ROLE_DIRECTOR, 'is_active' => true]);
