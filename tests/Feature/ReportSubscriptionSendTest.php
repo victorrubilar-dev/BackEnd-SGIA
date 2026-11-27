@@ -80,6 +80,7 @@ class ReportSubscriptionSendTest extends TestCase
         $this->assertStringContainsString('Cable suscrito', $html);
         $this->assertStringContainsString('El Excel va adjunto', $html);
         $this->assertStringContainsString('/reportes?reporte=inventario', $html);
+        $this->assertStringContainsString('href="'.config('sgia.frontend_url').'"', $html, 'el encabezado lleva al panel web');
         $this->assertCount(1, $mail->attachments());
 
         Sanctum::actingAs($user);

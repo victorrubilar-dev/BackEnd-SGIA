@@ -1,6 +1,6 @@
 # Suscripción de reportes por correo
 
-**Estado: backend implementado (fases 1 a 5); frontend y prueba real pendientes.** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, filtros, vista previa, auditoría) y `docs/reportes-rankings.md`. Pedido: «suscripción de reportes donde se pueden marcar los reportes que queremos que nos lleguen al correo».
+**Estado: implementado en backend y frontend y probado contra la API real con Mailpit (2026-11-26).** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, filtros, vista previa, auditoría) y `docs/reportes-rankings.md`. Pedido: «suscripción de reportes donde se pueden marcar los reportes que queremos que nos lleguen al correo».
 
 ## Problema
 
@@ -90,8 +90,10 @@ Suscripción:
 - [x] 3. `ReportSubscriptionPeriod` + `ReportSubscriptionRunner` + `ReportSubscriptionMail` + auditoría `report.email` + tests (`Mail::fake`: adjunto = descarga, enlace si > 8 MB, datos personales sin adjunto, sin filas, período por frecuencia).
 - [x] 4. Comando programado, trabajo en cola, una vez por período, pausa por `403`/`422`/usuario inactivo, reintentos + tests.
 - [x] 5. Mailpit en `docker-compose.yml`, `.env.example`, nota de despliegue (`MAIL_*`, cola y cron ya existentes).
-- [ ] 6. Frontend: tipos, cliente, botón y diálogo, «Mis suscripciones», aviso sin correo + tests.
-- [ ] 7. Prueba contra la API real con Mailpit: los tres roles, «Enviar ahora», adjunto que abre en LibreOffice y cuadra con la descarga, reporte con datos personales solo con enlace.
+- [x] 6. Frontend: tipos, cliente, botón y diálogo, «Mis suscripciones», aviso sin correo + tests.
+- [x] 7. Prueba contra la API real con Mailpit: los tres roles, «Enviar ahora», adjunto que abre en LibreOffice y cuadra con la descarga, reporte con datos personales solo con enlace.
+
+Prueba real (2026-11-26, API en `:8010` con cola `database` y Mailpit): con Director, Pañolero y Administrador se suscribió desde la interfaz y se usó «Enviar ahora»; llegaron 6 correos (4 con Excel; estudiantes y usuarios solo con enlace), la suscripción repetida dio `422` y la de otro rol `403`. Las hojas de datos del adjunto de inventario son idénticas a las de la descarga y el archivo abre en LibreOffice. El envío programado por fecha se cubre con pruebas (no cae en un día de envío).
 
 ## Fuera de alcance
 

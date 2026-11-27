@@ -1,5 +1,11 @@
 @php($plain = fn ($text) => \App\Mail\ReportSubscriptionMail::plain((string) $text))
-<x-mail::message>
+<x-mail::layout>
+<x-slot:header>
+<x-mail::header :url="config('sgia.frontend_url')">
+SGIA
+</x-mail::header>
+</x-slot:header>
+
 # {{ $plain($title) }}
 
 Hola {{ $plain($recipient) }}, este es tu reporte {{ $frequencyText }}.
@@ -39,4 +45,10 @@ Abrir en SGIA
 </x-mail::button>
 
 Para pausar o quitar este envío, entra a «Mis suscripciones» en la página de reportes.
-</x-mail::message>
+
+<x-slot:footer>
+<x-mail::footer>
+© {{ date('Y') }} SGIA · INACAP Sede Temuco
+</x-mail::footer>
+</x-slot:footer>
+</x-mail::layout>

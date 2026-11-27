@@ -39,4 +39,4 @@
 
 ### Correo para la suscripción de reportes (`docs/suscripcion-reportes.md`)
 - [x] Mailpit en `docker-compose.yml` para desarrollo y `MAIL_*` documentados en `.env.example` (SES o SMTP institucional se elige al desplegar; hoy `MAIL_MAILER=log`).
-- [ ] `meta.mail_enabled` falso con `MAIL_MAILER=log` o `array`, y aviso en la interfaz.
+- [x] `meta.mail_enabled` falso con `MAIL_MAILER=log` o `array`, y aviso en la interfaz (`ReportSubscriptionTest`; web `subscriptions.test.tsx`).
