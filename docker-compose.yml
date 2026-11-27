@@ -17,5 +17,14 @@ services:
       timeout: 5s
       retries: 5
 
+  # Correo de desarrollo (docs/suscripcion-reportes.md): SMTP en :1025 y bandeja web en http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: sgia_mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
 volumes:
   sgia_pgdata:

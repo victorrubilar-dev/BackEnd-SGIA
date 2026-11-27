@@ -1,6 +1,6 @@
 # Suscripción de reportes por correo
 
-**Estado: plan, sin implementar.** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, filtros, vista previa, auditoría) y `docs/reportes-rankings.md`. Pedido: «suscripción de reportes donde se pueden marcar los reportes que queremos que nos lleguen al correo».
+**Estado: backend implementado (fases 1 a 5); frontend y prueba real pendientes.** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, filtros, vista previa, auditoría) y `docs/reportes-rankings.md`. Pedido: «suscripción de reportes donde se pueden marcar los reportes que queremos que nos lleguen al correo».
 
 ## Problema
 
@@ -64,14 +64,14 @@ Suscripción:
 
 ## Migración
 
-`report_subscriptions`: `id`, `user_id` (FK, borra en cascada), `report_id` (string 60), `title` (string 120), `path` (string 120), `params` (jsonb), `params_hash` (string 64, para el único), `frequency` (string 10), `is_active` (bool), `paused_reason` (string 200, nullable), `last_period` (string 10, nullable), `last_sent_at`, `last_status` (`sent` | `empty` | `failed`, nullable), `timestamps`. Único (`user_id`, `report_id`, `params_hash`, `frequency`). Índice (`is_active`, `frequency`).
+`report_subscriptions`: `id`, `user_id` (FK, borra en cascada), `report_id` (string 60), `title` (string 120), `path` (string 120), `params` (jsonb), `params_hash` (string 64, para el único), `filters` (jsonb: filtros legibles sin el período, para «Mis suscripciones»), `frequency` (string 10), `is_active` (bool), `paused_reason` (string 200, nullable), `last_period` (string 10, nullable), `last_sent_at`, `last_status` (`sent` | `empty` | `failed`, nullable), `timestamps`. Único (`user_id`, `report_id`, `params_hash`, `frequency`). Índice (`is_active`, `frequency`).
 
 ## Backend
 
 - `ReportSubscription` (modelo), `ReportSubscriptionController`, `StoreReportSubscriptionRequest`, `ReportSubscriptionResource`, policy por dueño.
 - `ReportRoutes`: lista cerrada de rutas y si son «foto» o «período» (la misma clasificación del catálogo).
-- `ReportSubscriptionPeriod`: período anterior completo según la frecuencia y la fecha (`2026-W47` → 17-11 a 23-11), `next_send_at`.
-- `ReportSubscriptionRunner`: arma la subpetición interna (preview + `.xlsx`), decide adjunto o enlace (decisiones 4 a 6) y devuelve el resultado; `ReportExporter::audit` registra `report.email` cuando la solicitud trae `report_channel = email`.
+- `ReportSubscriptionPeriod`: período anterior completo según la frecuencia y la fecha (`2026-W47` → 16-11 a 22-11), `next_send_at`.
+- `ReportSubscriptionRunner`: arma la subpetición interna (preview + `.xlsx`), decide adjunto o enlace (decisiones 4 a 6) y devuelve el resultado; la subpetición lleva como atributo `report_channel` un `ReportEmailChannel`: `ReportExporter` anota en él título, filtros y datos personales y no registra `report.export`; el runner registra `report.email` cuando el correo ya salió. `report_id` y `path` deben corresponderse.
 - `SendReportSubscriptionJob` (cola `database`, 3 intentos) y `ReportSubscriptionMail` (Markdown, en español, con el adjunto).
 - Comando `sgia:send-report-subscriptions` en `routes/console.php`, `dailyAt('07:00')` en `America/Santiago`: toma las activas que tocan ese día y encola un trabajo por cada una. El despliegue AWS ya tiene `queue:work` y `schedule:run`.
 - `docker-compose.yml`: servicio `mailpit`; `.env.example` con `MAIL_*` de Mailpit comentados y los de SES/SMTP como referencia.
@@ -85,11 +85,11 @@ Suscripción:
 
 ## Fases
 
-- [ ] 1. Plan y documentos (este archivo, `CLAUDE.md`, `ENDPOINTS.md` de ambos repos, `TASKS`).
-- [ ] 2. Migración, modelo, `ReportRoutes`, CRUD `/me/report-subscriptions` con validación por subpetición `preview=1` + tests (dueño, lista cerrada, duplicada, límite, `403`/`422`, roles).
-- [ ] 3. `ReportSubscriptionPeriod` + `ReportSubscriptionRunner` + `ReportSubscriptionMail` + auditoría `report.email` + tests (`Mail::fake`: adjunto = descarga, enlace si > 8 MB, datos personales sin adjunto, sin filas, período por frecuencia).
-- [ ] 4. Comando programado, trabajo en cola, una vez por período, pausa por `403`/`422`/usuario inactivo, reintentos + tests.
-- [ ] 5. Mailpit en `docker-compose.yml`, `.env.example`, nota de despliegue (`MAIL_*`, cola y cron ya existentes).
+- [x] 1. Plan y documentos (este archivo, `CLAUDE.md`, `ENDPOINTS.md` de ambos repos, `TASKS`).
+- [x] 2. Migración, modelo, `ReportRoutes`, CRUD `/me/report-subscriptions` con validación por subpetición `preview=1` + tests (dueño, lista cerrada, duplicada, límite, `403`/`422`, roles).
+- [x] 3. `ReportSubscriptionPeriod` + `ReportSubscriptionRunner` + `ReportSubscriptionMail` + auditoría `report.email` + tests (`Mail::fake`: adjunto = descarga, enlace si > 8 MB, datos personales sin adjunto, sin filas, período por frecuencia).
+- [x] 4. Comando programado, trabajo en cola, una vez por período, pausa por `403`/`422`/usuario inactivo, reintentos + tests.
+- [x] 5. Mailpit en `docker-compose.yml`, `.env.example`, nota de despliegue (`MAIL_*`, cola y cron ya existentes).
 - [ ] 6. Frontend: tipos, cliente, botón y diálogo, «Mis suscripciones», aviso sin correo + tests.
 - [ ] 7. Prueba contra la API real con Mailpit: los tres roles, «Enviar ahora», adjunto que abre en LibreOffice y cuadra con la descarga, reporte con datos personales solo con enlace.
 

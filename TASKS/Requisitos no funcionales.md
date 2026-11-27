@@ -38,5 +38,5 @@
 - [x] `GET /api/me/report-downloads` (`DIR-01`, `PAN-01`, `AD-01`): últimas 20 descargas propias (`ReportDownloadsTest`).
 
 ### Correo para la suscripción de reportes (`docs/suscripcion-reportes.md`)
-- [ ] Mailpit en `docker-compose.yml` para desarrollo y `MAIL_*` documentados en `.env.example` (SES o SMTP institucional se elige al desplegar; hoy `MAIL_MAILER=log`).
+- [x] Mailpit en `docker-compose.yml` para desarrollo y `MAIL_*` documentados en `.env.example` (SES o SMTP institucional se elige al desplegar; hoy `MAIL_MAILER=log`).
 - [ ] `meta.mail_enabled` falso con `MAIL_MAILER=log` o `array`, y aviso en la interfaz.

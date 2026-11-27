@@ -83,7 +83,7 @@
 - [x] `GET /api/reports/top-teachers` (`DIR-01`, `PAN-01`): profesores con más préstamos del período (rechazados aparte), pañol de PAN-01, `career_id`, `storeroom_id`, `tipo`, `top`, hoja «Préstamos» (`RankingReportsTest`).
 
 ### Suscripción de reportes por correo (`docs/suscripcion-reportes.md`)
-- [ ] Tabla `report_subscriptions` y CRUD `GET/POST /api/me/report-subscriptions`, `PATCH/DELETE /{id}` (`DIR-01`, `PAN-01`, `AD-01`): solo rutas de reporte (lista cerrada), validación con `preview=1`, sin duplicados, máx. 20.
-- [ ] Envío por subpetición interna a la misma ruta: `.xlsx` adjunto con resumen, enlace si pasa de 8 MB, datos personales solo con enlace, sin adjunto si no hay filas; auditoría `report.email`.
-- [ ] `sgia:send-report-subscriptions` a las 07:00 (semanal lunes, mensual día 1, semestral 1-ene y 1-jul), una vez por período, pausa por `403`/`422`/usuario inactivo, reintentos.
-- [ ] `POST /api/me/report-subscriptions/{id}/send` («Enviar ahora», `202`, `throttle:sensitive`).
+- [x] Tabla `report_subscriptions` y CRUD `GET/POST /api/me/report-subscriptions`, `PATCH/DELETE /{id}` (`DIR-01`, `PAN-01`, `AD-01`): solo rutas de reporte (lista cerrada), validación con `preview=1`, sin duplicados, máx. 20. (`ReportSubscriptionTest`, `ReportSubscriptionSendTest`, `ReportSubscriptionPeriodTest`).
+- [x] Envío por subpetición interna a la misma ruta: `.xlsx` adjunto con resumen, enlace si pasa de 8 MB, datos personales solo con enlace, sin adjunto si no hay filas; auditoría `report.email`. (`ReportSubscriptionTest`, `ReportSubscriptionSendTest`, `ReportSubscriptionPeriodTest`).
+- [x] `sgia:send-report-subscriptions` a las 07:00 (semanal lunes, mensual día 1, semestral 1-ene y 1-jul), una vez por período, pausa por `403`/`422`/usuario inactivo, reintentos. (`ReportSubscriptionTest`, `ReportSubscriptionSendTest`, `ReportSubscriptionPeriodTest`).
+- [x] `POST /api/me/report-subscriptions/{id}/send` («Enviar ahora», `202`, `throttle:sensitive`). (`ReportSubscriptionTest`, `ReportSubscriptionSendTest`, `ReportSubscriptionPeriodTest`).

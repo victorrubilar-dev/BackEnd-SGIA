@@ -128,6 +128,12 @@ class User extends Authenticatable
         return $this->hasMany(UserChart::class);
     }
 
+    /** @return HasMany<ReportSubscription, $this> */
+    public function reportSubscriptions(): HasMany
+    {
+        return $this->hasMany(ReportSubscription::class);
+    }
+
     /** @return HasMany<DeviceToken, $this> */
     public function deviceTokens(): HasMany
     {

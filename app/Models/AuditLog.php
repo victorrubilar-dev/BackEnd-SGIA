@@ -30,6 +30,9 @@ class AuditLog extends Model
 
     public const REPORT_EXPORT_ACTION = 'report.export';
 
+    /** Envío de un reporte suscrito (docs/suscripcion-reportes.md). */
+    public const REPORT_EMAIL_ACTION = 'report.email';
+
     protected $fillable = [
         'user_id', 'action', 'auditable_type', 'auditable_id',
         'old_values', 'new_values', 'ip_address', 'user_agent',

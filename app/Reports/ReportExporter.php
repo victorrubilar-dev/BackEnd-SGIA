@@ -37,13 +37,20 @@ class ReportExporter
     /** Vista previa en JSON con `preview=1`; si no, el `.xlsx`. */
     public function respond(Report $report, Request $request): Response|JsonResponse
     {
+        if ($channel = $this->emailChannel($request)) {
+            $channel->capture($report, $this->filename($report));
+        }
+
         return $request->boolean('preview') ? $this->preview($report, $request) : $this->download($report, $request);
     }
 
     public function download(Report $report, Request $request): Response
     {
         $book = $this->build($report, $request->user());
-        $this->audit($report, $request, $book['rows']);
+        // El envío por correo se registra aparte (`report.email`), una vez entregado.
+        if (! $this->emailChannel($request)) {
+            $this->audit($report, $request, $book['rows']);
+        }
 
         $xlsx = XlsxWriter::workbook($book['sheets']);
         $filename = $this->filename($report);
@@ -71,6 +78,13 @@ class ReportExporter
             'sheets' => array_map(fn (XlsxSheet $sheet) => $this->previewSheet($sheet, in_array($sheet->name, $book['truncated'], true)), $book['sheets']),
             'info' => array_map(fn (array $row) => array_map($this->jsonValue(...), $row), [...$info->rows]),
         ]);
+    }
+
+    private function emailChannel(Request $request): ?ReportEmailChannel
+    {
+        $channel = $request->attributes->get(ReportEmailChannel::ATTRIBUTE);
+
+        return $channel instanceof ReportEmailChannel ? $channel : null;
     }
 
     private function filename(Report $report): string

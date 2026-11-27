@@ -548,6 +548,10 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 | `GET` | `/api/audit-logs/export` | `AD-01` | Auditoría: hoja «Eventos» (cambios «campo: antes → después», IP, navegador). Filtros de `GET /api/audit-logs`. Se audita. | ✅ Implementado |
 | `GET` | `/api/users/export` | `AD-01` | Usuarios: hoja «Usuarios». Filtros de `GET /api/users`: `search`, `role`, `area`, `career_id`, `storeroom_id`, `is_active`. Se audita. | ✅ Implementado |
 | `GET` | `/api/monitoring/export` | `AD-01` | Monitoreo: hojas «Inicios de sesión» (`hours` 1–168, por defecto 24), «Fallidos» (`email`, `ip_address`, `reason`) y «Sesiones activas». Se audita. | ✅ Implementado |
+| `GET` | `/api/me/report-subscriptions` | `DIR-01`, `PAN-01`, `AD-01` | Suscripciones de reportes por correo del usuario, con `meta.mail_enabled`. | ✅ Implementado |
+| `POST` | `/api/me/report-subscriptions` | `DIR-01`, `PAN-01`, `AD-01` | Suscribirse a un reporte (`report_id`, `title`, `path`, `params`, `frequency`: `weekly`/`monthly`/`semester`); valida con la vista previa (`403`/`422`), máx. 20, sin duplicados. | ✅ Implementado |
+| `PATCH` / `DELETE` | `/api/me/report-subscriptions/{id}` | `DIR-01`, `PAN-01`, `AD-01` | Cambiar frecuencia, pausar/reanudar (`is_active`) o quitar una suscripción propia. | ✅ Implementado |
+| `POST` | `/api/me/report-subscriptions/{id}/send` | `DIR-01`, `PAN-01`, `AD-01` | «Enviar ahora» el último período completo (`202`, en cola; `throttle:sensitive`). | ✅ Implementado |
 
 ---
 
@@ -562,14 +566,10 @@ Todos responden un `.xlsx` (`Content-Disposition: attachment; filename="<prefijo
 | `GET` | `/api/me/report-downloads` | `DIR-01`, `PAN-01`, `AD-01` | Últimas 20 descargas de reportes del usuario (para «Repetir»). | `docs/centro-reportes.md` |
 | `GET` | `/api/reports/top-suppliers` | `DIR-01` | Proveedores con más compras: ranking por monto de las órdenes del período (sin canceladas) + hoja «Órdenes» (`from`, `to` obligatorios; `career_id`, `top`). | `docs/reportes-rankings.md` |
 | `GET` | `/api/reports/top-teachers` | `DIR-01`, `PAN-01` | Profesores con más préstamos: ranking por préstamos del período (sin rechazados) + hoja «Préstamos»; PAN-01 solo su pañol (`from`, `to` obligatorios; `career_id`, `storeroom_id`, `tipo`, `top`). | `docs/reportes-rankings.md` |
-| `GET` | `/api/me/report-subscriptions` | `DIR-01`, `PAN-01`, `AD-01` | Suscripciones de reportes por correo del usuario, con `meta.mail_enabled`. | `docs/suscripcion-reportes.md` |
-| `POST` | `/api/me/report-subscriptions` | `DIR-01`, `PAN-01`, `AD-01` | Suscribirse a un reporte (`report_id`, `title`, `path`, `params`, `frequency`: `weekly`/`monthly`/`semester`); valida con la vista previa (`403`/`422`), máx. 20, sin duplicados. | `docs/suscripcion-reportes.md` |
-| `PATCH` / `DELETE` | `/api/me/report-subscriptions/{id}` | `DIR-01`, `PAN-01`, `AD-01` | Cambiar frecuencia, pausar/reanudar (`is_active`) o quitar una suscripción propia. | `docs/suscripcion-reportes.md` |
-| `POST` | `/api/me/report-subscriptions/{id}/send` | `DIR-01`, `PAN-01`, `AD-01` | «Enviar ahora» el último período completo (`202`, en cola; `throttle:sensitive`). | `docs/suscripcion-reportes.md` |
 | `GET` | `from`/`to` en `/alerts`, `/incident-reports`, `/purchases`, `/budgets/export`, `/monitoring/export`; `estado`, `oracle_category_id` en `/products`; `search` en `/alerts/critical-stock` | — | Parámetros nuevos (aditivos) en listados y exports. | `docs/centro-reportes.md` |
 
 ---
 
 ## 📊 Resumen
 
-Fuente de verdad: `php artisan route:list --path=api` (209 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.
+Fuente de verdad: `php artisan route:list --path=api` (214 rutas, contando las variantes `PUT`/`PATCH`). Las filas con `PUT/PATCH` o alias comparten el mismo controlador. Los endpoints pendientes están listados arriba.

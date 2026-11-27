@@ -15,6 +15,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseRequest;
 use App\Models\Quotation;
+use App\Models\ReportSubscription;
 use App\Models\Storeroom;
 use App\Models\Student;
 use App\Models\Supplier;
@@ -35,6 +36,7 @@ use App\Policies\ProductPolicy;
 use App\Policies\PurchasePolicy;
 use App\Policies\PurchaseRequestPolicy;
 use App\Policies\QuotationPolicy;
+use App\Policies\ReportSubscriptionPolicy;
 use App\Policies\StoreroomPolicy;
 use App\Policies\StudentPolicy;
 use App\Policies\SupplierPolicy;
@@ -56,7 +58,7 @@ class AppServiceProvider extends ServiceProvider
     private const NUMERIC_ROUTE_PARAMETERS = [
         'annualBudget', 'cajon', 'career', 'dashboardTemplate', 'equipmentUnit', 'estante', 'id', 'incidentReport',
         'invoiceIntake', 'loan', 'location', 'maintenanceDocument', 'maintenanceRecord', 'product', 'purchase',
-        'purchaseRequest', 'quotation', 'session', 'stockAlert', 'storeroom', 'student', 'supplier', 'tokenId',
+        'purchaseRequest', 'quotation', 'reportSubscription', 'session', 'stockAlert', 'storeroom', 'student', 'supplier', 'tokenId',
         'user', 'userChart', 'zona',
     ];
 
@@ -110,6 +112,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(UserChart::class, UserChartPolicy::class);
         Gate::policy(DashboardTemplate::class, DashboardTemplatePolicy::class);
         Gate::policy(Storeroom::class, StoreroomPolicy::class);
+        Gate::policy(ReportSubscription::class, ReportSubscriptionPolicy::class);
 
         // REQ-NF-01: auditoría de eventos críticos.
         User::observe(UserAuditObserver::class);

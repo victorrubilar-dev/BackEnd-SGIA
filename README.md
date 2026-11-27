@@ -35,6 +35,8 @@ php artisan queue:work   # notificaciones (correo/push) cuando QUEUE_CONNECTION=
 php artisan schedule:work  # en desarrollo; en producción, cron cada minuto: php artisan schedule:run
 ```
 
+Reportes suscritos por correo (`docs/suscripcion-reportes.md`): en desarrollo, `docker compose up -d mailpit` y `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025` (bandeja en http://localhost:8025). Al desplegar hay que definir `MAIL_*` y `FRONTEND_URL` y dejar corriendo la cola y el programador; con `MAIL_MAILER=log` los correos solo quedan en el log.
+
 Tareas programadas (`routes/console.php`): `sgia:send-reminders` a las 08:00 (Chile) avisa a los docentes de préstamos que vencen hoy o están atrasados y a `PAN-01` de mantenciones vencidas o en los próximos 7 días (`--days=N`). Se puede correr a mano.
 
 La contraseña del administrador sembrado se define con `SEED_ADMIN_PASSWORD` (por defecto `Admin1234!` solo fuera de producción; en producción el seeder no crea nada sin ella).

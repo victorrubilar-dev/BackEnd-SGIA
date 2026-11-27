@@ -15,3 +15,6 @@ Schedule::command('sgia:send-reminders')->dailyAt('08:00')->timezone('America/Sa
 
 // Las unidades quedan `prestado` desde la aprobación y se liberan al terminar el horario del préstamo.
 Schedule::command('sgia:release-expired-loans')->everyFiveMinutes()->withoutOverlapping();
+
+// Reportes suscritos por correo (docs/suscripcion-reportes.md), antes de los recordatorios.
+Schedule::command('sgia:send-report-subscriptions')->dailyAt('07:00')->timezone('America/Santiago')->withoutOverlapping();

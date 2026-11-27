@@ -29,6 +29,7 @@ use App\Http\Controllers\Api\PurchaseController;
 use App\Http\Controllers\Api\PurchaseRequestController;
 use App\Http\Controllers\Api\QuotationController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ReportSubscriptionController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\RoomMapController;
 use App\Http\Controllers\Api\StockAlertController;
@@ -295,6 +296,15 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::middleware('role:DIR-01')->get('/reports/top-suppliers', [ReportController::class, 'topSuppliers']);
     Route::middleware('role:DIR-01,PAN-01')->get('/reports/top-teachers', [ReportController::class, 'topTeachers']);
     Route::middleware('role:DIR-01,PAN-01,AD-01')->get('/me/report-downloads', [ReportController::class, 'downloads']);
+
+    // Suscripción de reportes por correo (docs/suscripcion-reportes.md): cada uno solo las suyas.
+    Route::middleware('role:DIR-01,PAN-01,AD-01')->group(function () {
+        Route::get('/me/report-subscriptions', [ReportSubscriptionController::class, 'index']);
+        Route::post('/me/report-subscriptions', [ReportSubscriptionController::class, 'store']);
+        Route::patch('/me/report-subscriptions/{reportSubscription}', [ReportSubscriptionController::class, 'update']);
+        Route::delete('/me/report-subscriptions/{reportSubscription}', [ReportSubscriptionController::class, 'destroy']);
+        Route::post('/me/report-subscriptions/{reportSubscription}/send', [ReportSubscriptionController::class, 'send'])->middleware('throttle:sensitive');
+    });
 
     // REQ-14: Dashboards (FU-06, DIR-01): solo GraphQL
     Route::middleware('role:DIR-01')->group(function () {
