@@ -1,6 +1,6 @@
 # Rankings en el centro de reportes: proveedores con más compras y profesores con más préstamos
 
-**Estado: plan, sin implementar.** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, vista previa `preview=1`, selector de período, hoja «Info», auditoría `report.export`). Pedido: «incluir informes sobre proveedores con más compras o profesores con más préstamos con períodos de tiempo a elegir».
+**Estado: implementado en backend y frontend (2026-11-26), probado contra la API real.** Rama `feat/reportes-excel` de ambos repos. Amplía `docs/centro-reportes.md` (catálogo, vista previa `preview=1`, selector de período, hoja «Info», auditoría `report.export`). Pedido: «incluir informes sobre proveedores con más compras o profesores con más préstamos con períodos de tiempo a elegir».
 
 ## Problema
 
@@ -48,8 +48,8 @@ GET /api/reports/top-teachers?from=2026-07-01&to=2026-12-31[&career_id=3][&store
 - [x] 1. Plan y documentos (este archivo, `CLAUDE.md`, `ENDPOINTS.md` de ambos repos, `TASKS`).
 - [x] 2. `TopSuppliersReport` + ruta + tests (ranking, cancelada fuera, período, carrera, `top`, empates, `403`/`422`).
 - [x] 3. `TopTeachersReport` + ruta + tests (ranking, rechazados aparte, pañol de PAN-01, tipo, `top`, `403`/`422`).
-- [ ] 4. Catálogo del frontend + tests.
-- [ ] 5. Prueba contra la API real (vista previa = archivo, roles).
+- [x] 4. Catálogo del frontend + tests. En el menú se llaman «Top proveedores» y «Top profesores» (los nombres largos se cortaban en la columna del catálogo); el `.xlsx` mantiene el título completo.
+- [x] 5. Prueba contra la API real (2026-11-26): DIR-01 ve 6 proveedores y 7 profesores en el 2.º semestre 2026 (empate en el puesto 3), con totales; PAN-01 solo los préstamos de su pañol y `403` en proveedores; AD-01 `403`.
 
 ## Fuera de alcance
 

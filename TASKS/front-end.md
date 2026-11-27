@@ -537,6 +537,6 @@ Plan y contrato en `docs/centro-reportes.md`. No rompe contrato: todo es aditivo
 - `from`/`to` nuevos en alertas, novedades, órdenes, movimientos y monitoreo; `estado` y `oracle_category_id` en productos; `search` en alertas.
 - Nuevos `GET /api/reports/period` y `GET /api/me/report-downloads`. Hoja «Resumen», fila de totales y fila «Alcance» en los `.xlsx`.
 
-## Rankings en el centro de reportes (plan, noviembre 2026) — Informativo
+## Rankings en el centro de reportes (implementado, noviembre 2026) — Informativo
 
 Plan y contrato en `docs/reportes-rankings.md`. Aditivo: `GET /api/reports/top-suppliers` (DIR-01) y `GET /api/reports/top-teachers` (DIR-01, PAN-01), con `from`/`to` obligatorios, `top` y `preview=1`. En el frontend solo se suman al catálogo, en el grupo «Rankings».
