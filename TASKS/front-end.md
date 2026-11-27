@@ -540,3 +540,7 @@ Plan y contrato en `docs/centro-reportes.md`. No rompe contrato: todo es aditivo
 ## Rankings en el centro de reportes (implementado, noviembre 2026) — Informativo
 
 Plan y contrato en `docs/reportes-rankings.md`. Aditivo: `GET /api/reports/top-suppliers` (DIR-01) y `GET /api/reports/top-teachers` (DIR-01, PAN-01), con `from`/`to` obligatorios, `top` y `preview=1`. En el frontend solo se suman al catálogo, en el grupo «Rankings».
+
+## Suscripción de reportes por correo (plan, noviembre 2026) — Informativo
+
+Plan y contrato en `docs/suscripcion-reportes.md`. Aditivo: `GET/POST /api/me/report-subscriptions`, `PATCH/DELETE /api/me/report-subscriptions/{id}` y `POST /api/me/report-subscriptions/{id}/send`. En `/reportes`: botón «Recibir por correo» (frecuencia semanal, mensual o semestral con los filtros elegidos) y panel «Mis suscripciones» (pausar, enviar ahora, quitar; aviso si `meta.mail_enabled` es falso).

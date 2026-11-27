@@ -36,3 +36,7 @@
 - [x] Hoja «Resumen» (`Agrupado por`, `Valor`, `Cantidad`, `Monto`) desde las filas filtradas y fila de totales con `SUBTOTAL` fuera del autofiltro (`ReportExporterTest`, `PurchaseExportTest` y los tests de cada export).
 - [x] `GET /api/reports/period` (`DIR-01`, `PAN-01`): «Resumen general» + préstamos, mantenciones, novedades y alertas del período; `422` sin `from`/`to` (`PeriodReportTest`).
 - [x] `GET /api/me/report-downloads` (`DIR-01`, `PAN-01`, `AD-01`): últimas 20 descargas propias (`ReportDownloadsTest`).
+
+### Correo para la suscripción de reportes (`docs/suscripcion-reportes.md`)
+- [ ] Mailpit en `docker-compose.yml` para desarrollo y `MAIL_*` documentados en `.env.example` (SES o SMTP institucional se elige al desplegar; hoy `MAIL_MAILER=log`).
+- [ ] `meta.mail_enabled` falso con `MAIL_MAILER=log` o `array`, y aviso en la interfaz.
