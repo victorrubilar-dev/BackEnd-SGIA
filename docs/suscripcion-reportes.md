@@ -12,7 +12,7 @@ Las marcadas con (usuario) las eligió el usuario el 2026-11-26; el resto sale d
 
 | # | Decisión |
 |---|---|
-| 1 | **Se marca en `/reportes`** (usuario). Junto a «Descargar Excel», el botón «Recibir por correo» abre un diálogo: frecuencia y los filtros que se guardan (los que están elegidos en ese momento). «Mis suscripciones» (junto a «Mis descargas») lista las del usuario con pausar, «Enviar ahora» y quitar. Roles: los del centro de reportes (`DIR-01`, `PAN-01`, `AD-01`), cada uno solo con los reportes de su rol. |
+| 1 | **Se marca en `/reportes`** (usuario). Junto a «Descargar Excel», el botón «Recibir por correo» abre un diálogo: frecuencia y los filtros que se guardan (los que están elegidos en ese momento). «Mis suscripciones» (al pie del catálogo, sobre «Mis descargas»; bajo 1024 px, debajo del selector de reporte) lista las del usuario con pausar, «Enviar ahora» y quitar. Roles: los del centro de reportes (`DIR-01`, `PAN-01`, `AD-01`), cada uno solo con los reportes de su rol. |
 | 2 | **Frecuencia elegible por suscripción** (usuario): **semanal** (lunes, con la semana anterior, lunes a domingo), **mensual** (día 1, con el mes anterior) o **semestral** (1 de enero y 1 de julio, con el semestre que terminó: `2026-1` = enero–junio, la regla de `DashboardPeriod`). Se envían a las 07:00 de Chile (`America/Santiago`), antes de los recordatorios de las 08:00. |
 | 3 | **El período no se guarda: se calcula en cada envío** (`from`/`to` según la frecuencia). Los reportes «foto» (inventario, ubicaciones, proveedores…) mandan el estado del momento del envío. En presupuestos, `year` toma el año del período enviado. El resto de los filtros (carrera, pañol, estado, `top`…) se guarda tal cual. |
 | 4 | **El correo trae el Excel adjunto y un resumen** (usuario): asunto «SGIA · Historial de préstamos · noviembre 2026», el período con fechas, los filtros legibles, las filas por hoja y un enlace a `/reportes?reporte=…` con el reporte. Si el `.xlsx` pasa de **8 MB**, va solo el enlace. |
@@ -80,7 +80,7 @@ Suscripción:
 
 - `packages/types`: `ReportSubscription`, `ReportSubscriptionFrequency`. `packages/api-client`: servicio y hooks (`useReportSubscriptions`, crear, cambiar, quitar, enviar ahora).
 - `/reportes`: botón «Recibir por correo» (icono de sobre) junto a «Descargar Excel», deshabilitado si el reporte está bloqueado por el período. Diálogo con la frecuencia (tres opciones con lo que manda cada una: «Cada lunes, la semana anterior»), los filtros que se guardan en texto y una nota: «El período se calcula en cada envío». Si ya hay una suscripción igual, el botón dice «Suscrito · mensual» y abre «Mis suscripciones».
-- «Mis suscripciones» (panel lateral como «Mis descargas»): título, frecuencia, filtros, próximo y último envío con su estado, motivo de la pausa, y las acciones pausar/reanudar, «Enviar ahora» y quitar (con confirmación). Aviso fijo si `mail_enabled` es falso.
+- «Mis suscripciones» (panel lateral como «Mis descargas»; las dos entradas van al pie del catálogo, no en el encabezado): título, frecuencia, filtros, próximo y último envío con su estado, motivo de la pausa, y las acciones pausar/reanudar, «Enviar ahora» y quitar (con confirmación). Aviso fijo si `mail_enabled` es falso.
 - Reportes con datos personales: el diálogo avisa «Llega solo el resumen y un enlace; el archivo se descarga en SGIA».
 
 ## Fases
